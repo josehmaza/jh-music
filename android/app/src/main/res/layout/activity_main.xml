@@ -145,25 +145,26 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
-            <!-- Barra Deslizante Vertical Táctil Ergonómica (Sin solapamiento con botones) -->
-            <com.jh.caraudio.VerticalVolumeBar
-                android:id="@+id/seekVolume"
-                android:layout_width="44dp"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp" />
-
-            <!-- Botón Bajar (-) -->
+            <!-- Botón Bajar (-) inmediatamente debajo de (+) -->
             <Button
                 android:id="@+id/btnVolDown"
                 android:layout_width="44dp"
                 android:layout_height="42dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="-"
                 android:textColor="@color/text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold" />
+
+            <!-- Barra Deslizante Vertical Táctil Ergonómica (Abajo de + y -, con separación de 20dp) -->
+            <com.jh.caraudio.VerticalVolumeBar
+                android:id="@+id/seekVolume"
+                android:layout_width="44dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="8dp" />
         </LinearLayout>
 
         <!-- ======================================================== -->
@@ -326,17 +327,17 @@
                         android:textSize="15sp" />
                 </LinearLayout>
 
-                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Clickables) -->
+                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Clickables y más grandes) -->
                 <LinearLayout
                     android:id="@+id/layoutAdjacentPreviews"
                     android:layout_width="match_parent"
-                    android:layout_height="38dp"
+                    android:layout_height="48dp"
                     android:layout_marginTop="6dp"
                     android:orientation="horizontal"
                     android:background="@drawable/bg_search"
                     android:gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp">
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp">
 
                     <!-- Tarjeta Anterior -->
                     <LinearLayout
@@ -355,7 +356,7 @@
                             android:layout_height="wrap_content"
                             android:text="⏮ ANTERIOR"
                             android:textColor="@color/accent_cyan"
-                            android:textSize="10sp"
+                            android:textSize="13sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -367,15 +368,16 @@
                             android:marqueeRepeatLimit="marquee_forever"
                             android:text="Cargando..."
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Divisor -->
                     <View
                         android:layout_width="1dp"
-                        android:layout_height="24dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_height="28dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
                         android:background="@color/border_panel" />
 
                     <!-- Tarjeta Siguiente -->
@@ -395,7 +397,7 @@
                             android:layout_height="wrap_content"
                             android:text="SIGUIENTE ⏭"
                             android:textColor="@color/accent_cyan"
-                            android:textSize="10sp"
+                            android:textSize="13sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -408,11 +410,12 @@
                             android:marqueeRepeatLimit="marquee_forever"
                             android:text="Cargando..."
                             android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Barra de Progreso y Tiempos -->
+                <!-- Barra de Progreso y Tiempos: Con thumbOffset y padding para que la bolita nunca se corte -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -422,7 +425,11 @@
                     <SeekBar
                         android:id="@+id/seekTrackProgress"
                         android:layout_width="match_parent"
-                        android:layout_height="22dp"
+                        android:layout_height="28dp"
+                        android:splitTrack="false"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:thumbOffset="9dp"
                         android:max="100"
                         android:progress="0"
                         android:progressDrawable="@drawable/seekbar_progress"
@@ -431,8 +438,8 @@
                     <RelativeLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp">
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp">
 
                         <TextView
                             android:id="@+id/tvTimeCurrent"
@@ -456,7 +463,7 @@
                     </RelativeLayout>
                 </LinearLayout>
 
-                <!-- Controles de Transporte (Botones táctiles grandes) -->
+                <!-- Controles de Transporte (Botones táctiles grandes ampliados) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
@@ -468,8 +475,8 @@
                     <!-- Aleatorio -->
                     <ImageButton
                         android:id="@+id/btnShuffle"
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
                         android:background="@drawable/bg_btn_action"
                         android:src="@android:drawable/ic_menu_rotate"
                         android:contentDescription="Aleatorio" />
@@ -477,18 +484,18 @@
                     <!-- Pista Anterior -->
                     <ImageButton
                         android:id="@+id/btnPrev"
-                        android:layout_width="54dp"
-                        android:layout_height="54dp"
+                        android:layout_width="62dp"
+                        android:layout_height="62dp"
                         android:layout_marginStart="14dp"
                         android:background="@drawable/bg_btn_action"
                         android:src="@android:drawable/ic_media_previous"
                         android:contentDescription="Anterior" />
 
-                    <!-- Play / Pause Central Grande (70dp) -->
+                    <!-- Play / Pause Central Grande (78dp) -->
                     <ImageButton
                         android:id="@+id/btnPlayPause"
-                        android:layout_width="70dp"
-                        android:layout_height="70dp"
+                        android:layout_width="78dp"
+                        android:layout_height="78dp"
                         android:layout_marginStart="16dp"
                         android:layout_marginEnd="16dp"
                         android:background="@drawable/bg_btn_circle"
@@ -498,8 +505,8 @@
                     <!-- Siguiente Pista -->
                     <ImageButton
                         android:id="@+id/btnNext"
-                        android:layout_width="54dp"
-                        android:layout_height="54dp"
+                        android:layout_width="62dp"
+                        android:layout_height="62dp"
                         android:layout_marginEnd="14dp"
                         android:background="@drawable/bg_btn_action"
                         android:src="@android:drawable/ic_media_next"
@@ -508,8 +515,8 @@
                     <!-- Repetir -->
                     <ImageButton
                         android:id="@+id/btnRepeat"
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
                         android:background="@drawable/bg_btn_action"
                         android:src="@android:drawable/ic_menu_revert"
                         android:contentDescription="Repetir" />
@@ -601,12 +608,22 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@null"
-                        android:hint="Buscar canción, artista o carpeta..."
+                        android:hint="Buscar..."
                         android:textColorHint="@color/text_muted"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:singleLine="true"
                         android:imeOptions="actionDone" />
+
+                    <!-- Indicador de búsqueda en progreso -->
+                    <ProgressBar
+                        android:id="@+id/pbSearchLoading"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="6dp"
+                        android:indeterminate="true"
+                        android:indeterminateTint="@color/accent_cyan"
+                        android:visibility="gone" />
 
                     <!-- Botón X para borrar búsqueda y cerrar teclado -->
                     <ImageButton

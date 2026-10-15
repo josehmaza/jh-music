@@ -32,6 +32,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -85,6 +86,7 @@ public class MainActivity extends Activity {
     private Button tabFolders, tabTracks, tabFavorites;
     private EditText etSearch;
     private ImageButton btnSearchClear;
+    private ProgressBar pbSearchLoading;
     private TextView tvCurrentPath, tvStorageStatus;
     private Button btnPlayAll;
     private ListView listViewContent;
@@ -192,6 +194,7 @@ public class MainActivity extends Activity {
         tabFavorites = findViewById(R.id.tabFavorites);
         etSearch = findViewById(R.id.etSearch);
         btnSearchClear = findViewById(R.id.btnSearchClear);
+        pbSearchLoading = findViewById(R.id.pbSearchLoading);
         tvCurrentPath = findViewById(R.id.tvCurrentPath);
         tvStorageStatus = findViewById(R.id.tvStorageStatus);
         btnPlayAll = findViewById(R.id.btnPlayAll);
@@ -455,6 +458,7 @@ public class MainActivity extends Activity {
             searchVersion++;
             etSearch.setText("");
             btnSearchClear.setVisibility(View.GONE);
+            if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
             hideKeyboard();
             filterSearch("");
         });
@@ -564,58 +568,113 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean trackMatchesTokens(Track track, String[] tokens) {
+    private boolean fastTrackMatches(Track track, String[] tokens) {
         String haystack = normalizeText(track.getTitle() + " " + track.getArtist() + " " + track.getAlbum() + " " + track.getFolder() + " " + track.getFilePath());
         String haystackDedup = dedupChars(haystack);
-        String[] words = haystack.split("[^a-z0-9]+");
 
         for (String token : tokens) {
             if (token.isEmpty()) continue;
+            // Búsqueda ultra rápida en subcadenas (<0.01ms por pista)
             if (haystack.contains(token)) continue;
             if (haystackDedup.contains(dedupChars(token))) continue;
-
-            boolean matchedWord = false;
-            for (String word : words) {
-                if (tokenMatches(token, word)) {
-                    matchedWord = true;
-                    break;
-                }
-            }
-            if (!matchedWord) return false;
+            return false;
         }
         return true;
     }
 
     private void performAsyncSearch(final String rawQuery, final int targetVersion) {
+        final int tab = currentTab;
+        runOnUiThread(() -> {
+            if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.VISIBLE);
+        });
+
         searchExecutor.execute(() -> {
             if (targetVersion != searchVersion) return;
 
             String norm = normalizeText(rawQuery);
             String[] tokens = norm.split("\\s+");
-            List<Track> matched = new ArrayList<>();
 
-            for (Track t : allTracks) {
-                if (targetVersion != searchVersion) return; // Cancelar inmediatamente si el usuario teclea de nuevo
-                if (trackMatchesTokens(t, tokens)) {
-                    matched.add(t);
+            if (tab == 0) {
+                // PESTAÑA CARPETAS: Buscar ÚNICAMENTE en carpetas
+                List<FolderItem> matchedFolders = new ArrayList<>();
+                for (FolderItem f : folderList) {
+                    if (targetVersion != searchVersion) return;
+                    String fText = normalizeText(f.getName() + " " + f.getPath());
+                    String fDedup = dedupChars(fText);
+                    boolean match = true;
+                    for (String token : tokens) {
+                        if (token.isEmpty()) continue;
+                        if (!fText.contains(token) && !fDedup.contains(dedupChars(token))) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) matchedFolders.add(f);
                 }
-            }
 
-            if (targetVersion != searchVersion) return;
-
-            runOnUiThread(() -> {
                 if (targetVersion != searchVersion) return;
-                displayedTracks.clear();
-                displayedTracks.addAll(matched);
 
-                if (listViewContent.getAdapter() != trackAdapter) {
-                    listViewContent.setAdapter(trackAdapter);
+                runOnUiThread(() -> {
+                    if (targetVersion != searchVersion) return;
+                    if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+                    displayedFolders.clear();
+                    displayedFolders.addAll(matchedFolders);
+                    if (listViewContent.getAdapter() != folderAdapter) {
+                        listViewContent.setAdapter(folderAdapter);
+                    }
+                    tvCurrentPath.setText("📂 Carpetas: \"" + rawQuery + "\" (" + displayedFolders.size() + " encontradas)");
+                    folderAdapter.setFolders(displayedFolders);
+                });
+
+            } else if (tab == 1) {
+                // PESTAÑA PISTAS: Buscar ÚNICAMENTE en pistas
+                List<Track> matchedTracks = new ArrayList<>();
+                for (Track t : allTracks) {
+                    if (targetVersion != searchVersion) return;
+                    if (fastTrackMatches(t, tokens)) {
+                        matchedTracks.add(t);
+                    }
                 }
 
-                tvCurrentPath.setText("🔍 Búsqueda: \"" + rawQuery + "\" (" + displayedTracks.size() + " encontradas)");
-                tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
-                trackAdapter.setTracks(displayedTracks);
-            });
+                if (targetVersion != searchVersion) return;
+
+                runOnUiThread(() -> {
+                    if (targetVersion != searchVersion) return;
+                    if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+                    displayedTracks.clear();
+                    displayedTracks.addAll(matchedTracks);
+                    if (listViewContent.getAdapter() != trackAdapter) {
+                        listViewContent.setAdapter(trackAdapter);
+                    }
+                    tvCurrentPath.setText("🔍 Pistas: \"" + rawQuery + "\" (" + displayedTracks.size() + " encontradas)");
+                    tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
+                    trackAdapter.setTracks(displayedTracks);
+                });
+
+            } else {
+                // PESTAÑA FAVORITOS: Buscar ÚNICAMENTE en favoritos
+                List<Track> matchedFavs = new ArrayList<>();
+                for (Track t : allTracks) {
+                    if (targetVersion != searchVersion) return;
+                    if (t.isFavorite() && fastTrackMatches(t, tokens)) {
+                        matchedFavs.add(t);
+                    }
+                }
+
+                if (targetVersion != searchVersion) return;
+
+                runOnUiThread(() -> {
+                    if (targetVersion != searchVersion) return;
+                    if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+                    displayedTracks.clear();
+                    displayedTracks.addAll(matchedFavs);
+                    if (listViewContent.getAdapter() != trackAdapter) {
+                        listViewContent.setAdapter(trackAdapter);
+                    }
+                    tvCurrentPath.setText("⭐ Favoritos: \"" + rawQuery + "\" (" + displayedTracks.size() + " encontradas)");
+                    trackAdapter.setTracks(displayedTracks);
+                });
+            }
         });
     }
 
@@ -624,12 +683,14 @@ public class MainActivity extends Activity {
         String[] tokens = norm.split("\\s+");
         boolean hasQuery = !norm.isEmpty() && tokens.length > 0 && !tokens[0].isEmpty();
 
-        // Si hay búsqueda activa: ejecutar de forma asíncrona
+        // Si hay búsqueda activa: ejecutar de forma asíncrona según la pestaña activa
         if (hasQuery) {
             searchVersion++;
             performAsyncSearch(rawQuery, searchVersion);
             return;
         }
+
+        if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
 
         // Modo Normal por pestaña
         if (currentTab == 0) {
@@ -650,6 +711,9 @@ public class MainActivity extends Activity {
             }
             tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
             tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + currentSelectedFolder : "🎵 Todas las Pistas");
+            if (currentTrackIndex >= 0 && currentTrackIndex < displayedTracks.size()) {
+                trackAdapter.setCurrentPlayingIndex(currentTrackIndex);
+            }
         } else if (currentTab == 2) {
             displayedTracks.clear();
             for (Track t : allTracks) {
@@ -671,8 +735,28 @@ public class MainActivity extends Activity {
     private void playTrack(int index) {
         if (displayedTracks.isEmpty() || index < 0 || index >= displayedTracks.size()) return;
 
-        currentTrackIndex = index;
         Track track = displayedTracks.get(index);
+
+        // Si la canción pertenece a una carpeta, configurar esa carpeta como la activa y llenar la lista
+        if (track.getFolder() != null && !track.getFolder().isEmpty()) {
+            currentSelectedFolder = track.getFolder();
+            currentPlaylist.clear();
+            for (Track t : allTracks) {
+                if (t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
+                    currentPlaylist.add(t);
+                }
+            }
+            int folderIdx = -1;
+            for (int i = 0; i < currentPlaylist.size(); i++) {
+                if (currentPlaylist.get(i).getFilePath().equals(track.getFilePath())) {
+                    folderIdx = i;
+                    break;
+                }
+            }
+            currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
+        } else {
+            currentTrackIndex = index;
+        }
 
         try {
             if (mediaPlayer == null) {
@@ -680,7 +764,7 @@ public class MainActivity extends Activity {
                 mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 mediaPlayer.setOnCompletionListener(mp -> {
                     if (isRepeat) {
-                        playTrack(currentTrackIndex);
+                        playTrackFromQueue(getQueue(), currentTrackIndex);
                     } else {
                         playNextTrack();
                     }
@@ -712,7 +796,7 @@ public class MainActivity extends Activity {
             // Cargar carátula del archivo si está disponible
             loadAlbumArt(track.getFilePath());
 
-            // Previsualización de canción anterior y siguiente
+            // Previsualización de canción anterior y siguiente de la carpeta activa
             updatePreviews();
 
         } catch (Exception e) {
@@ -721,10 +805,70 @@ public class MainActivity extends Activity {
         }
     }
 
+    private List<Track> getQueue() {
+        return !currentPlaylist.isEmpty() ? currentPlaylist : displayedTracks;
+    }
+
+    private void playTrackFromQueue(List<Track> queue, int index) {
+        if (queue.isEmpty() || index < 0 || index >= queue.size()) return;
+        currentTrackIndex = index;
+        Track track = queue.get(index);
+
+        try {
+            if (mediaPlayer == null) {
+                mediaPlayer = new MediaPlayer();
+                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mediaPlayer.setOnCompletionListener(mp -> {
+                    if (isRepeat) {
+                        playTrackFromQueue(getQueue(), currentTrackIndex);
+                    } else {
+                        playNextTrack();
+                    }
+                });
+            } else {
+                mediaPlayer.reset();
+            }
+
+            mediaPlayer.setDataSource(track.getFilePath());
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+            isPlaying = true;
+
+            // Si la canción está visible en la lista mostrada, actualizar índice
+            int dispIdx = -1;
+            for (int i = 0; i < displayedTracks.size(); i++) {
+                if (displayedTracks.get(i).getFilePath().equals(track.getFilePath())) {
+                    dispIdx = i;
+                    break;
+                }
+            }
+            trackAdapter.setCurrentPlayingIndex(dispIdx);
+            updatePlaybackStateUI();
+
+            tvTrackTitle.setText(track.getTitle());
+            tvTrackArtist.setText(track.getArtist());
+            tvTrackAlbum.setText(track.getAlbum());
+            tvFormatBadge.setText(track.getFormat());
+            tvHeaderPath.setText(track.getFilePath());
+
+            int durationMs = mediaPlayer.getDuration();
+            tvTimeTotal.setText(formatMs(durationMs));
+            tvTimeCurrent.setText("00:00");
+            seekTrackProgress.setProgress(0);
+
+            loadAlbumArt(track.getFilePath());
+            updatePreviews();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void togglePlayPause() {
         if (mediaPlayer == null) {
-            if (!displayedTracks.isEmpty()) {
-                playTrack(0);
+            List<Track> queue = getQueue();
+            if (!queue.isEmpty()) {
+                playTrackFromQueue(queue, 0);
             }
             return;
         }
@@ -740,29 +884,32 @@ public class MainActivity extends Activity {
     }
 
     private void playNextTrack() {
-        if (displayedTracks.isEmpty()) return;
+        List<Track> queue = getQueue();
+        if (queue.isEmpty()) return;
         int nextIndex;
         if (isShuffle) {
-            nextIndex = new Random().nextInt(displayedTracks.size());
+            nextIndex = new Random().nextInt(queue.size());
         } else {
-            nextIndex = (currentTrackIndex + 1) % displayedTracks.size();
+            nextIndex = (currentTrackIndex + 1) % queue.size();
         }
-        playTrack(nextIndex);
+        playTrackFromQueue(queue, nextIndex);
     }
 
     private void playPreviousTrack() {
-        if (displayedTracks.isEmpty()) return;
-        int prevIndex = (currentTrackIndex - 1 + displayedTracks.size()) % displayedTracks.size();
-        playTrack(prevIndex);
+        List<Track> queue = getQueue();
+        if (queue.isEmpty()) return;
+        int prevIndex = (currentTrackIndex - 1 + queue.size()) % queue.size();
+        playTrackFromQueue(queue, prevIndex);
     }
 
     private void updatePreviews() {
-        if (displayedTracks.isEmpty()) return;
-        int prevIdx = (currentTrackIndex - 1 + displayedTracks.size()) % displayedTracks.size();
-        int nextIdx = (currentTrackIndex + 1) % displayedTracks.size();
+        List<Track> queue = getQueue();
+        if (queue.isEmpty()) return;
+        int prevIdx = (currentTrackIndex - 1 + queue.size()) % queue.size();
+        int nextIdx = (currentTrackIndex + 1) % queue.size();
 
-        tvPrevTrackPreview.setText(displayedTracks.get(prevIdx).getTitle());
-        tvNextTrackPreview.setText(displayedTracks.get(nextIdx).getTitle());
+        tvPrevTrackPreview.setText(queue.get(prevIdx).getTitle());
+        tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
     }
 
     private void loadAlbumArt(String filePath) {
@@ -781,9 +928,10 @@ public class MainActivity extends Activity {
             final Bitmap finalArt = art;
             handler.post(() -> {
                 if (finalArt != null) {
+                    ivAlbumArt.setVisibility(View.VISIBLE);
                     ivAlbumArt.setImageBitmap(finalArt);
                 } else {
-                    ivAlbumArt.setImageResource(android.R.drawable.ic_media_play);
+                    ivAlbumArt.setVisibility(View.GONE);
                 }
             });
         });

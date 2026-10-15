@@ -25,6 +25,7 @@ public class TrackAdapter extends BaseAdapter {
     private Context context;
     private List<Track> tracks;
     private int currentPlayingIndex = -1;
+    private int selectedMarqueeIndex = -1;
     private OnTrackClickListener trackClickListener;
     private OnFavoriteClickListener favoriteClickListener;
 
@@ -42,6 +43,12 @@ public class TrackAdapter extends BaseAdapter {
 
     public void setCurrentPlayingIndex(int index) {
         this.currentPlayingIndex = index;
+        this.selectedMarqueeIndex = index;
+        notifyDataSetChanged();
+    }
+
+    public void setSelectedMarqueeIndex(int index) {
+        this.selectedMarqueeIndex = index;
         notifyDataSetChanged();
     }
 
@@ -92,6 +99,7 @@ public class TrackAdapter extends BaseAdapter {
         Track track = getItem(position);
         if (track != null) {
             boolean isPlaying = (position == currentPlayingIndex);
+            boolean isSelectedForMarquee = (position == selectedMarqueeIndex) || isPlaying;
 
             if (isPlaying) {
                 holder.tvIndex.setText("▶");
@@ -100,14 +108,14 @@ public class TrackAdapter extends BaseAdapter {
                 convertView.setBackgroundColor(Color.parseColor("#172030"));
             } else {
                 holder.tvIndex.setText(String.format("%02d", position + 1));
-                holder.tvIndex.setTextColor(Color.parseColor("#64748b"));
-                holder.tvTitle.setTextColor(Color.parseColor("#f1f5f9"));
-                convertView.setBackgroundColor(Color.TRANSPARENT);
+                holder.tvIndex.setTextColor(Color.parseColor("#94a3b8"));
+                holder.tvTitle.setTextColor(isSelectedForMarquee ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
+                convertView.setBackgroundColor(isSelectedForMarquee ? Color.parseColor("#131a26") : Color.TRANSPARENT);
             }
 
             holder.tvTitle.setText(track.getTitle());
-            // Activar marquesina continua en la canción que está sonando
-            holder.tvTitle.setSelected(isPlaying);
+            // Activar marquesina continua en la canción seleccionada o que suena
+            holder.tvTitle.setSelected(isSelectedForMarquee);
 
             holder.tvArtist.setText(track.getArtist() + " • " + track.getAlbum());
 
@@ -148,11 +156,17 @@ public class TrackAdapter extends BaseAdapter {
                 }
             });
 
-            // Click directo en la fila de la canción -> Reproducir de inmediato
-            convertView.setOnClickListener(v -> {
+            // Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO
+            holder.tvIndex.setOnClickListener(v -> {
                 if (trackClickListener != null) {
                     trackClickListener.onTrackClick(track, position);
                 }
+            });
+
+            // Click en el resto de la fila: SELECCIONAR Y MOSTRAR NOMBRE COMPLETO CON MARQUESINA (Sin reproducir)
+            convertView.setOnClickListener(v -> {
+                selectedMarqueeIndex = position;
+                notifyDataSetChanged();
             });
         }
 
