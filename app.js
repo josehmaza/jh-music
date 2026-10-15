@@ -768,6 +768,62 @@ document.addEventListener('DOMContentLoaded', () => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // =================== FILTROS DE BÚSQUEDA Y USBS ===================
+  let currentSearchFilter = 'folder'; // 'folder' | 'all' | 'usb1' | 'usb2'
+  const filterChips = document.querySelectorAll('.filter-chip');
+  const chipFilterFolder = document.getElementById('chipFilterFolder');
+  const chipFilterAll = document.getElementById('chipFilterAll');
+  const chipFilterUsb1 = document.getElementById('chipFilterUsb1');
+  const chipFilterUsb2 = document.getElementById('chipFilterUsb2');
+
+  function updateFilterChipsUI() {
+    if (activeTab === 'playlist' && currentFolder) {
+      if (chipFilterFolder) {
+        chipFilterFolder.classList.remove('hidden');
+        chipFilterFolder.textContent = `📁 ${currentFolder.length > 15 ? currentFolder.slice(0, 13) + '…' : currentFolder}`;
+      }
+    } else {
+      if (chipFilterFolder) {
+        chipFilterFolder.classList.add('hidden');
+        if (currentSearchFilter === 'folder') {
+          currentSearchFilter = 'all';
+        }
+      }
+    }
+
+    const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+    const hasUsb1 = allPool.some(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+    const hasUsb2 = allPool.some(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+
+    if (chipFilterUsb1) chipFilterUsb1.classList.toggle('hidden', !hasUsb1);
+    if (chipFilterUsb2) chipFilterUsb2.classList.toggle('hidden', !hasUsb2);
+
+    filterChips.forEach(chip => {
+      const f = chip.getAttribute('data-filter');
+      if (f === currentSearchFilter) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  }
+
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      searchInput.blur();
+      currentSearchFilter = chip.getAttribute('data-filter');
+      updateFilterChipsUI();
+      renderList();
+    });
+  });
+
+  // Ocultar teclado táctil al tocar fuera del cuadro de búsqueda
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.search-box')) {
+      searchInput.blur();
+    }
+  });
+
   // =================== PESTAÑAS Y RENDERIZADO ===================
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -775,22 +831,40 @@ document.addEventListener('DOMContentLoaded', () => {
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeTab = btn.getAttribute('data-tab');
+      if (activeTab === 'playlist' && currentFolder) {
+        currentSearchFilter = 'folder';
+      } else if (currentSearchFilter === 'folder') {
+        currentSearchFilter = 'all';
+      }
       renderList();
     });
   });
 
   function renderList() {
     trackListContainer.innerHTML = '';
+    updateFilterChipsUI();
+
     const rawQuery = searchInput.value;
     const normQuery = normalizeText(rawQuery);
     const tokens = normQuery.split(/\s+/).filter(t => t.length > 0);
 
-    // BÚSQUEDA GLOBAL ACTIVA: Si hay texto en el buscador, busca en TODO el pendrive/sistema
+    // BÚSQUEDA ACTIVA CON FILTRO (Esta Carpeta, TODO, USB 1, USB 2)
     if (tokens.length > 0) {
-      crumbFolder.innerHTML = `🔍 Búsqueda: "<strong>${escapeHtml(rawQuery)}</strong>"`;
+      const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+      let searchPool = allPool;
+
+      if (currentSearchFilter === 'folder' && currentFolder) {
+        searchPool = currentPlaylist.length > 0 ? currentPlaylist : allPool.filter(t => t.folder === currentFolder);
+      } else if (currentSearchFilter === 'usb1') {
+        searchPool = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+      } else if (currentSearchFilter === 'usb2') {
+        searchPool = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+      }
+
+      const filterLabel = currentSearchFilter === 'folder' ? `[${currentFolder}]` : (currentSearchFilter === 'usb1' ? '[USB 1]' : (currentSearchFilter === 'usb2' ? '[USB 2]' : '[TODO]'));
+      crumbFolder.innerHTML = `🔍 Búsqueda ${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
       
-      const allSearchPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
-      const searchResults = allSearchPool.filter(t => trackMatchesTokens(t, tokens));
+      const searchResults = searchPool.filter(t => trackMatchesTokens(t, tokens));
 
       songCountEl.textContent = searchResults.length;
 
@@ -798,8 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {
         trackListContainer.innerHTML = `
           <div class="empty-search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <div class="empty-title">Sin resultados para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
-            <div class="empty-desc">No se encontraron canciones en USB 1, USB 2 ni en la memoria interna.</div>
+            <div class="empty-title">Sin resultados en ${filterLabel} para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
+            <div class="empty-desc">No se encontraron canciones en este origen. Cambia el filtro a TODO o prueba otro término.</div>
             <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar búsqueda y ver todo</button>
           </div>
         `;
@@ -809,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchInput.value = '';
             clearSearch.classList.add('hidden');
             searchInput.blur();
+            currentSearchFilter = 'all';
             renderList();
           });
         }
@@ -858,7 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           let realIdx = currentPlaylist.findIndex(t => t.id === track.id);
           if (realIdx === -1) {
-            currentPlaylist = [...allSearchPool];
+            currentPlaylist = [...allPool];
             realIdx = currentPlaylist.findIndex(t => t.id === track.id);
           }
           loadTrack(realIdx >= 0 ? realIdx : 0, true);
@@ -880,9 +955,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // MODO NORMAL (SIN BÚSQUEDA)
     if (activeTab === 'folders') {
-      crumbFolder.textContent = "Carpetas USB";
+      let fList = foldersList;
+      if (currentSearchFilter === 'usb1') {
+        fList = foldersList.filter(f => f.path.includes('udisk1') || f.path.includes('usb0') || f.badge === 'USB 1');
+        crumbFolder.textContent = `Carpetas USB 1 (${fList.length})`;
+      } else if (currentSearchFilter === 'usb2') {
+        fList = foldersList.filter(f => f.path.includes('udisk2') || f.path.includes('usb1') || f.badge === 'USB 2');
+        crumbFolder.textContent = `Carpetas USB 2 (${fList.length})`;
+      } else {
+        crumbFolder.textContent = `Carpetas USB (${fList.length})`;
+      }
       
-      foldersList.forEach(folder => {
+      fList.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = 'list-item';
         folderEl.innerHTML = `
@@ -908,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
           searchInput.blur();
           currentFolder = folder.name;
           crumbFolder.textContent = folder.name;
+          currentSearchFilter = 'folder';
           
           const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
           const folderTracks = allPool.filter(t => t.folder === folder.name);
@@ -925,13 +1010,31 @@ document.addEventListener('DOMContentLoaded', () => {
     } 
     else if (activeTab === 'playlist' || activeTab === 'favorites') {
       let filtered = currentPlaylist;
+      const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
 
       if (activeTab === 'favorites') {
-        const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
-        filtered = allPool.filter(t => t.favorite);
-        crumbFolder.textContent = "Mis Favoritos";
+        let favPool = allPool.filter(t => t.favorite);
+        if (currentSearchFilter === 'usb1') {
+          favPool = favPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+        } else if (currentSearchFilter === 'usb2') {
+          favPool = favPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+        }
+        filtered = favPool;
+        crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
       } else {
-        crumbFolder.textContent = currentFolder;
+        if (currentSearchFilter === 'usb1') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+          crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
+        } else if (currentSearchFilter === 'usb2') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+          crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
+        } else if (currentSearchFilter === 'all') {
+          filtered = allPool;
+          crumbFolder.textContent = `Todas las Pistas (${filtered.length})`;
+        } else {
+          filtered = currentPlaylist;
+          crumbFolder.textContent = `${currentFolder} (${filtered.length})`;
+        }
       }
 
       songCountEl.textContent = filtered.length;
