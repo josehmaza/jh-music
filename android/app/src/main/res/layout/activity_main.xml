@@ -425,20 +425,26 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Barra de Progreso y Tiempos: Con thumbOffset y padding para que la bolita nunca se corte -->
+                <!-- Barra de Progreso y Tiempos: Con padding simétrico, clipChildren=false y thumbOffset para que la bolita nunca se corte -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="vertical">
 
                     <SeekBar
                         android:id="@+id/seekTrackProgress"
                         android:layout_width="match_parent"
-                        android:layout_height="28dp"
+                        android:layout_height="32dp"
                         android:splitTrack="false"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
+                        android:paddingLeft="16dp"
+                        android:paddingRight="16dp"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
                         android:thumbOffset="9dp"
                         android:max="100"
                         android:progress="0"
@@ -448,8 +454,10 @@
                     <RelativeLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:paddingStart="6dp"
-                        android:paddingEnd="6dp">
+                        android:paddingLeft="14dp"
+                        android:paddingRight="14dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp">
 
                         <TextView
                             android:id="@+id/tvTimeCurrent"
