@@ -177,6 +177,7 @@ public class MainActivity extends Activity {
     private void initViews() {
         // Barra Superior
         tvHeaderPath = findViewById(R.id.tvHeaderPath);
+        if (tvHeaderPath != null) tvHeaderPath.setText("Q hubo jefe 😉");
         tvClock = findViewById(R.id.tvClock);
         btnRescanUsb = findViewById(R.id.btnRescanUsb);
 
@@ -773,7 +774,7 @@ public class MainActivity extends Activity {
         selectTab(1);
         String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
         tvCurrentPath.setText("📁 " + usbTag + folderName);
-        tvHeaderPath.setText("/" + folderName);
+        tvHeaderPath.setText("Q hubo jefe 😉");
     }
 
     private void openFolder(String folderName) {
@@ -1270,7 +1271,7 @@ public class MainActivity extends Activity {
             tvTrackArtist.setText(track.getArtist());
             tvTrackAlbum.setText(track.getAlbum());
             tvFormatBadge.setText(track.getFormat());
-            tvHeaderPath.setText(track.getFilePath());
+            tvHeaderPath.setText("Q hubo jefe 😉");
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));
@@ -1333,7 +1334,7 @@ public class MainActivity extends Activity {
             tvTrackArtist.setText(track.getArtist());
             tvTrackAlbum.setText(track.getAlbum());
             tvFormatBadge.setText(track.getFormat());
-            tvHeaderPath.setText(track.getFilePath());
+            tvHeaderPath.setText("Q hubo jefe 😉");
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));

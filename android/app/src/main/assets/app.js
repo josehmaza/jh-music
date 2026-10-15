@@ -242,8 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
       albumPlaceholder.classList.remove('hidden');
     }
 
-    // Ruta
-    currentPathLabel.textContent = `${track.path || '/storage/udisk1/'}${track.folder}/`;
+    // Mensaje de saludo en cabecera
+    currentPathLabel.textContent = "Q hubo jefe 😉";
 
     // Fuente de Audio
     if (window.AndroidBridge && window.AndroidBridge.playNativeAudio && track.filePath) {

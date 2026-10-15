@@ -47,8 +47,8 @@
                 android:layout_marginStart="10dp"
                 android:singleLine="true"
                 android:ellipsize="middle"
-                android:text="/storage/udisk1/JH PENDRIVE"
-                android:textColor="@color/text_muted"
+                android:text="Q hubo jefe 😉"
+                android:textColor="@color/accent_cyan"
                 android:textSize="13sp" />
         </LinearLayout>
 
