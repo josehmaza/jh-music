@@ -848,21 +848,107 @@ document.addEventListener('DOMContentLoaded', () => {
     const normQuery = normalizeText(rawQuery);
     const tokens = normQuery.split(/\s+/).filter(t => t.length > 0);
 
-    // BÚSQUEDA ACTIVA CON FILTRO (Esta Carpeta, TODO, USB 1, USB 2)
+    // BÚSQUEDA ACTIVA SEGÚN LA PESTAÑA SELECCIONADA
     if (tokens.length > 0) {
+      if (activeTab === 'folders') {
+        // PESTAÑA CARPETAS: Buscar ÚNICAMENTE en Carpetas
+        let fPool = foldersList;
+        if (currentSearchFilter === 'usb1') {
+          fPool = fPool.filter(f => f.path.includes('udisk1') || f.path.includes('usb0') || f.badge === 'USB 1');
+        } else if (currentSearchFilter === 'usb2') {
+          fPool = fPool.filter(f => f.path.includes('udisk2') || f.path.includes('usb1') || f.badge === 'USB 2');
+        }
+
+        const matchedFolders = fPool.filter(f => {
+          const text = normalizeText(f.name + " " + f.path);
+          const dedup = dedupChars(text);
+          return tokens.every(token => text.includes(token) || dedup.includes(dedupChars(token)));
+        });
+
+        const filterLabel = currentSearchFilter === 'usb1' ? ' [USB 1]' : (currentSearchFilter === 'usb2' ? ' [USB 2]' : '');
+        crumbFolder.innerHTML = `📂 Carpetas${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>" (${matchedFolders.length})`;
+
+        if (matchedFolders.length === 0) {
+          trackListContainer.innerHTML = `
+            <div class="empty-search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <div class="empty-title">Sin carpetas para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
+              <div class="empty-desc">No se encontraron carpetas coincidentes en este origen.</div>
+              <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar búsqueda y ver todo</button>
+            </div>
+          `;
+          const btnReset = document.getElementById('btnClearSearchAction');
+          if (btnReset) {
+            btnReset.addEventListener('click', () => {
+              searchInput.value = '';
+              clearSearch.classList.add('hidden');
+              searchInput.blur();
+              renderList();
+            });
+          }
+          return;
+        }
+
+        matchedFolders.forEach(folder => {
+          const folderEl = document.createElement('div');
+          folderEl.className = 'list-item';
+          folderEl.innerHTML = `
+            <div class="item-left">
+              <div class="item-icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="item-info">
+                <span class="item-title">${folder.name}</span>
+                <div class="item-subtitle">
+                  ${getStorageBadgeHtml(folder.path)}
+                  <span class="path-text">${formatDisplayPath(folder.path)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="item-right">
+              <span class="item-duration">${folder.count}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          `;
+
+          folderEl.addEventListener('click', () => {
+            searchInput.blur();
+            currentFolder = folder.name;
+            crumbFolder.textContent = folder.name;
+            currentSearchFilter = 'folder';
+            
+            const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+            const folderTracks = allPool.filter(t => t.folder === folder.name);
+            currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+            tabButtons[1].click();
+          });
+
+          trackListContainer.appendChild(folderEl);
+        });
+        return;
+      }
+
+      // PESTAÑAS PISTAS O FAVORITOS: Buscar en pistas
       const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
       let searchPool = allPool;
 
-      if (currentSearchFilter === 'folder' && currentFolder) {
-        searchPool = currentPlaylist.length > 0 ? currentPlaylist : allPool.filter(t => t.folder === currentFolder);
-      } else if (currentSearchFilter === 'usb1') {
-        searchPool = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
-      } else if (currentSearchFilter === 'usb2') {
-        searchPool = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+      if (activeTab === 'favorites') {
+        searchPool = allPool.filter(t => t.favorite);
+      } else {
+        if (currentSearchFilter === 'folder' && currentFolder) {
+          searchPool = currentPlaylist.length > 0 ? currentPlaylist : allPool.filter(t => t.folder === currentFolder);
+        }
       }
 
-      const filterLabel = currentSearchFilter === 'folder' ? `[${currentFolder}]` : (currentSearchFilter === 'usb1' ? '[USB 1]' : (currentSearchFilter === 'usb2' ? '[USB 2]' : '[TODO]'));
-      crumbFolder.innerHTML = `🔍 Búsqueda ${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
+      if (currentSearchFilter === 'usb1') {
+        searchPool = searchPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+      } else if (currentSearchFilter === 'usb2') {
+        searchPool = searchPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+      }
+
+      const filterLabel = (activeTab === 'favorites') ? ' [Favoritos]' :
+          (currentSearchFilter === 'folder' ? ` [${currentFolder}]` : (currentSearchFilter === 'usb1' ? ' [USB 1]' : (currentSearchFilter === 'usb2' ? ' [USB 2]' : ' [TODO]')));
+      crumbFolder.innerHTML = `🔍 Búsqueda${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
       
       const searchResults = searchPool.filter(t => trackMatchesTokens(t, tokens));
 
@@ -873,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="empty-search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <div class="empty-title">Sin resultados en ${filterLabel} para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
-            <div class="empty-desc">No se encontraron canciones en este origen. Cambia el filtro a TODO o prueba otro término.</div>
+            <div class="empty-desc">No se encontraron canciones en este origen. Cambia el filtro o prueba otro término.</div>
             <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar búsqueda y ver todo</button>
           </div>
         `;
