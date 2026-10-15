@@ -230,8 +230,8 @@
                 <!-- Carátula / Vinyl Card con Badge de Formato y Ecualizador Animado -->
                 <FrameLayout
                     android:id="@+id/layoutAlbumArtCard"
-                    android:layout_width="165dp"
-                    android:layout_height="165dp"
+                    android:layout_width="150dp"
+                    android:layout_height="150dp"
                     android:layout_marginTop="2dp"
                     android:clickable="true"
                     android:focusable="true"
@@ -253,20 +253,20 @@
                         android:layout_height="match_parent"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:paddingTop="10dp">
+                        android:paddingTop="8dp">
 
                         <!-- Disco de Vinilo (3 círculos concéntricos) -->
                         <ImageView
-                            android:layout_width="76dp"
-                            android:layout_height="76dp"
+                            android:layout_width="68dp"
+                            android:layout_height="68dp"
                             android:src="@drawable/ic_vinyl_disc" />
 
                         <!-- Barras de ecualizador animadas estilo web (5 barras cyan) -->
                         <com.jh.caraudio.SoundWaveBarsView
                             android:id="@+id/soundWaveBars"
-                            android:layout_width="64dp"
-                            android:layout_height="22dp"
-                            android:layout_marginTop="8dp" />
+                            android:layout_width="60dp"
+                            android:layout_height="20dp"
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
 
                     <!-- Badge de Formato / Calidad MP3 320K -->
@@ -292,7 +292,7 @@
                     android:id="@+id/tvTrackTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:singleLine="true"
                     android:ellipsize="marquee"
@@ -340,12 +340,12 @@
                         android:textSize="15sp" />
                 </LinearLayout>
 
-                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Clickables y más grandes) -->
+                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Sleek 38dp) -->
                 <LinearLayout
                     android:id="@+id/layoutAdjacentPreviews"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_height="38dp"
+                    android:layout_marginTop="4dp"
                     android:orientation="horizontal"
                     android:background="@drawable/bg_search"
                     android:gravity="center_vertical"
@@ -369,7 +369,7 @@
                             android:layout_height="wrap_content"
                             android:text="⏮ ANTERIOR"
                             android:textColor="@color/accent_cyan"
-                            android:textSize="13sp"
+                            android:textSize="11sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -381,14 +381,14 @@
                             android:marqueeRepeatLimit="marquee_forever"
                             android:text="Cargando..."
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp"
+                            android:textSize="13sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Divisor -->
                     <View
                         android:layout_width="1dp"
-                        android:layout_height="28dp"
+                        android:layout_height="22dp"
                         android:layout_marginStart="8dp"
                         android:layout_marginEnd="8dp"
                         android:background="@color/border_panel" />
@@ -410,7 +410,7 @@
                             android:layout_height="wrap_content"
                             android:text="SIGUIENTE ⏭"
                             android:textColor="@color/accent_cyan"
-                            android:textSize="13sp"
+                            android:textSize="11sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -423,16 +423,16 @@
                             android:marqueeRepeatLimit="marquee_forever"
                             android:text="Cargando..."
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp"
+                            android:textSize="13sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Barra de Progreso y Tiempos: Con padding simétrico, clipChildren=false y thumbOffset para que la bolita nunca se corte -->
+                <!-- Barra de Progreso y Tiempos: Con 20dp de separación segura de las tarjetas de anterior/siguiente -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="20dp"
                     android:clipChildren="false"
                     android:clipToPadding="false"
                     android:orientation="vertical">
@@ -440,7 +440,7 @@
                     <SeekBar
                         android:id="@+id/seekTrackProgress"
                         android:layout_width="match_parent"
-                        android:layout_height="32dp"
+                        android:layout_height="36dp"
                         android:splitTrack="false"
                         android:clipChildren="false"
                         android:clipToPadding="false"
@@ -448,6 +448,8 @@
                         android:paddingRight="16dp"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
                         android:thumbOffset="9dp"
                         android:max="100"
                         android:progress="0"

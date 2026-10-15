@@ -819,6 +819,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: 18px;
 }
 
 .progress-bar-container {
