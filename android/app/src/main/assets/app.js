@@ -85,6 +85,32 @@ document.addEventListener('DOMContentLoaded', () => {
       format: "MP3 320K",
       favorite: false,
       audioUrl: null
+    },
+    {
+      id: 7,
+      title: "Vivir Mi Vida (En Vivo Estadio Latinoamericano Tour)",
+      artist: "Marc Anthony",
+      album: "Salsa Gigantes 2024",
+      folder: "Música Viaje",
+      path: "/storage/udisk2/Música Viaje/",
+      duration: "04:10",
+      durationSec: 250,
+      format: "MP3 320K",
+      favorite: true,
+      audioUrl: null
+    },
+    {
+      id: 8,
+      title: "Cumbia del Sol (Edición Radio Estéreo)",
+      artist: "Los Ángeles de la Cumbia",
+      album: "Cumbias Inmortales",
+      folder: "Música Interna",
+      path: "/mnt/sdcard/media/music/",
+      duration: "03:40",
+      durationSec: 220,
+      format: "MP3 320K",
+      favorite: false,
+      audioUrl: null
     }
   ];
 
@@ -92,9 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: "JH PENDRIVE", path: "/storage/udisk1/JH PENDRIVE/", count: 12 },
     { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 218 },
     { name: "2025-07-18", path: "/storage/udisk1/Descargas/2025-07-18/", count: 29 },
-    { name: "Música Interna", path: "/mnt/sdcard/media/music/", count: 1 }
+    { name: "Música Viaje", path: "/storage/udisk2/Música Viaje/", count: 84 },
+    { name: "Música Interna", path: "/mnt/sdcard/media/music/", count: 5 }
   ];
 
+  let masterTracks = [...sampleTracks];
   let currentPlaylist = [...sampleTracks];
   let currentTrackIndex = 0;
   let isPlaying = false;
@@ -117,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // =================== ELEMENTOS DEL DOM ===================
   const frameWrapper = document.getElementById('frameWrapper');
   const clockDisplay = document.getElementById('clockDisplay');
+  const driverModeBadge = document.getElementById('driverModeBadge');
+  const playbackStatusText = document.getElementById('playbackStatusText');
   const trackTitle = document.getElementById('trackTitle');
   const trackArtist = document.getElementById('trackArtist');
   const trackAlbum = document.getElementById('trackAlbum');
@@ -284,6 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
     applyMarquee(trackTitle, trackTitle ? trackTitle.parentElement : null);
     applyMarquee(prevTrackTitle, prevTrackTitle ? prevTrackTitle.parentElement : null);
     applyMarquee(nextTrackTitle, nextTrackTitle ? nextTrackTitle.parentElement : null);
+    
+    // Auto-scroll / marquesina también para la canción que está sonando en la lista de pistas
+    if (trackListContainer) {
+      const activeItemTitle = trackListContainer.querySelector('.list-item.is-playing .item-title');
+      if (activeItemTitle) {
+        applyMarquee(activeItemTitle, activeItemTitle.parentElement);
+      }
+    }
   }
 
   let nativeTrackerInterval = null;
@@ -355,10 +393,24 @@ document.addEventListener('DOMContentLoaded', () => {
       playIcon.classList.add('hidden');
       pauseIcon.classList.remove('hidden');
       albumContainer.classList.add('is-playing');
+      if (driverModeBadge) {
+        driverModeBadge.classList.add('is-playing');
+        driverModeBadge.classList.remove('is-paused');
+      }
+      if (playbackStatusText) {
+        playbackStatusText.textContent = "REPRODUCIENDO";
+      }
     } else {
       playIcon.classList.remove('hidden');
       pauseIcon.classList.add('hidden');
       albumContainer.classList.remove('is-playing');
+      if (driverModeBadge) {
+        driverModeBadge.classList.remove('is-playing');
+        driverModeBadge.classList.add('is-paused');
+      }
+      if (playbackStatusText) {
+        playbackStatusText.textContent = "EN PAUSA";
+      }
     }
     renderList();
   }
@@ -610,26 +662,311 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRepeat.classList.toggle('active', isRepeat);
   });
 
+  // =================== UTILIDADES DE BÚSQUEDA Y ALMACENAMIENTO ===================
+  function normalizeText(text) {
+    if (!text) return '';
+    return text.toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function dedupChars(s) {
+    return s.replace(/([a-z])\1+/g, '$1');
+  }
+
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const d = [];
+    for (let i = 0; i <= a.length; i++) d[i] = [i];
+    for (let j = 0; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(
+          d[i - 1][j] + 1,
+          d[i][j - 1] + 1,
+          d[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  function tokenMatchesWord(token, word) {
+    if (!token || !word) return false;
+    if (word.includes(token)) return true;
+    
+    // Deduplicación de letras consecutivas (ej. "guarracha" -> "guaracha")
+    const tDedup = dedupChars(token);
+    const wDedup = dedupChars(word);
+    if (wDedup.includes(tDedup)) return true;
+    if (tDedup.includes(wDedup) && wDedup.length >= 4) return true;
+
+    // Distancia de edición para errores de tipeo al conducir
+    const maxDist = token.length >= 6 ? 2 : (token.length >= 4 ? 1 : 0);
+    if (maxDist > 0 && Math.abs(token.length - word.length) <= maxDist) {
+      if (levenshtein(token, word) <= maxDist) return true;
+    }
+    // Prefijo
+    if (word.startsWith(token) || (token.length >= 4 && word.startsWith(token.slice(0, -1)))) return true;
+
+    return false;
+  }
+
+  function trackMatchesTokens(track, tokens) {
+    const haystack = normalizeText(`${track.title} ${track.artist} ${track.album || ''} ${track.folder || ''} ${track.path || ''}`);
+    const haystackDedup = dedupChars(haystack);
+    const haystackWords = haystack.split(/[^a-z0-9]+/);
+
+    return tokens.every(token => {
+      // 1. Subcadena directa
+      if (haystack.includes(token)) return true;
+      // 2. Subcadena con letras duplicadas colapsadas
+      const tokenDedup = dedupChars(token);
+      if (haystackDedup.includes(tokenDedup)) return true;
+      // 3. Comparación difusa palabra por palabra
+      return haystackWords.some(word => tokenMatchesWord(token, word));
+    });
+  }
+
+  // Generador de etiquetas para USB 1, USB 2 y Memoria Interna
+  function getStorageBadgeHtml(path) {
+    if (!path) return '';
+    const p = path.toLowerCase();
+    if (p.includes('udisk1') || p.includes('usb1')) {
+      return `<span class="badge-storage usb1">USB 1</span>`;
+    } else if (p.includes('udisk2') || p.includes('usb2')) {
+      return `<span class="badge-storage usb2">USB 2</span>`;
+    } else if (p.includes('sdcard') || p.includes('internal') || p.includes('emulated')) {
+      return `<span class="badge-storage internal">INTERNA</span>`;
+    }
+    return '';
+  }
+
+  // Formateador de ruta limpia: en USB1 y USB2 omite '/storage/udiskX' para evitar redundancia
+  function formatDisplayPath(path) {
+    if (!path) return '';
+    let p = path;
+    if (p.startsWith('/storage/udisk1')) {
+      p = p.replace('/storage/udisk1', '');
+    } else if (p.startsWith('/storage/udisk2')) {
+      p = p.replace('/storage/udisk2', '');
+    }
+    // Asegurar que comience con /
+    if (!p.startsWith('/')) p = '/' + p;
+    // Quitar barra final para estética limpia
+    if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+    return p;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // =================== FILTROS DE BÚSQUEDA Y USBS ===================
+  let currentSearchFilter = 'folder'; // 'folder' | 'all' | 'usb1' | 'usb2'
+  const filterChips = document.querySelectorAll('.filter-chip');
+  const chipFilterFolder = document.getElementById('chipFilterFolder');
+  const chipFilterAll = document.getElementById('chipFilterAll');
+  const chipFilterUsb1 = document.getElementById('chipFilterUsb1');
+  const chipFilterUsb2 = document.getElementById('chipFilterUsb2');
+
+  function updateFilterChipsUI() {
+    if (activeTab === 'playlist' && currentFolder) {
+      if (chipFilterFolder) {
+        chipFilterFolder.classList.remove('hidden');
+        chipFilterFolder.textContent = `📁 ${currentFolder.length > 15 ? currentFolder.slice(0, 13) + '…' : currentFolder}`;
+      }
+    } else {
+      if (chipFilterFolder) {
+        chipFilterFolder.classList.add('hidden');
+        if (currentSearchFilter === 'folder') {
+          currentSearchFilter = 'all';
+        }
+      }
+    }
+
+    const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+    const hasUsb1 = allPool.some(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+    const hasUsb2 = allPool.some(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+
+    if (chipFilterUsb1) chipFilterUsb1.classList.toggle('hidden', !hasUsb1);
+    if (chipFilterUsb2) chipFilterUsb2.classList.toggle('hidden', !hasUsb2);
+
+    filterChips.forEach(chip => {
+      const f = chip.getAttribute('data-filter');
+      if (f === currentSearchFilter) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  }
+
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      searchInput.blur();
+      currentSearchFilter = chip.getAttribute('data-filter');
+      updateFilterChipsUI();
+      renderList();
+    });
+  });
+
+  // Ocultar teclado táctil al tocar fuera del cuadro de búsqueda
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.search-box')) {
+      searchInput.blur();
+    }
+  });
+
   // =================== PESTAÑAS Y RENDERIZADO ===================
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
+      searchInput.blur();
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeTab = btn.getAttribute('data-tab');
+      if (activeTab === 'playlist' && currentFolder) {
+        currentSearchFilter = 'folder';
+      } else if (currentSearchFilter === 'folder') {
+        currentSearchFilter = 'all';
+      }
       renderList();
     });
   });
 
   function renderList() {
     trackListContainer.innerHTML = '';
-    const query = searchInput.value.toLowerCase().trim();
+    updateFilterChipsUI();
 
-    if (activeTab === 'folders') {
-      crumbFolder.textContent = "Carpetas USB";
+    const rawQuery = searchInput.value;
+    const normQuery = normalizeText(rawQuery);
+    const tokens = normQuery.split(/\s+/).filter(t => t.length > 0);
+
+    // BÚSQUEDA ACTIVA CON FILTRO (Esta Carpeta, TODO, USB 1, USB 2)
+    if (tokens.length > 0) {
+      const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+      let searchPool = allPool;
+
+      if (currentSearchFilter === 'folder' && currentFolder) {
+        searchPool = currentPlaylist.length > 0 ? currentPlaylist : allPool.filter(t => t.folder === currentFolder);
+      } else if (currentSearchFilter === 'usb1') {
+        searchPool = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+      } else if (currentSearchFilter === 'usb2') {
+        searchPool = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+      }
+
+      const filterLabel = currentSearchFilter === 'folder' ? `[${currentFolder}]` : (currentSearchFilter === 'usb1' ? '[USB 1]' : (currentSearchFilter === 'usb2' ? '[USB 2]' : '[TODO]'));
+      crumbFolder.innerHTML = `🔍 Búsqueda ${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
       
-      foldersList.forEach(folder => {
-        if (query && !folder.name.toLowerCase().includes(query)) return;
+      const searchResults = searchPool.filter(t => trackMatchesTokens(t, tokens));
 
+      songCountEl.textContent = searchResults.length;
+
+      if (searchResults.length === 0) {
+        trackListContainer.innerHTML = `
+          <div class="empty-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <div class="empty-title">Sin resultados en ${filterLabel} para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
+            <div class="empty-desc">No se encontraron canciones en este origen. Cambia el filtro a TODO o prueba otro término.</div>
+            <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar búsqueda y ver todo</button>
+          </div>
+        `;
+        const btnReset = document.getElementById('btnClearSearchAction');
+        if (btnReset) {
+          btnReset.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.classList.add('hidden');
+            searchInput.blur();
+            currentSearchFilter = 'all';
+            renderList();
+          });
+        }
+        return;
+      }
+
+      searchResults.forEach((track) => {
+        const isCurrent = (currentPlaylist[currentTrackIndex]?.id === track.id);
+        const itemEl = document.createElement('div');
+        itemEl.className = `list-item ${isCurrent ? 'is-playing' : ''}`;
+        
+        itemEl.innerHTML = `
+          <div class="item-left">
+            <div class="item-icon-wrap">
+              ${isCurrent && isPlaying ? `
+                <div class="sound-wave-bars" style="height:14px; gap:2px;">
+                  <span style="height:12px;background:#0c0e12"></span>
+                  <span style="height:8px;background:#0c0e12"></span>
+                  <span style="height:14px;background:#0c0e12"></span>
+                </div>
+              ` : `
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;"><path d="M8 5v14l11-7z"/></svg>
+              `}
+            </div>
+            <div class="item-info">
+              <div class="item-title-wrap">
+                <span class="item-title">${track.title}</span>
+              </div>
+              <div class="item-subtitle">
+                ${getStorageBadgeHtml(track.path)}
+                <span class="path-text">${track.artist} • ${track.album || track.folder}</span>
+              </div>
+            </div>
+          </div>
+          <div class="item-right">
+            <span class="item-duration">${track.duration}</span>
+            <button class="btn-item-fav ${track.favorite ? 'is-fav' : ''}" title="Marcar Favorito">
+              <svg viewBox="0 0 24 24" fill="${track.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+          </div>
+        `;
+
+        // Click para reproducir directamente y ocultar teclado
+        itemEl.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-item-fav')) return;
+          searchInput.blur();
+          
+          let realIdx = currentPlaylist.findIndex(t => t.id === track.id);
+          if (realIdx === -1) {
+            currentPlaylist = [...allPool];
+            realIdx = currentPlaylist.findIndex(t => t.id === track.id);
+          }
+          loadTrack(realIdx >= 0 ? realIdx : 0, true);
+        });
+
+        // Click en favorito
+        const favBtn = itemEl.querySelector('.btn-item-fav');
+        favBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          track.favorite = !track.favorite;
+          favBtn.classList.toggle('is-fav', track.favorite);
+          favBtn.querySelector('svg').setAttribute('fill', track.favorite ? 'currentColor' : 'none');
+        });
+
+        trackListContainer.appendChild(itemEl);
+      });
+      return;
+    }
+
+    // MODO NORMAL (SIN BÚSQUEDA)
+    if (activeTab === 'folders') {
+      let fList = foldersList;
+      if (currentSearchFilter === 'usb1') {
+        fList = foldersList.filter(f => f.path.includes('udisk1') || f.path.includes('usb0') || f.badge === 'USB 1');
+        crumbFolder.textContent = `Carpetas USB 1 (${fList.length})`;
+      } else if (currentSearchFilter === 'usb2') {
+        fList = foldersList.filter(f => f.path.includes('udisk2') || f.path.includes('usb1') || f.badge === 'USB 2');
+        crumbFolder.textContent = `Carpetas USB 2 (${fList.length})`;
+      } else {
+        crumbFolder.textContent = `Carpetas USB (${fList.length})`;
+      }
+      
+      fList.forEach(folder => {
         const folderEl = document.createElement('div');
         folderEl.className = 'list-item';
         folderEl.innerHTML = `
@@ -639,24 +976,30 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="item-info">
               <span class="item-title">${folder.name}</span>
-              <span class="item-subtitle">${folder.path}</span>
+              <div class="item-subtitle">
+                ${getStorageBadgeHtml(folder.path)}
+                <span class="path-text">${formatDisplayPath(folder.path)}</span>
+              </div>
             </div>
           </div>
           <div class="item-right">
-            <span class="item-duration">${folder.count} pistas</span>
+            <span class="item-duration">${folder.count}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
         `;
 
         folderEl.addEventListener('click', () => {
+          searchInput.blur();
           currentFolder = folder.name;
           crumbFolder.textContent = folder.name;
-          // Filtrar playlist a esta carpeta
-          const folderTracks = sampleTracks.filter(t => t.folder === folder.name);
+          currentSearchFilter = 'folder';
+          
+          const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+          const folderTracks = allPool.filter(t => t.folder === folder.name);
           if (folderTracks.length > 0) {
             currentPlaylist = folderTracks;
           } else {
-            currentPlaylist = [...sampleTracks];
+            currentPlaylist = [...allPool];
           }
           // Cambiar a la pestaña de pistas
           tabButtons[1].click();
@@ -667,19 +1010,31 @@ document.addEventListener('DOMContentLoaded', () => {
     } 
     else if (activeTab === 'playlist' || activeTab === 'favorites') {
       let filtered = currentPlaylist;
+      const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
 
       if (activeTab === 'favorites') {
-        filtered = currentPlaylist.filter(t => t.favorite);
-        crumbFolder.textContent = "Mis Favoritos";
+        let favPool = allPool.filter(t => t.favorite);
+        if (currentSearchFilter === 'usb1') {
+          favPool = favPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+        } else if (currentSearchFilter === 'usb2') {
+          favPool = favPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+        }
+        filtered = favPool;
+        crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
       } else {
-        crumbFolder.textContent = currentFolder;
-      }
-
-      if (query) {
-        filtered = filtered.filter(t => 
-          t.title.toLowerCase().includes(query) || 
-          t.artist.toLowerCase().includes(query)
-        );
+        if (currentSearchFilter === 'usb1') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+          crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
+        } else if (currentSearchFilter === 'usb2') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+          crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
+        } else if (currentSearchFilter === 'all') {
+          filtered = allPool;
+          crumbFolder.textContent = `Todas las Pistas (${filtered.length})`;
+        } else {
+          filtered = currentPlaylist;
+          crumbFolder.textContent = `${currentFolder} (${filtered.length})`;
+        }
       }
 
       songCountEl.textContent = filtered.length;
@@ -703,8 +1058,13 @@ document.addEventListener('DOMContentLoaded', () => {
               `}
             </div>
             <div class="item-info">
-              <span class="item-title">${track.title}</span>
-              <span class="item-subtitle">${track.artist} • ${track.album || track.folder}</span>
+              <div class="item-title-wrap">
+                <span class="item-title">${track.title}</span>
+              </div>
+              <div class="item-subtitle">
+                ${getStorageBadgeHtml(track.path)}
+                <span class="path-text">${track.artist} • ${track.album || track.folder}</span>
+              </div>
             </div>
           </div>
           <div class="item-right">
@@ -715,11 +1075,12 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
 
-        // Click para reproducir
+        // Click para reproducir directamente y ocultar teclado
         itemEl.addEventListener('click', (e) => {
           if (e.target.closest('.btn-item-fav')) return;
+          searchInput.blur();
           const realIdx = currentPlaylist.findIndex(t => t.id === track.id);
-          loadTrack(realIdx, true);
+          loadTrack(realIdx >= 0 ? realIdx : 0, true);
         });
 
         // Click en favorito
@@ -735,11 +1096,14 @@ document.addEventListener('DOMContentLoaded', () => {
         trackListContainer.appendChild(itemEl);
       });
     }
+
+    // Activar marquesina en la canción que está sonando en la lista
+    setTimeout(refreshAllMarquees, 70);
   }
 
-  // Búsqueda en vivo
+  // Búsqueda en vivo inteligente
   searchInput.addEventListener('input', () => {
-    if (searchInput.value) {
+    if (searchInput.value.trim().length > 0) {
       clearSearch.classList.remove('hidden');
     } else {
       clearSearch.classList.add('hidden');
@@ -747,10 +1111,19 @@ document.addEventListener('DOMContentLoaded', () => {
     renderList();
   });
 
+  // Botón X para borrar búsqueda y ocultar teclado
   clearSearch.addEventListener('click', () => {
     searchInput.value = '';
     clearSearch.classList.add('hidden');
+    searchInput.blur();
     renderList();
+  });
+
+  // Ocultar teclado virtual al presionar Enter en el buscador
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      searchInput.blur();
+    }
   });
 
   crumbRoot.addEventListener('click', () => {
@@ -763,39 +1136,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // =================== CARGA DE CANCIONES DESDE PENDRIVE REAL ===================
-  fileInput.addEventListener('change', (e) => {
-    const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.endsWith('.mp3') || f.name.endsWith('.flac') || f.name.endsWith('.wav'));
-    
-    if (files.length === 0) return;
+  // =================== BOTÓN RE-ESCANEAR USB (NATIVO / AUTO) ===================
+  const btnRescanUsb = document.getElementById('btnRescanUsb');
+  const rescanLabel = document.getElementById('rescanLabel');
 
-    currentPlaylist = files.map((file, i) => {
-      // Intentar extraer título y artista del nombre de archivo
-      let cleanName = file.name.replace(/\.[^/.]+$/, "");
-      let parts = cleanName.split('-');
-      let title = parts.length > 1 ? parts[1].trim() : cleanName;
-      let artist = parts.length > 1 ? parts[0].trim() : "Pendrive USB";
+  if (btnRescanUsb) {
+    btnRescanUsb.addEventListener('click', () => {
+      btnRescanUsb.classList.add('is-spinning');
+      if (rescanLabel) rescanLabel.textContent = "Escaneando...";
 
-      return {
-        id: Date.now() + i,
-        title: title,
-        artist: artist,
-        album: "USB Kingston",
-        folder: "Mi Pendrive",
-        path: "/storage/udisk1/",
-        duration: "--:--",
-        durationSec: 180,
-        format: file.name.split('.').pop().toUpperCase(),
-        favorite: false,
-        audioUrl: URL.createObjectURL(file)
-      };
+      // En Android nativo, re-escanear los dos pendrives udisk1 y udisk2
+      if (window.AndroidBridge && window.AndroidBridge.rescanUsbDrives) {
+        window.AndroidBridge.rescanUsbDrives();
+      }
+
+      setTimeout(() => {
+        btnRescanUsb.classList.remove('is-spinning');
+        if (rescanLabel) rescanLabel.textContent = "USB Actualizado";
+        setTimeout(() => {
+          if (rescanLabel) rescanLabel.textContent = "Re-escanear USB";
+        }, 1600);
+        renderList();
+      }, 900);
     });
+  }
 
-    currentFolder = "Archivos USB";
-    songCountEl.textContent = currentPlaylist.length;
-    tabButtons[1].click(); // Ir a lista de pistas
-    loadTrack(0, true);
-  });
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.endsWith('.mp3') || f.name.endsWith('.flac') || f.name.endsWith('.wav'));
+      if (files.length === 0) return;
+      currentPlaylist = files.map((file, i) => {
+        let cleanName = file.name.replace(/\.[^/.]+$/, "");
+        let parts = cleanName.split('-');
+        return {
+          id: Date.now() + i,
+          title: parts.length > 1 ? parts[1].trim() : cleanName,
+          artist: parts.length > 1 ? parts[0].trim() : "Pendrive USB",
+          album: "USB Kingston",
+          folder: "Mi Pendrive",
+          path: "/storage/udisk1/",
+          duration: "--:--",
+          durationSec: 180,
+          format: file.name.split('.').pop().toUpperCase(),
+          favorite: false,
+          audioUrl: URL.createObjectURL(file)
+        };
+      });
+      masterTracks = [...currentPlaylist];
+      currentFolder = "Archivos USB";
+      songCountEl.textContent = currentPlaylist.length;
+      tabButtons[1].click();
+      loadTrack(0, true);
+    });
+  }
 
   // =================== PANTALLA COMPLETA AUTO ===================
   btnToggleFullscreen.addEventListener('click', () => {

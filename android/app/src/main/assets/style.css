@@ -139,25 +139,44 @@ body {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
-.btn-usb-load {
+.btn-rescan-usb {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   color: var(--accent-blue);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  user-select: none;
 }
 
-.btn-usb-load:hover {
+.btn-rescan-usb:hover {
   background: var(--bg-card-hover);
   border-color: var(--accent-blue);
   box-shadow: 0 0 12px var(--accent-blue-glow);
+}
+
+.btn-rescan-usb:active {
+  transform: scale(0.95);
+}
+
+.icon-rescan {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-rescan-usb.is-spinning .icon-rescan {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
 
 .btn-top-util {
@@ -416,12 +435,21 @@ body {
 .driver-mode-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
+  gap: 7px;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--text-muted);
   letter-spacing: 0.8px;
   font-family: var(--font-mono);
+  transition: color 0.2s ease;
+}
+
+.driver-mode-badge.is-playing {
+  color: var(--accent-blue);
+}
+
+.driver-mode-badge.is-paused {
+  color: #f59e0b;
 }
 
 .live-dot {
@@ -431,6 +459,12 @@ body {
   border-radius: 50%;
   box-shadow: 0 0 8px var(--accent-blue);
   animation: pulse-glow 2s infinite;
+}
+
+.driver-mode-badge.is-paused .live-dot {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  animation: none;
 }
 
 @keyframes pulse-glow {
@@ -589,7 +623,7 @@ body {
 }
 
 .track-title {
-  font-size: 1.35rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -602,21 +636,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 0.88rem;
+  gap: 10px;
+  font-size: 1rem;
   color: var(--text-secondary);
 }
 
 .meta-separator {
   color: var(--border-light);
+  font-size: 1.1rem;
 }
 
 .track-artist {
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: var(--accent-blue);
+  letter-spacing: -0.2px;
 }
 
 .track-album {
+  font-size: 0.95rem;
   color: var(--text-muted);
 }
 
@@ -663,13 +701,13 @@ body {
 }
 
 .adj-badge {
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 800;
   color: var(--accent-blue);
   font-family: var(--font-mono);
   letter-spacing: 0.5px;
-  margin-bottom: 1px;
-  opacity: 0.9;
+  margin-bottom: 2px;
+  opacity: 0.95;
 }
 
 .adj-title-wrap {
@@ -692,8 +730,8 @@ body {
 }
 
 .adj-title {
-  font-size: 0.74rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: var(--text-secondary);
   white-space: nowrap;
   display: inline-block;
@@ -770,9 +808,10 @@ body {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--text-secondary);
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 /* Controles de Reproducción */
@@ -903,26 +942,72 @@ body {
   height: 16px;
 }
 
+/* Panel de Filtros de Búsqueda */
+.search-filters-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 6px 0;
+  scrollbar-width: none;
+}
+
+.search-filters-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.filter-chip:hover {
+  background: #273549;
+  color: #fff;
+}
+
+.filter-chip.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #0d0f14;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.filter-chip.hidden {
+  display: none;
+}
+
 .search-box {
   display: flex;
   align-items: center;
   background: var(--bg-deep);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 10px;
   padding: 0 12px;
-  height: 36px;
-  gap: 8px;
-  transition: border-color 0.2s;
+  height: 42px;
+  gap: 10px;
+  transition: all 0.2s;
 }
 
 .search-box:focus-within {
   border-color: var(--accent-blue);
+  box-shadow: 0 0 12px var(--accent-blue-glow);
 }
 
 .search-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  color: var(--accent-blue);
+  flex-shrink: 0;
 }
 
 .search-box input {
@@ -931,7 +1016,8 @@ body {
   border: none;
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 0.82rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   outline: none;
 }
 
@@ -940,11 +1026,30 @@ body {
 }
 
 .btn-clear {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.2rem;
+  background: #1e2430;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-clear:hover {
+  background: var(--accent-red-alert);
+  border-color: var(--accent-red-alert);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+}
+
+.btn-clear.hidden {
+  display: none !important;
 }
 
 .folder-breadcrumbs {
@@ -1001,7 +1106,7 @@ body {
 
 /* Elementos de la Lista */
 .list-item {
-  height: 54px;
+  height: 58px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
@@ -1036,9 +1141,9 @@ body {
 }
 
 .item-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
   background: #111419;
   border: 1px solid var(--border-subtle);
   display: flex;
@@ -1057,27 +1162,86 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.item-title-wrap {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
 }
 
 .item-title {
-  font-size: 0.85rem;
+  font-size: 0.96rem;
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
+  display: inline-block;
+}
+
+.list-item:not(.is-playing) .item-title {
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .list-item.is-playing .item-title {
   color: var(--accent-blue);
 }
 
+/* Badges de Almacenamiento USB 1, USB 2 e Interna */
+.badge-storage {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.badge-storage.usb1 {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.15);
+}
+
+.badge-storage.usb2 {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.15);
+}
+
+.badge-storage.internal {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
 .item-subtitle {
-  font-size: 0.72rem;
+  font-size: 0.80rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.item-subtitle .path-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
 }
 
 .item-right {
@@ -1088,22 +1252,73 @@ body {
 
 .item-duration {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.btn-item-fav {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  width: 28px;
-  height: 28px;
+.btn-item-fav.is-fav {
+  color: #f43f5e;
+}
+
+.btn-item-fav svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Estado de Búsqueda Vacía y Resaltado */
+.empty-search-box {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.empty-search-box .empty-icon {
+  width: 48px;
+  height: 48px;
+  color: #333c4d;
+}
+
+.empty-search-box .empty-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-search-box .empty-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 320px;
+}
+
+.btn-clear-search-action {
+  margin-top: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  color: var(--accent-blue);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
-  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-clear-search-action:hover {
+  background: var(--accent-blue);
+  color: #0c0e12;
+}
+
+.search-highlight {
+  color: #38bdf8;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: rgba(56, 189, 248, 0.4);
 }
 
 .btn-item-fav.is-fav {

@@ -30,15 +30,12 @@
       </div>
 
       <div class="status-right">
-        <!-- Selector de archivos reales desde el Pendrive -->
-        <label class="btn-usb-load" id="btnUsbLoad" title="Cargar / Re-escanear canciones de los pendrives USB">
-          <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span id="usbLoadLabel">Cargar desde Pendrive</span>
-          <input type="file" id="fileInput" webkitdirectory directory multiple accept="audio/*" style="display:none;">
-        </label>
-        
-        <button class="btn-top-util" id="btnToggleFullscreen" title="Pantalla completa">
-          <svg class="icon-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <!-- Botón Re-escanear USB para cuando se inserte un nuevo pendrive -->
+        <button class="btn-rescan-usb" id="btnRescanUsb" title="Re-escanear memorias USB">
+          <svg class="icon-rescan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span id="rescanLabel">Re-escanear USB</span>
         </button>
       </div>
     </header>
@@ -83,9 +80,9 @@
         
         <!-- Barra superior del reproductor con botón de Buscador de Archivos / Música -->
         <div class="player-top-bar">
-          <div class="driver-mode-badge">
-            <span class="live-dot"></span>
-            <span>REPRODUCIENDO</span>
+          <div class="driver-mode-badge" id="driverModeBadge">
+            <span class="live-dot" id="liveDot"></span>
+            <span id="playbackStatusText">EN PAUSA</span>
           </div>
 
           <!-- Botón Buscador de Archivos / Lista (Solo icono, abre/cierra la segunda pantalla) -->
@@ -208,6 +205,14 @@
               <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               <span>Favoritos</span>
             </button>
+          </div>
+
+          <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) -->
+          <div class="search-filters-bar" id="searchFiltersBar">
+            <button class="filter-chip active" id="chipFilterFolder" data-filter="folder">📁 Esta Carpeta</button>
+            <button class="filter-chip" id="chipFilterAll" data-filter="all">🌐 TODO</button>
+            <button class="filter-chip" id="chipFilterUsb1" data-filter="usb1">💾 USB 1</button>
+            <button class="filter-chip" id="chipFilterUsb2" data-filter="usb2">💾 USB 2</button>
           </div>
 
           <!-- Barra de Búsqueda Rápida -->
