@@ -824,6 +824,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Botón ATRÁS Táctil Conductor (Misma función que el botón físico de Atrás)
+  const btnNavBack = document.getElementById('btnNavBack');
+  if (btnNavBack) {
+    btnNavBack.addEventListener('click', () => {
+      searchInput.blur();
+      // 1. Si hay texto en el buscador, borrarlo y salir de búsqueda
+      if (searchInput.value.trim().length > 0) {
+        searchInput.value = '';
+        clearSearch.classList.add('hidden');
+        renderList();
+        return;
+      }
+      // 2. Si estamos en pistas o favoritos, volver a carpetas
+      if (activeTab === 'playlist' || activeTab === 'favorites') {
+        tabButtons[0].click();
+        return;
+      }
+      // 3. Si ya estamos en carpetas (inicio), volver atrás en el navegador/sistema
+      window.history.back();
+    });
+  }
+
   // =================== PESTAÑAS Y RENDERIZADO ===================
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {

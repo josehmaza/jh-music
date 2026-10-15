@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
     private Button btnRescanUsb;
 
     // Franja de Volumen Conductor
+    private ImageButton btnNavBack;
     private ImageButton btnVolMute;
     private TextView tvVolPercent;
     private Button btnVolUp, btnVolDown;
@@ -177,6 +178,7 @@ public class MainActivity extends Activity {
         btnRescanUsb = findViewById(R.id.btnRescanUsb);
 
         // Franja de volumen (54dp)
+        btnNavBack = findViewById(R.id.btnNavBack);
         btnVolMute = findViewById(R.id.btnVolMute);
         tvVolPercent = findViewById(R.id.tvVolPercent);
         btnVolUp = findViewById(R.id.btnVolUp);
@@ -287,12 +289,43 @@ public class MainActivity extends Activity {
         return super.dispatchTouchEvent(ev);
     }
 
+    @Override
+    public void onBackPressed() {
+        hideKeyboard();
+
+        // 1. Si hay texto en el buscador, borrar búsqueda y restaurar vista
+        if (etSearch != null && etSearch.getText().length() > 0) {
+            etSearch.setText("");
+            if (btnSearchClear != null) btnSearchClear.setVisibility(View.GONE);
+            filterSearch("");
+            return;
+        }
+
+        // 2. Si estamos dentro de una carpeta en Pistas (tab 1), volver a la lista de Carpetas (tab 0)
+        if (currentTab == 1 && currentSelectedFolder != null) {
+            selectTab(0);
+            return;
+        }
+
+        // 3. Si estamos en Favoritos (tab 2), volver a Carpetas (tab 0)
+        if (currentTab == 2) {
+            selectTab(0);
+            return;
+        }
+
+        // 4. Si ya estamos en la raíz (tab 0), realizar la acción física del sistema (salir / minimizar al launcher del auto)
+        super.onBackPressed();
+    }
+
     // ==========================================
     // SISTEMA DE VOLUMEN RÁPIDO CONDUCTOR
     // Pasos de 5 en 5 y barra vertical sin interferencias
     // ==========================================
     private void setupVolumeControls() {
         updateVolumeUI();
+
+        // Botón físico Atrás en pantalla para visión nocturna
+        btnNavBack.setOnClickListener(v -> onBackPressed());
 
         btnVolUp.setOnClickListener(v -> adjustVolumeStep(true));
         btnVolDown.setOnClickListener(v -> adjustVolumeStep(false));

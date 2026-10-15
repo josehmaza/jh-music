@@ -113,6 +113,16 @@
             android:paddingBottom="2dp"
             android:background="@drawable/bg_volume_strip">
 
+            <!-- Botón Atrás Táctil (Fácil acceso nocturno) -->
+            <ImageButton
+                android:id="@+id/btnNavBack"
+                android:layout_width="44dp"
+                android:layout_height="42dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/bg_btn_action"
+                android:src="@drawable/ic_nav_back"
+                android:contentDescription="Atrás" />
+
             <!-- Botón Silencio (Mute) -->
             <ImageButton
                 android:id="@+id/btnVolMute"
