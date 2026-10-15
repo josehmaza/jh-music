@@ -114,8 +114,23 @@ public class TrackAdapter extends BaseAdapter {
             }
 
             holder.tvTitle.setText(track.getTitle());
-            // Activar marquesina continua en la canción seleccionada o que suena
-            holder.tvTitle.setSelected(isSelectedForMarquee);
+            if (position == selectedMarqueeIndex) {
+                // Modo expandido: texto completo sin recortar
+                holder.tvTitle.setSingleLine(false);
+                holder.tvTitle.setMaxLines(4);
+                holder.tvTitle.setEllipsize(null);
+                holder.tvTitle.setSelected(false);
+                holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
+                convertView.setBackgroundColor(Color.parseColor("#1c2536"));
+            } else {
+                // Modo normal de 1 línea con marquesina si está reproduciéndose
+                holder.tvTitle.setSingleLine(true);
+                holder.tvTitle.setMaxLines(1);
+                holder.tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+                holder.tvTitle.setSelected(isPlaying);
+                holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
+                convertView.setBackgroundColor(isPlaying ? Color.parseColor("#172030") : Color.TRANSPARENT);
+            }
 
             holder.tvArtist.setText(track.getArtist() + " • " + track.getAlbum());
 
@@ -156,16 +171,20 @@ public class TrackAdapter extends BaseAdapter {
                 }
             });
 
-            // Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO
+            // 1. Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO
             holder.tvIndex.setOnClickListener(v -> {
                 if (trackClickListener != null) {
                     trackClickListener.onTrackClick(track, position);
                 }
             });
 
-            // Click en el resto de la fila: SELECCIONAR Y MOSTRAR NOMBRE COMPLETO CON MARQUESINA (Sin reproducir)
+            // 2. Click en el resto de la fila/texto: MOSTRAR NOMBRE COMPLETO (Sin reproducir)
             convertView.setOnClickListener(v -> {
-                selectedMarqueeIndex = position;
+                if (selectedMarqueeIndex == position) {
+                    selectedMarqueeIndex = -1; // Toggle para contraer
+                } else {
+                    selectedMarqueeIndex = position; // Expandir para leer todo
+                }
                 notifyDataSetChanged();
             });
         }

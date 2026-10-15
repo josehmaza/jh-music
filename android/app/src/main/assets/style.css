@@ -1178,30 +1178,55 @@ body {
 }
 
 .item-icon-wrap {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  background: #111419;
-  border: 1px solid var(--border-subtle);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #151922;
+  border: 1.5px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--text-secondary);
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.item-icon-wrap:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  transform: scale(1.06);
+  box-shadow: 0 0 10px var(--accent-blue-glow);
+}
+
+.item-icon-wrap:active {
+  transform: scale(0.92);
 }
 
 .list-item.is-playing .item-icon-wrap {
   background: var(--accent-blue);
+  border-color: var(--accent-blue);
   color: #0c0e12;
+  box-shadow: 0 0 12px var(--accent-blue-glow);
 }
 
 .item-info {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   flex: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.item-info:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .item-title-wrap {
@@ -1219,7 +1244,7 @@ body {
   display: inline-block;
 }
 
-.list-item:not(.is-playing) .item-title {
+.list-item:not(.is-playing):not(.is-expanded) .item-title {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
@@ -1227,6 +1252,41 @@ body {
 
 .list-item.is-playing .item-title {
   color: var(--accent-blue);
+}
+
+/* Modo Expandido: Al hacer touch en el texto muestra todo el nombre sin cortar */
+.list-item.is-expanded {
+  height: auto;
+  min-height: 64px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background: rgba(56, 189, 248, 0.06);
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.list-item.is-expanded .item-title-wrap {
+  white-space: normal;
+  overflow: visible;
+}
+
+.list-item.is-expanded .item-title {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: clip;
+  color: var(--accent-blue);
+  line-height: 1.35;
+}
+
+.list-item.is-expanded .item-subtitle {
+  white-space: normal;
+  flex-wrap: wrap;
+}
+
+.list-item.is-expanded .item-subtitle .path-text {
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* Badges de Almacenamiento USB 1, USB 2 e Interna */

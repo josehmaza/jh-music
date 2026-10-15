@@ -1114,9 +1114,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
 
-        // Click para reproducir directamente y ocultar teclado
-        itemEl.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-item-fav')) return;
+        // 1. Click en el botón de play al principio: SOLO AQUÍ SE REPRODUCE
+        const playBtn = itemEl.querySelector('.item-icon-wrap');
+        playBtn.setAttribute('title', 'Reproducir');
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           searchInput.blur();
           
           let realIdx = currentPlaylist.findIndex(t => t.id === track.id);
@@ -1125,6 +1127,15 @@ document.addEventListener('DOMContentLoaded', () => {
             realIdx = currentPlaylist.findIndex(t => t.id === track.id);
           }
           loadTrack(realIdx >= 0 ? realIdx : 0, true);
+        });
+
+        // 2. Click en el texto: SOLO MOSTRAR TEXTO COMPLETO (Sin reproducir)
+        const infoEl = itemEl.querySelector('.item-info');
+        infoEl.setAttribute('title', 'Tocar para ver nombre completo');
+        infoEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          searchInput.blur();
+          itemEl.classList.toggle('is-expanded');
         });
 
         // Click en favorito
@@ -1263,12 +1274,23 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
 
-        // Click para reproducir directamente y ocultar teclado
-        itemEl.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-item-fav')) return;
+        // 1. Click en el botón de play al principio: SOLO AQUÍ SE REPRODUCE
+        const playBtn = itemEl.querySelector('.item-icon-wrap');
+        playBtn.setAttribute('title', 'Reproducir');
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           searchInput.blur();
           const realIdx = currentPlaylist.findIndex(t => t.id === track.id);
-          loadTrack(realIdx >= 0 ? realIdx : 0, true);
+          loadTrack(realIdx >= 0 ? realIdx : idx, true);
+        });
+
+        // 2. Click en el texto: SOLO MOSTRAR TEXTO COMPLETO (Sin reproducir)
+        const infoEl = itemEl.querySelector('.item-info');
+        infoEl.setAttribute('title', 'Tocar para ver nombre completo');
+        infoEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          searchInput.blur();
+          itemEl.classList.toggle('is-expanded');
         });
 
         // Click en favorito
