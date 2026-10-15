@@ -959,14 +959,14 @@ body {
 .tab-btn {
   background: transparent;
   border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-size: 0.8rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
   font-weight: 700;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1004,11 +1004,11 @@ body {
 .filter-chip {
   background: #1e293b;
   border: 1px solid #334155;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 14px;
+  color: #e2e8f0;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 7px 15px;
+  border-radius: 16px;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
@@ -1038,8 +1038,8 @@ body {
   background: var(--bg-deep);
   border: 1.5px solid var(--border-subtle);
   border-radius: 10px;
-  padding: 0 12px;
-  height: 42px;
+  padding: 0 14px;
+  height: 46px;
   gap: 10px;
   transition: all 0.2s;
 }
@@ -1050,8 +1050,8 @@ body {
 }
 
 .search-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: var(--accent-blue);
   flex-shrink: 0;
 }
@@ -1062,8 +1062,8 @@ body {
   border: none;
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 1.05rem;
+  font-weight: 600;
   outline: none;
 }
 

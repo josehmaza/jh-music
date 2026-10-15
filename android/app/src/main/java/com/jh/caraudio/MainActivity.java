@@ -817,11 +817,11 @@ public class MainActivity extends Activity {
         if (btnFilterFolder != null) {
             boolean sel = (currentSearchFilter == FILTER_FOLDER);
             btnFilterFolder.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterFolder.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#94a3b8"));
-            btnFilterFolder.setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
+            btnFilterFolder.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            btnFilterFolder.setTypeface(null, Typeface.BOLD);
             if (currentSelectedFolder != null) {
                 String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                String label = currentSelectedFolder.length() > 14 ? currentSelectedFolder.substring(0, 12) + "…" : currentSelectedFolder;
+                String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
                 btnFilterFolder.setText("📁 " + usbTag + label);
             }
         }
@@ -829,22 +829,22 @@ public class MainActivity extends Activity {
         if (btnFilterAll != null) {
             boolean sel = (currentSearchFilter == FILTER_ALL);
             btnFilterAll.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterAll.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#94a3b8"));
-            btnFilterAll.setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
+            btnFilterAll.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            btnFilterAll.setTypeface(null, Typeface.BOLD);
         }
 
         if (btnFilterUsb1 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB1);
             btnFilterUsb1.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterUsb1.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#94a3b8"));
-            btnFilterUsb1.setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
+            btnFilterUsb1.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            btnFilterUsb1.setTypeface(null, Typeface.BOLD);
         }
 
         if (btnFilterUsb2 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB2);
             btnFilterUsb2.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterUsb2.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#94a3b8"));
-            btnFilterUsb2.setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
+            btnFilterUsb2.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            btnFilterUsb2.setTypeface(null, Typeface.BOLD);
         }
     }
 
@@ -853,7 +853,7 @@ public class MainActivity extends Activity {
             if (currentTab == 1 && currentSelectedFolder != null) {
                 btnFilterFolder.setVisibility(View.VISIBLE);
                 String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                String label = currentSelectedFolder.length() > 14 ? currentSelectedFolder.substring(0, 12) + "…" : currentSelectedFolder;
+                String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
                 btnFilterFolder.setText("📁 " + usbTag + label);
             } else {
                 btnFilterFolder.setVisibility(View.GONE);
@@ -878,13 +878,16 @@ public class MainActivity extends Activity {
     private void selectTab(int tabIndex) {
         currentTab = tabIndex;
         tabFolders.setBackgroundResource(tabIndex == 0 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabFolders.setTextColor(tabIndex == 0 ? Color.parseColor("#38bdf8") : Color.parseColor("#94a3b8"));
+        tabFolders.setTextColor(tabIndex == 0 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
+        tabFolders.setTypeface(null, Typeface.BOLD);
 
         tabTracks.setBackgroundResource(tabIndex == 1 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabTracks.setTextColor(tabIndex == 1 ? Color.parseColor("#38bdf8") : Color.parseColor("#94a3b8"));
+        tabTracks.setTextColor(tabIndex == 1 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
+        tabTracks.setTypeface(null, Typeface.BOLD);
 
         tabFavorites.setBackgroundResource(tabIndex == 2 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabFavorites.setTextColor(tabIndex == 2 ? Color.parseColor("#38bdf8") : Color.parseColor("#94a3b8"));
+        tabFavorites.setTextColor(tabIndex == 2 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
+        tabFavorites.setTypeface(null, Typeface.BOLD);
 
         if (tabIndex == 0) {
             listViewContent.setAdapter(folderAdapter);
