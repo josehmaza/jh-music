@@ -280,9 +280,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   width: 100%;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 4px;
+  padding: 3px 0;
 }
 
 .strip-percent {
@@ -291,6 +291,7 @@ body {
   font-weight: 800;
   color: var(--accent-blue);
   text-shadow: 0 0 10px var(--accent-blue-glow);
+  letter-spacing: -0.5px;
 }
 
 /* Botón Atrás Táctil Conductor (Misma función que el botón físico para visión nocturna) */

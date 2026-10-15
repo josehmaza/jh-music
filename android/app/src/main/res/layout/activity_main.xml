@@ -132,17 +132,6 @@
                 android:src="@android:drawable/ic_lock_silent_mode"
                 android:contentDescription="Mute" />
 
-            <!-- Porcentaje de Volumen -->
-            <TextView
-                android:id="@+id/tvVolPercent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:text="75%"
-                android:textColor="@color/accent_cyan"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
             <!-- Botón Subir (+) -->
             <Button
                 android:id="@+id/btnVolUp"
@@ -155,12 +144,23 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
-            <!-- Botón Bajar (-) inmediatamente debajo de (+) -->
+            <!-- Porcentaje de Volumen (En medio de + y -) -->
+            <TextView
+                android:id="@+id/tvVolPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:text="75%"
+                android:textColor="@color/accent_cyan"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <!-- Botón Bajar (-) -->
             <Button
                 android:id="@+id/btnVolDown"
                 android:layout_width="44dp"
                 android:layout_height="42dp"
-                android:layout_marginTop="4dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="-"
                 android:textColor="@color/text_primary"
