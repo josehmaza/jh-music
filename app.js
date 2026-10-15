@@ -733,6 +733,83 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // =================== PUNTUACIÓN DE RELEVANCIA ===================
+  function getTrackRelevance(track, rawQuery, normQuery, tokens) {
+    let score = 0;
+    const titleNorm = normalizeText(track.title || '');
+    const artistNorm = normalizeText(track.artist || '');
+    const albumNorm = normalizeText(track.album || '');
+    const folderNorm = normalizeText(track.folder || '');
+    const titleWords = titleNorm.split(/[^a-z0-9]+/).filter(Boolean);
+    const artistWords = artistNorm.split(/[^a-z0-9]+/).filter(Boolean);
+
+    // 1. Coincidencia directa completa al inicio del título
+    if (titleNorm === normQuery) {
+      score += 25000;
+    } else if (titleNorm.startsWith(normQuery + ' ') || titleNorm.startsWith(normQuery + '-')) {
+      score += 18000;
+    } else if (titleNorm.startsWith(normQuery)) {
+      score += 12000;
+    } else if (titleNorm.includes(normQuery)) {
+      score += 6000;
+    }
+
+    // 2. Coincidencia token por token
+    tokens.forEach(token => {
+      // Título
+      if (titleWords.includes(token)) {
+        score += 8000;
+      } else if (titleWords.some(w => w.startsWith(token))) {
+        score += 4000;
+      } else if (titleNorm.includes(token)) {
+        score += 2000;
+      } else if (titleWords.some(w => tokenMatchesWord(token, w))) {
+        score += 300;
+      }
+
+      // Artista
+      if (artistWords.includes(token)) {
+        score += 3000;
+      } else if (artistWords.some(w => w.startsWith(token))) {
+        score += 1500;
+      } else if (artistNorm.includes(token)) {
+        score += 800;
+      }
+
+      // Carpeta / Álbum
+      if (folderNorm.includes(token) || albumNorm.includes(token)) {
+        score += 400;
+      }
+    });
+
+    // Desempate fino: títulos más concisos y directos ganan prioridad
+    score -= Math.min(titleNorm.length, 60);
+    return score;
+  }
+
+  function getFolderRelevance(folder, rawQuery, normQuery, tokens) {
+    let score = 0;
+    const nameNorm = normalizeText(folder.name || '');
+    const words = nameNorm.split(/[^a-z0-9]+/).filter(Boolean);
+
+    if (nameNorm === normQuery) {
+      score += 20000;
+    } else if (nameNorm.startsWith(normQuery + ' ') || nameNorm.startsWith(normQuery)) {
+      score += 12000;
+    } else if (nameNorm.includes(normQuery)) {
+      score += 5000;
+    }
+
+    tokens.forEach(token => {
+      if (words.includes(token)) score += 6000;
+      else if (words.some(w => w.startsWith(token))) score += 3000;
+      else if (nameNorm.includes(token)) score += 1000;
+    });
+
+    score -= Math.min(nameNorm.length, 50);
+    return score;
+  }
+
   // Generador de etiquetas para USB 1, USB 2 y Memoria Interna
   function getStorageBadgeHtml(path) {
     if (!path) return '';
@@ -887,6 +964,8 @@ document.addEventListener('DOMContentLoaded', () => {
           return tokens.every(token => text.includes(token) || dedup.includes(dedupChars(token)));
         });
 
+        matchedFolders.sort((a, b) => getFolderRelevance(b, rawQuery, normQuery, tokens) - getFolderRelevance(a, rawQuery, normQuery, tokens));
+
         const filterLabel = currentSearchFilter === 'usb1' ? ' [USB 1]' : (currentSearchFilter === 'usb2' ? ' [USB 2]' : '');
         crumbFolder.innerHTML = `📂 Carpetas${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>" (${matchedFolders.length})`;
 
@@ -973,6 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
       crumbFolder.innerHTML = `🔍 Búsqueda${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
       
       const searchResults = searchPool.filter(t => trackMatchesTokens(t, tokens));
+      searchResults.sort((a, b) => getTrackRelevance(b, rawQuery, normQuery, tokens) - getTrackRelevance(a, rawQuery, normQuery, tokens));
 
       songCountEl.textContent = searchResults.length;
 

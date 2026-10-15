@@ -779,6 +779,99 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    private int calculateTrackRelevance(Track track, String normQuery, String[] tokens) {
+        int score = 0;
+        String titleNorm = normalizeText(track.getTitle());
+        String artistNorm = normalizeText(track.getArtist());
+        String albumNorm = normalizeText(track.getAlbum());
+        String folderNorm = normalizeText(track.getFolder());
+
+        String[] titleWords = titleNorm.split("[^a-z0-9]+");
+        String[] artistWords = artistNorm.split("[^a-z0-9]+");
+
+        if (titleNorm.equals(normQuery)) {
+            score += 25000;
+        } else if (titleNorm.startsWith(normQuery + " ") || titleNorm.startsWith(normQuery + "-")) {
+            score += 18000;
+        } else if (titleNorm.startsWith(normQuery)) {
+            score += 12000;
+        } else if (titleNorm.contains(normQuery)) {
+            score += 6000;
+        }
+
+        for (String token : tokens) {
+            if (token.isEmpty()) continue;
+            boolean wordExact = false;
+            boolean wordPrefix = false;
+            for (String w : titleWords) {
+                if (w.equals(token)) {
+                    wordExact = true;
+                    break;
+                }
+                if (w.startsWith(token)) {
+                    wordPrefix = true;
+                }
+            }
+
+            if (wordExact) {
+                score += 8000;
+            } else if (wordPrefix) {
+                score += 4000;
+            } else if (titleNorm.contains(token)) {
+                score += 2000;
+            } else {
+                score += 300;
+            }
+
+            boolean artExact = false;
+            for (String w : artistWords) {
+                if (w.equals(token)) {
+                    artExact = true;
+                    break;
+                }
+            }
+            if (artExact) score += 3000;
+            else if (artistNorm.contains(token)) score += 1000;
+
+            if (folderNorm.contains(token) || albumNorm.contains(token)) {
+                score += 400;
+            }
+        }
+
+        score -= Math.min(titleNorm.length(), 60);
+        return score;
+    }
+
+    private int calculateFolderRelevance(FolderItem folder, String normQuery, String[] tokens) {
+        int score = 0;
+        String nameNorm = normalizeText(folder.getName());
+        String[] words = nameNorm.split("[^a-z0-9]+");
+
+        if (nameNorm.equals(normQuery)) {
+            score += 20000;
+        } else if (nameNorm.startsWith(normQuery + " ") || nameNorm.startsWith(normQuery)) {
+            score += 12000;
+        } else if (nameNorm.contains(normQuery)) {
+            score += 5000;
+        }
+
+        for (String token : tokens) {
+            if (token.isEmpty()) continue;
+            boolean exact = false;
+            for (String w : words) {
+                if (w.equals(token)) {
+                    exact = true;
+                    break;
+                }
+            }
+            if (exact) score += 6000;
+            else if (nameNorm.contains(token)) score += 2000;
+        }
+
+        score -= Math.min(nameNorm.length(), 50);
+        return score;
+    }
+
     private void performAsyncSearch(final String rawQuery, final int targetVersion) {
         final int tab = currentTab;
         final int filter = currentSearchFilter;
@@ -820,6 +913,11 @@ public class MainActivity extends Activity {
                     }
                     if (match) matchedFolders.add(f);
                 }
+
+                Collections.sort(matchedFolders, (f1, f2) -> Integer.compare(
+                        calculateFolderRelevance(f2, norm, tokens),
+                        calculateFolderRelevance(f1, norm, tokens)
+                ));
 
                 if (targetVersion != searchVersion) return;
 
@@ -871,6 +969,11 @@ public class MainActivity extends Activity {
                     }
                 }
 
+                Collections.sort(matchedTracks, (t1, t2) -> Integer.compare(
+                        calculateTrackRelevance(t2, norm, tokens),
+                        calculateTrackRelevance(t1, norm, tokens)
+                ));
+
                 if (targetVersion != searchVersion) return;
 
                 runOnUiThread(() -> {
@@ -907,6 +1010,11 @@ public class MainActivity extends Activity {
                         matchedFavs.add(t);
                     }
                 }
+
+                Collections.sort(matchedFavs, (t1, t2) -> Integer.compare(
+                        calculateTrackRelevance(t2, norm, tokens),
+                        calculateTrackRelevance(t1, norm, tokens)
+                ));
 
                 if (targetVersion != searchVersion) return;
 
