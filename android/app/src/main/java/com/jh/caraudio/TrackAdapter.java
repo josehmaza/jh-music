@@ -2,6 +2,8 @@ package com.jh.caraudio;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,9 +28,11 @@ public class TrackAdapter extends BaseAdapter {
     private List<Track> tracks;
     private int currentPlayingIndex = -1;
     private int selectedMarqueeIndex = -1;
-    private long lastClickTime = 0;
-    private int lastClickPosition = -1;
-    private static final long DOUBLE_CLICK_TIME_DELTA = 450; // ms para detectar doble toque táctil
+    private final Handler clickHandler = new Handler(Looper.getMainLooper());
+    private Runnable singleClickRunnable = null;
+    private int clickCount = 0;
+    private int lastClickedPosition = -1;
+    private static final long DOUBLE_TAP_TIMEOUT = 280; // ms para confirmar si fue 1 solo toque o doble toque
     private OnTrackClickListener trackClickListener;
     private OnFavoriteClickListener favoriteClickListener;
 
@@ -182,27 +186,44 @@ public class TrackAdapter extends BaseAdapter {
             });
 
             // 2. Click en la fila o en el texto:
-            // 1 toque: Muestra el nombre completo (expandir / contraer)
-            // 2 toques: Reproduce la canción
+            // 1 toque: Muestra el nombre completo (espera 280ms para confirmar que no fue doble toque)
+            // 2 toques: Cancela la apertura del nombre y reproduce directamente la canción
             View.OnClickListener rowClickListener = v -> {
-                long clickTime = System.currentTimeMillis();
-                if (position == lastClickPosition && (clickTime - lastClickTime) < DOUBLE_CLICK_TIME_DELTA) {
-                    // Doble toque detectado: REPRODUCIR LA CANCIÓN
-                    lastClickTime = 0;
-                    lastClickPosition = -1;
+                if (position != lastClickedPosition) {
+                    if (singleClickRunnable != null) {
+                        clickHandler.removeCallbacks(singleClickRunnable);
+                        singleClickRunnable = null;
+                    }
+                    clickCount = 0;
+                    lastClickedPosition = position;
+                }
+
+                clickCount++;
+
+                if (clickCount == 1) {
+                    singleClickRunnable = () -> {
+                        // Confirmado 1 solo toque: Expandir o contraer para leer todo
+                        clickCount = 0;
+                        singleClickRunnable = null;
+                        if (selectedMarqueeIndex == position) {
+                            selectedMarqueeIndex = -1; // Toggle para contraer
+                        } else {
+                            selectedMarqueeIndex = position; // Expandir para leer todo
+                        }
+                        notifyDataSetChanged();
+                    };
+                    clickHandler.postDelayed(singleClickRunnable, DOUBLE_TAP_TIMEOUT);
+                } else if (clickCount >= 2) {
+                    // Confirmado 2 toques (doble toque): CANCELAR la apertura del nombre y reproducir de inmediato
+                    if (singleClickRunnable != null) {
+                        clickHandler.removeCallbacks(singleClickRunnable);
+                        singleClickRunnable = null;
+                    }
+                    clickCount = 0;
+                    lastClickedPosition = -1;
                     if (trackClickListener != null) {
                         trackClickListener.onTrackClick(track, position);
                     }
-                } else {
-                    // Primer toque (o toques espaciados): Expandir/Colapsar para leer el nombre completo
-                    lastClickTime = clickTime;
-                    lastClickPosition = position;
-                    if (selectedMarqueeIndex == position) {
-                        selectedMarqueeIndex = -1; // Toggle para contraer
-                    } else {
-                        selectedMarqueeIndex = position; // Expandir para leer todo
-                    }
-                    notifyDataSetChanged();
                 }
             };
 

@@ -1166,29 +1166,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // 2. Click en el texto:
-        // 1 toque: Mostrar/ocultar nombre completo
-        // 2 toques: Reproducir la canción de inmediato
+        // 1 toque: Mostrar/ocultar nombre completo (espera 280ms para confirmar)
+        // 2 toques: Cancela la apertura y reproduce la canción directamente
         const infoEl = itemEl.querySelector('.item-info');
         infoEl.setAttribute('title', '1 toque: ver nombre completo • 2 toques: reproducir');
-        let lastInfoClickTime = 0;
+        let clickCount = 0;
+        let clickTimer = null;
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
-          const now = Date.now();
-          if (now - lastInfoClickTime < 450) {
-            // Doble toque: REPRODUCIR LA CANCIÓN
-            lastInfoClickTime = 0;
+          clickCount++;
+
+          if (clickCount === 1) {
+            clickTimer = setTimeout(() => {
+              // 1 toque confirmado: EXPANDIR / COLAPSAR
+              clickCount = 0;
+              clickTimer = null;
+              const wasExpanded = itemEl.classList.contains('is-expanded');
+              trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
+                el.classList.remove('is-expanded');
+              });
+              if (!wasExpanded) {
+                itemEl.classList.add('is-expanded');
+              }
+            }, 280);
+          } else if (clickCount >= 2) {
+            // 2 toques: CANCELAR la apertura y REPRODUCIR DIRECTO
+            if (clickTimer) {
+              clearTimeout(clickTimer);
+              clickTimer = null;
+            }
+            clickCount = 0;
             playBtn.click();
-            return;
-          }
-          lastInfoClickTime = now;
-          const wasExpanded = itemEl.classList.contains('is-expanded');
-          // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
-          trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
-            el.classList.remove('is-expanded');
-          });
-          if (!wasExpanded) {
-            itemEl.classList.add('is-expanded');
           }
         });
 
@@ -1342,28 +1351,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Click en el texto:
         // 1 toque: Mostrar/ocultar nombre completo
-        // 2 toques: Reproducir la canción de inmediato
+        // 2. Click en el texto:
+        // 1 toque: Mostrar/ocultar nombre completo (espera 280ms para confirmar)
+        // 2 toques: Cancela la apertura y reproduce la canción directamente
         const infoEl = itemEl.querySelector('.item-info');
         infoEl.setAttribute('title', '1 toque: ver nombre completo • 2 toques: reproducir');
-        let lastInfoClickTime = 0;
+        let clickCount = 0;
+        let clickTimer = null;
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
-          const now = Date.now();
-          if (now - lastInfoClickTime < 450) {
-            // Doble toque: REPRODUCIR LA CANCIÓN
-            lastInfoClickTime = 0;
+          clickCount++;
+
+          if (clickCount === 1) {
+            clickTimer = setTimeout(() => {
+              // 1 toque confirmado: EXPANDIR / COLAPSAR
+              clickCount = 0;
+              clickTimer = null;
+              const wasExpanded = itemEl.classList.contains('is-expanded');
+              trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
+                el.classList.remove('is-expanded');
+              });
+              if (!wasExpanded) {
+                itemEl.classList.add('is-expanded');
+              }
+            }, 280);
+          } else if (clickCount >= 2) {
+            // 2 toques: CANCELAR la apertura y REPRODUCIR DIRECTO
+            if (clickTimer) {
+              clearTimeout(clickTimer);
+              clickTimer = null;
+            }
+            clickCount = 0;
             playBtn.click();
-            return;
-          }
-          lastInfoClickTime = now;
-          const wasExpanded = itemEl.classList.contains('is-expanded');
-          // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
-          trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
-            el.classList.remove('is-expanded');
-          });
-          if (!wasExpanded) {
-            itemEl.classList.add('is-expanded');
           }
         });
 
