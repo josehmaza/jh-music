@@ -3,6 +3,7 @@ package com.jh.caraudio;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -65,7 +66,7 @@ public class MainActivity extends Activity {
     private Button btnRescanUsb;
 
     // Franja de Volumen Conductor
-    private ImageButton btnNavBack;
+    private ImageButton btnNavHome;
     private ImageButton btnVolMute;
     private TextView tvVolPercent;
     private Button btnVolUp, btnVolDown;
@@ -179,7 +180,7 @@ public class MainActivity extends Activity {
         btnRescanUsb = findViewById(R.id.btnRescanUsb);
 
         // Franja de volumen (54dp)
-        btnNavBack = findViewById(R.id.btnNavBack);
+        btnNavHome = findViewById(R.id.btnNavHome);
         btnVolMute = findViewById(R.id.btnVolMute);
         tvVolPercent = findViewById(R.id.tvVolPercent);
         btnVolUp = findViewById(R.id.btnVolUp);
@@ -324,6 +325,22 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
+    /**
+     * Mismo comportamiento que pulsar el botón físico HOME del auto:
+     * Minimiza la app al launcher principal de la radio del auto instantáneamente.
+     */
+    private void goHome() {
+        hideKeyboard();
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(homeIntent);
+        } catch (Exception e) {
+            moveTaskToBack(true);
+        }
+    }
+
     // ==========================================
     // SISTEMA DE VOLUMEN RÁPIDO CONDUCTOR
     // Pasos de 5 en 5 y barra vertical sin interferencias
@@ -331,8 +348,10 @@ public class MainActivity extends Activity {
     private void setupVolumeControls() {
         updateVolumeUI();
 
-        // Botón físico Atrás en pantalla para visión nocturna
-        btnNavBack.setOnClickListener(v -> onBackPressed());
+        // Botón HOME en pantalla (Mismo comportamiento que el botón físico HOME del auto)
+        if (btnNavHome != null) {
+            btnNavHome.setOnClickListener(v -> goHome());
+        }
 
         btnVolUp.setOnClickListener(v -> adjustVolumeStep(true));
         btnVolDown.setOnClickListener(v -> adjustVolumeStep(false));

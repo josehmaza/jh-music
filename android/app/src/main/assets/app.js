@@ -905,29 +905,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Botón ATRÁS Táctil Conductor (Misma función que el botón físico de Atrás)
-  const btnNavBack = document.getElementById('btnNavBack');
-  if (btnNavBack) {
-    btnNavBack.addEventListener('click', () => {
+  // Botón HOME Táctil Conductor (Misma función que el botón físico HOME del auto)
+  const btnNavHome = document.getElementById('btnNavHome') || document.getElementById('btnNavBack');
+  if (btnNavHome) {
+    btnNavHome.addEventListener('click', () => {
       searchInput.blur();
-      // 1. Si hay texto en el buscador, borrarlo y volver a la carpeta seteada
       if (searchInput.value.trim().length > 0) {
         searchInput.value = '';
         clearSearch.classList.add('hidden');
-        if (currentFolder) {
-          currentSearchFilter = 'folder';
-        }
-        updateFilterChipsUI();
-        renderList();
-        return;
       }
-      // 2. Si estamos en pistas o favoritos, volver a carpetas
-      if (activeTab === 'playlist' || activeTab === 'favorites') {
+      if (tabButtons[0]) {
         tabButtons[0].click();
-        return;
       }
-      // 3. Si ya estamos en carpetas (inicio), volver atrás en el navegador/sistema
-      window.history.back();
     });
   }
 

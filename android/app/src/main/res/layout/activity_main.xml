@@ -113,15 +113,15 @@
             android:paddingBottom="2dp"
             android:background="@drawable/bg_volume_strip">
 
-            <!-- Botón Atrás Táctil (Fácil acceso nocturno) -->
+            <!-- Botón HOME Táctil (Mismo comportamiento que el botón físico HOME del auto) -->
             <ImageButton
-                android:id="@+id/btnNavBack"
+                android:id="@+id/btnNavHome"
                 android:layout_width="44dp"
                 android:layout_height="42dp"
                 android:layout_marginBottom="4dp"
                 android:background="@drawable/bg_btn_action"
-                android:src="@drawable/ic_nav_back"
-                android:contentDescription="Atrás" />
+                android:src="@drawable/ic_nav_home"
+                android:contentDescription="Inicio (Home)" />
 
             <!-- Botón Silencio (Mute) -->
             <ImageButton
