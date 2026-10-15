@@ -115,11 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   const foldersList = [
-    { name: "JH PENDRIVE", path: "/storage/udisk1/JH PENDRIVE/", count: 12 },
-    { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 218 },
-    { name: "2025-07-18", path: "/storage/udisk1/Descargas/2025-07-18/", count: 29 },
-    { name: "Música Viaje", path: "/storage/udisk2/Música Viaje/", count: 84 },
-    { name: "Música Interna", path: "/mnt/sdcard/media/music/", count: 5 }
+    { name: "JH PENDRIVE", path: "/storage/udisk1/JH PENDRIVE/", count: 12, usbSource: "USB 1" },
+    { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 218, usbSource: "USB 1" },
+    { name: "2025-07-18", path: "/storage/udisk1/Descargas/2025-07-18/", count: 29, usbSource: "USB 1" },
+    { name: "Música Viaje", path: "/storage/udisk2/Música Viaje/", count: 84, usbSource: "USB 2" },
+    { name: "Música Interna", path: "/mnt/sdcard/media/music/", count: 5, usbSource: "INTERNA" }
   ];
 
   let masterTracks = [...sampleTracks];
@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isMuted = false;
   let activeTab = "folders"; // "folders", "playlist", "favorites"
   let currentFolder = "JH PENDRIVE";
+  let currentFolderUsbSource = "USB 1";
 
   // Audio HTML5 y Sintetizador Web Audio
   const audio = document.getElementById('audioPlayer');
@@ -858,7 +859,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab === 'playlist' && currentFolder) {
       if (chipFilterFolder) {
         chipFilterFolder.classList.remove('hidden');
-        chipFilterFolder.textContent = `📁 ${currentFolder.length > 15 ? currentFolder.slice(0, 13) + '…' : currentFolder}`;
+        const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+        const name = currentFolder.length > 13 ? currentFolder.slice(0, 11) + '…' : currentFolder;
+        chipFilterFolder.textContent = `📁 ${usbTag}${name}`;
       }
     } else {
       if (chipFilterFolder) {
@@ -1020,7 +1023,8 @@ document.addEventListener('DOMContentLoaded', () => {
           folderEl.addEventListener('click', () => {
             searchInput.blur();
             currentFolder = folder.name;
-            crumbFolder.textContent = folder.name;
+            currentFolderUsbSource = folder.usbSource || folder.badge || (folder.path && folder.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
+            crumbFolder.textContent = `${currentFolderUsbSource ? '[' + currentFolderUsbSource + '] ' : ''}${folder.name}`;
             currentSearchFilter = 'folder';
             
             const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
@@ -1128,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // 1. Setear la carpeta actual a la carpeta de la canción seleccionada
           currentFolder = track.folder;
+          currentFolderUsbSource = track.usbSource || (track.path && track.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
 
           // 2. Cargar en currentPlaylist todas las canciones de esa carpeta
           const folderTracks = allPool.filter(t => t.folder === track.folder && (track.usbSource ? t.usbSource === track.usbSource : true));
@@ -1136,9 +1141,11 @@ document.addEventListener('DOMContentLoaded', () => {
           // 3. Índice de la pista en esa carpeta
           const realFolderIdx = currentPlaylist.findIndex(t => t.id === track.id);
 
-          // 4. Actualizar el chip de carpeta para que muestre el nuevo nombre
+          // 4. Actualizar el chip de carpeta para que muestre el nuevo nombre con USB
           if (chipFilterFolder) {
-            chipFilterFolder.textContent = `📁 ${currentFolder.length > 15 ? currentFolder.slice(0, 13) + '…' : currentFolder}`;
+            const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+            const name = currentFolder.length > 13 ? currentFolder.slice(0, 11) + '…' : currentFolder;
+            chipFilterFolder.textContent = `📁 ${usbTag}${name}`;
             chipFilterFolder.classList.remove('hidden');
           }
 
@@ -1229,7 +1236,8 @@ document.addEventListener('DOMContentLoaded', () => {
         folderEl.addEventListener('click', () => {
           searchInput.blur();
           currentFolder = folder.name;
-          crumbFolder.textContent = folder.name;
+          currentFolderUsbSource = folder.usbSource || folder.badge || (folder.path && folder.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
+          crumbFolder.textContent = `${currentFolderUsbSource ? '[' + currentFolderUsbSource + '] ' : ''}${folder.name}`;
           currentSearchFilter = 'folder';
           
           const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
@@ -1271,7 +1279,8 @@ document.addEventListener('DOMContentLoaded', () => {
           crumbFolder.textContent = `Todas las Pistas (${filtered.length})`;
         } else {
           filtered = currentPlaylist;
-          crumbFolder.textContent = `${currentFolder} (${filtered.length})`;
+          const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+        crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
         }
       }
 
@@ -1513,7 +1522,12 @@ document.addEventListener('DOMContentLoaded', () => {
     tracks.forEach(t => {
       const fName = t.folder || "Memoria USB";
       if (!foldersMap[fName]) {
-        foldersMap[fName] = { name: fName, path: t.path, count: 0 };
+        foldersMap[fName] = { 
+          name: fName, 
+          path: t.path, 
+          count: 0,
+          usbSource: t.usbSource || (t.path && t.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1')
+        };
       }
       foldersMap[fName].count++;
     });
@@ -1523,7 +1537,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     songCountEl.textContent = currentPlaylist.length;
     currentFolder = currentPlaylist[0].folder || "USB";
-    crumbFolder.textContent = currentFolder;
+    currentFolderUsbSource = currentPlaylist[0].usbSource || (currentPlaylist[0].path && currentPlaylist[0].path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
+    const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+    crumbFolder.textContent = `${usbTag}${currentFolder}`;
 
     // Actualizar texto del almacenamiento en el footer
     const storageInfo = document.querySelector('.storage-info span');
