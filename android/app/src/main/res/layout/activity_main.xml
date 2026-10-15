@@ -1,0 +1,683 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_root">
+
+    <!-- ======================================================== -->
+    <!-- BARRA SUPERIOR DE ESTADO DEL VEHÍCULO (38dp)              -->
+    <!-- Marca, ruta USB actual, reloj central y re-escaneo USB    -->
+    <!-- ======================================================== -->
+    <LinearLayout
+        android:id="@+id/layoutCarStatusBar"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="#0d0f14">
+
+        <!-- Lado Izquierdo: Marca y Ruta Activa -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="● HYUNDAI TUCSON IX"
+                android:textColor="@color/accent_cyan"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvHeaderPath"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:singleLine="true"
+                android:ellipsize="middle"
+                android:text="/storage/udisk1/JH PENDRIVE"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Centro: Reloj del Auto -->
+        <TextView
+            android:id="@+id/tvClock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="01:30"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <!-- Lado Derecho: Botón Re-escanear USB -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnRescanUsb"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_btn_action"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="🔄 Re-escanear USB"
+                android:textColor="@color/accent_cyan"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Línea divisoria sutil -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border_panel" />
+
+    <!-- ======================================================== -->
+    <!-- CUERPO PRINCIPAL ERGONÓMICO DE 3 COLUMNAS                -->
+    <!-- ======================================================== -->
+    <LinearLayout
+        android:id="@+id/layoutMainGrid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- ======================================================== -->
+        <!-- COLUMNA 1: FRANJA DE VOLUMEN CONDUCTOR (54dp)            -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:id="@+id/layoutVolumeStrip"
+            android:layout_width="54dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="@drawable/bg_volume_strip">
+
+            <!-- Botón Silencio (Mute) -->
+            <ImageButton
+                android:id="@+id/btnVolMute"
+                android:layout_width="44dp"
+                android:layout_height="42dp"
+                android:background="@drawable/bg_btn_action"
+                android:src="@android:drawable/ic_lock_silent_mode"
+                android:contentDescription="Mute" />
+
+            <!-- Porcentaje de Volumen -->
+            <TextView
+                android:id="@+id/tvVolPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="75%"
+                android:textColor="@color/accent_cyan"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <!-- Botón Subir (+) -->
+            <Button
+                android:id="@+id/btnVolUp"
+                android:layout_width="44dp"
+                android:layout_height="42dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_btn_action"
+                android:text="+"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <!-- Barra Deslizante Vertical Táctil Ergonómica (Sin solapamiento con botones) -->
+            <com.jh.caraudio.VerticalVolumeBar
+                android:id="@+id/seekVolume"
+                android:layout_width="44dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Botón Bajar (-) -->
+            <Button
+                android:id="@+id/btnVolDown"
+                android:layout_width="44dp"
+                android:layout_height="42dp"
+                android:background="@drawable/bg_btn_action"
+                android:text="-"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ======================================================== -->
+        <!-- COLUMNA 2: REPRODUCTOR PRINCIPAL                         -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:id="@+id/layoutPlayerPanel"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.15"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:gravity="center_horizontal">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel_card"
+                android:padding="10dp"
+                android:gravity="center_horizontal">
+
+                <!-- Barra superior interna del reproductor -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="32dp">
+
+                    <!-- Estado Dinámico: EN PAUSA / REPRODUCIENDO -->
+                    <TextView
+                        android:id="@+id/tvPlaybackStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="● EN PAUSA"
+                        android:textColor="@color/amber_accent"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <!-- Botón Alternar Buscador / Explorador de Música -->
+                    <ImageButton
+                        android:id="@+id/btnToggleExplorer"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_menu_search"
+                        android:tint="@color/accent_cyan"
+                        android:contentDescription="Mostrar u Ocultar Explorador" />
+                </RelativeLayout>
+
+                <!-- Carátula / Vinyl Card con Badge de Formato y Ecualizador Animado -->
+                <FrameLayout
+                    android:id="@+id/layoutAlbumArtCard"
+                    android:layout_width="165dp"
+                    android:layout_height="165dp"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/bg_album_card">
+
+                    <!-- Portada Real si existe en el archivo de audio -->
+                    <ImageView
+                        android:id="@+id/ivAlbumArt"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+
+                    <!-- Contenedor Placeholder: Vinilo concéntrico + Ecualizador animado -->
+                    <LinearLayout
+                        android:id="@+id/layoutAlbumPlaceholder"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingTop="10dp">
+
+                        <!-- Disco de Vinilo (3 círculos concéntricos) -->
+                        <ImageView
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:src="@drawable/ic_vinyl_disc" />
+
+                        <!-- Barras de ecualizador animadas estilo web (5 barras cyan) -->
+                        <com.jh.caraudio.SoundWaveBarsView
+                            android:id="@+id/soundWaveBars"
+                            android:layout_width="64dp"
+                            android:layout_height="22dp"
+                            android:layout_marginTop="8dp" />
+                    </LinearLayout>
+
+                    <!-- Badge de Formato / Calidad MP3 320K -->
+                    <TextView
+                        android:id="@+id/tvFormatBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="8dp"
+                        android:background="@drawable/bg_pill"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:text="MP3 320K"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+
+                <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA -->
+                <TextView
+                    android:id="@+id/tvTrackTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:singleLine="true"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:scrollHorizontally="true"
+                    android:text="Selecciona una canción"
+                    android:textColor="@color/text_primary"
+                    android:textSize="25sp"
+                    android:textStyle="bold" />
+
+                <!-- Artista (18sp Celeste Destacado) y Álbum (15sp) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="2dp">
+
+                    <TextView
+                        android:id="@+id/tvTrackArtist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Artista"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=" • "
+                        android:textColor="@color/border_light"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/tvTrackAlbum"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Álbum"
+                        android:textColor="@color/text_muted"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Clickables) -->
+                <LinearLayout
+                    android:id="@+id/layoutAdjacentPreviews"
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal"
+                    android:background="@drawable/bg_search"
+                    android:gravity="center_vertical"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
+
+                    <!-- Tarjeta Anterior -->
+                    <LinearLayout
+                        android:id="@+id/layoutPrevCard"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center_vertical|start"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⏮ ANTERIOR"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvPrevTrackPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:singleLine="true"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:text="Cargando..."
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Divisor -->
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginEnd="6dp"
+                        android:background="@color/border_panel" />
+
+                    <!-- Tarjeta Siguiente -->
+                    <LinearLayout
+                        android:id="@+id/layoutNextCard"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center_vertical|end"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SIGUIENTE ⏭"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvNextTrackPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:singleLine="true"
+                            android:ellipsize="marquee"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:text="Cargando..."
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Barra de Progreso y Tiempos -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="vertical">
+
+                    <SeekBar
+                        android:id="@+id/seekTrackProgress"
+                        android:layout_width="match_parent"
+                        android:layout_height="22dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressDrawable="@drawable/seekbar_progress"
+                        android:thumb="@drawable/seekbar_thumb" />
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp">
+
+                        <TextView
+                            android:id="@+id/tvTimeCurrent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:text="00:00"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvTimeTotal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:text="00:00"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </RelativeLayout>
+                </LinearLayout>
+
+                <!-- Controles de Transporte (Botones táctiles grandes) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp">
+
+                    <!-- Aleatorio -->
+                    <ImageButton
+                        android:id="@+id/btnShuffle"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_menu_rotate"
+                        android:contentDescription="Aleatorio" />
+
+                    <!-- Pista Anterior -->
+                    <ImageButton
+                        android:id="@+id/btnPrev"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_marginStart="14dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_media_previous"
+                        android:contentDescription="Anterior" />
+
+                    <!-- Play / Pause Central Grande (70dp) -->
+                    <ImageButton
+                        android:id="@+id/btnPlayPause"
+                        android:layout_width="70dp"
+                        android:layout_height="70dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:background="@drawable/bg_btn_circle"
+                        android:src="@android:drawable/ic_media_play"
+                        android:contentDescription="Play/Pause" />
+
+                    <!-- Siguiente Pista -->
+                    <ImageButton
+                        android:id="@+id/btnNext"
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_marginEnd="14dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_media_next"
+                        android:contentDescription="Siguiente" />
+
+                    <!-- Repetir -->
+                    <ImageButton
+                        android:id="@+id/btnRepeat"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_menu_revert"
+                        android:contentDescription="Repetir" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ======================================================== -->
+        <!-- COLUMNA 3: EXPLORADOR DE ARCHIVOS Y LISTAS (Derecha)     -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:id="@+id/layoutExplorerPanel"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.2"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel_card"
+                android:padding="8dp">
+
+                <!-- Pestañas de Navegación -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/tabFolders"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_tab_selected"
+                        android:text="📁 Carpetas USB"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/tabTracks"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_tab_unselected"
+                        android:text="🎵 Pistas (0)"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+
+                    <Button
+                        android:id="@+id/tabFavorites"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_tab_unselected"
+                        android:text="⭐ Favoritos"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Barra de Búsqueda con Botón X de Borrar -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_search"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔍"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="15sp" />
+
+                    <EditText
+                        android:id="@+id/etSearch"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:background="@null"
+                        android:hint="Buscar canción, artista o carpeta..."
+                        android:textColorHint="@color/text_muted"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:singleLine="true"
+                        android:imeOptions="actionDone" />
+
+                    <!-- Botón X para borrar búsqueda y cerrar teclado -->
+                    <ImageButton
+                        android:id="@+id/btnSearchClear"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:visibility="gone"
+                        android:tint="@color/text_secondary"
+                        android:contentDescription="Borrar búsqueda" />
+                </LinearLayout>
+
+                <!-- Ruta actual / Migas de pan -->
+                <TextView
+                    android:id="@+id/tvCurrentPath"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:singleLine="true"
+                    android:ellipsize="middle"
+                    android:text="📂 Carpetas USB"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="14sp" />
+
+                <!-- Lista de Elementos (Canciones o Carpetas) -->
+                <ListView
+                    android:id="@+id/listViewContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:divider="@color/border_panel"
+                    android:dividerHeight="1dp"
+                    android:descendantFocusability="blocksDescendants"
+                    android:cacheColorHint="#00000000" />
+
+                <!-- Pie de Estado de Almacenamiento y Botón Reproducir Todo -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/tvStorageStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:singleLine="true"
+                        android:text="Escaneando pendrives USB..."
+                        android:textColor="@color/text_muted"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btnPlayAll"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:text="▶ Reproducir Todo"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
