@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackTitle.textContent = track.title;
     trackArtist.textContent = track.artist;
     trackAlbum.textContent = track.album || track.folder;
-    formatBadge.textContent = track.format || "MP3";
+    formatBadge.textContent = (track.format && track.format.includes('K')) ? track.format : `${track.format || 'MP3'} 320K`;
     totalDurationEl.textContent = track.duration;
     currentTimeEl.textContent = "00:00";
     progressCurrent.style.width = "0%";
@@ -1285,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
           path: "/storage/udisk1/",
           duration: "--:--",
           durationSec: 180,
-          format: file.name.split('.').pop().toUpperCase(),
+          format: `${file.name.split('.').pop().toUpperCase()} 320K`,
           favorite: false,
           audioUrl: URL.createObjectURL(file)
         };

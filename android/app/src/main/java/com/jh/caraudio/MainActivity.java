@@ -1088,8 +1088,8 @@ public class MainActivity extends Activity {
             tvTimeCurrent.setText("00:00");
             seekTrackProgress.setProgress(0);
 
-            // Cargar carátula del archivo si está disponible
-            loadAlbumArt(track.getFilePath());
+            // Cargar carátula del archivo y bitrate exacto
+            loadAlbumArt(track);
 
             // Previsualización de canción anterior y siguiente de la carpeta activa
             updatePreviews();
@@ -1151,7 +1151,7 @@ public class MainActivity extends Activity {
             tvTimeCurrent.setText("00:00");
             seekTrackProgress.setProgress(0);
 
-            loadAlbumArt(track.getFilePath());
+            loadAlbumArt(track);
             updatePreviews();
 
         } catch (Exception e) {
@@ -1207,9 +1207,12 @@ public class MainActivity extends Activity {
         tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
     }
 
-    private void loadAlbumArt(String filePath) {
+    private void loadAlbumArt(Track track) {
+        if (track == null) return;
+        final String filePath = track.getFilePath();
         scanExecutor.execute(() -> {
             Bitmap art = null;
+            String exactFormat = null;
             try {
                 MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                 mmr.setDataSource(filePath);
@@ -1217,10 +1220,24 @@ public class MainActivity extends Activity {
                 if (raw != null) {
                     art = BitmapFactory.decodeByteArray(raw, 0, raw.length);
                 }
+                String bitrateStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+                if (bitrateStr != null && !bitrateStr.isEmpty()) {
+                    try {
+                        int bitrate = Integer.parseInt(bitrateStr);
+                        if (bitrate > 0) {
+                            int kbps = Math.round(bitrate / 1000f);
+                            if (kbps > 0) {
+                                String ext = getExtension(filePath);
+                                exactFormat = ext + " " + kbps + "K";
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
                 mmr.release();
             } catch (Exception ignored) {}
 
             final Bitmap finalArt = art;
+            final String finalFormat = exactFormat;
             handler.post(() -> {
                 if (finalArt != null) {
                     ivAlbumArt.setVisibility(View.VISIBLE);
@@ -1228,8 +1245,24 @@ public class MainActivity extends Activity {
                 } else {
                     ivAlbumArt.setVisibility(View.GONE);
                 }
+                if (finalFormat != null) {
+                    track.setFormat(finalFormat);
+                    List<Track> queue = getQueue();
+                    if (currentTrackIndex >= 0 && currentTrackIndex < queue.size()) {
+                        if (filePath.equals(queue.get(currentTrackIndex).getFilePath())) {
+                            tvFormatBadge.setText(finalFormat);
+                        }
+                    }
+                }
             });
         });
+    }
+
+    private void loadAlbumArt(String filePath) {
+        if (filePath != null) {
+            Track t = new Track(filePath, "", "", "", "", "", "MP3 320K", 0, "");
+            loadAlbumArt(t);
+        }
     }
 
     private void setupProgressUpdater() {
@@ -1359,7 +1392,8 @@ public class MainActivity extends Activity {
                                 String usbTag = path.contains("udisk2") ? "USB 2" :
                                         (path.contains("udisk1") ? "USB 1" : "INTERNA");
 
-                                foundTracks.add(new Track(path, title, artist, album, folder, f.getParent(), getExtension(f.getName()), durSec, usbTag));
+                                String format = buildFormatBadge(f.getName(), f.length(), durSec);
+                                foundTracks.add(new Track(path, title, artist, album, folder, f.getParent(), format, durSec, usbTag));
                             }
                         }
                     }
@@ -1428,6 +1462,7 @@ public class MainActivity extends Activity {
                     tvTrackAlbum.setText(first.getAlbum());
                     tvFormatBadge.setText(first.getFormat());
                     tvTimeTotal.setText(first.getFormattedDuration());
+                    loadAlbumArt(first);
                     updatePreviews();
                 }
             });
@@ -1463,7 +1498,8 @@ public class MainActivity extends Activity {
                         }
 
                         String folder = file.getParentFile() != null ? file.getParentFile().getName() : "USB";
-                        tracks.add(new Track(path, title, artist, folder, folder, file.getParent(), getExtension(file.getName()), 210, usbTag));
+                        String format = buildFormatBadge(file.getName(), file.length(), 210);
+                        tracks.add(new Track(path, title, artist, folder, folder, file.getParent(), format, 210, usbTag));
                     }
                 }
             }
@@ -1473,6 +1509,37 @@ public class MainActivity extends Activity {
     private String getExtension(String fileName) {
         int dot = fileName.lastIndexOf('.');
         return (dot > 0) ? fileName.substring(dot + 1).toUpperCase() : "MP3";
+    }
+
+    private String buildFormatBadge(String fileName, long fileSize, int durSec) {
+        String ext = getExtension(fileName);
+        int kbps = 320; // Calidad estándar de referencia
+
+        if (durSec > 0 && fileSize > 0) {
+            int calculated = (int) ((fileSize * 8L) / (durSec * 1000L));
+            if (calculated >= 32 && calculated <= 3000) {
+                if (ext.equalsIgnoreCase("MP3")) {
+                    if (calculated >= 285) kbps = 320;
+                    else if (calculated >= 225) kbps = 256;
+                    else if (calculated >= 175) kbps = 192;
+                    else if (calculated >= 145) kbps = 160;
+                    else if (calculated >= 115) kbps = 128;
+                    else if (calculated >= 80) kbps = 96;
+                    else kbps = calculated;
+                } else if (ext.equalsIgnoreCase("FLAC") || ext.equalsIgnoreCase("WAV")) {
+                    kbps = (calculated > 500) ? calculated : 1411;
+                } else {
+                    kbps = calculated;
+                }
+            }
+        } else {
+            if (ext.equalsIgnoreCase("FLAC") || ext.equalsIgnoreCase("WAV")) {
+                kbps = 1411;
+            } else if (ext.equalsIgnoreCase("M4A") || ext.equalsIgnoreCase("AAC")) {
+                kbps = 256;
+            }
+        }
+        return ext + " " + kbps + "K";
     }
 
     // ==========================================

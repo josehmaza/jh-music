@@ -37,6 +37,7 @@ public class Track {
     public String getPath() { return path; }
     public String getFilePath() { return filePath; }
     public String getFormat() { return format; }
+    public void setFormat(String format) { this.format = format; }
     public int getDurationSec() { return durationSec; }
     public void setDurationSec(int durationSec) { this.durationSec = durationSec; }
     public String getUsbSource() { return usbSource; }
