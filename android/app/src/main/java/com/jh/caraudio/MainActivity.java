@@ -537,13 +537,18 @@ public class MainActivity extends Activity {
                 final int thisVersion = searchVersion;
 
                 if (q.trim().isEmpty()) {
+                    if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
                     filterSearch("");
                     return;
                 }
 
-                // Esperar a que el usuario termine de teclear (350ms)
+                // Mostrar de inmediato que está buscando para evitar sensación de congelamiento
+                if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.VISIBLE);
+                tvCurrentPath.setText("⏳ Buscando: \"" + q + "\"...");
+
+                // Esperar a que el usuario termine de teclear (250ms)
                 searchRunnable = () -> performAsyncSearch(q, thisVersion);
-                searchDebounceHandler.postDelayed(searchRunnable, 350);
+                searchDebounceHandler.postDelayed(searchRunnable, 250);
             }
 
             @Override

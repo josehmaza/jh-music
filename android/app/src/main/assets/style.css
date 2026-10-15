@@ -1062,6 +1062,31 @@ body {
   color: var(--text-muted);
 }
 
+.search-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+.search-spinner.hidden {
+  display: none !important;
+}
+
+.spinner-svg {
+  width: 20px;
+  height: 20px;
+  animation: spinSearch 0.75s linear infinite;
+}
+
+@keyframes spinSearch {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .btn-clear {
   background: #1e2430;
   border: 1px solid var(--border-light);

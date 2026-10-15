@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const songCountEl = document.getElementById('songCount');
   const searchInput = document.getElementById('searchInput');
   const clearSearch = document.getElementById('clearSearch');
+  const searchSpinner = document.getElementById('searchSpinner');
   const crumbRoot = document.getElementById('crumbRoot');
   const crumbFolder = document.getElementById('crumbFolder');
   const btnPlayAll = document.getElementById('btnPlayAll');
@@ -1312,19 +1313,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Búsqueda en vivo inteligente
+  let searchTimer = null;
   searchInput.addEventListener('input', () => {
-    if (searchInput.value.trim().length > 0) {
+    const val = searchInput.value.trim();
+    if (val.length > 0) {
       clearSearch.classList.remove('hidden');
+      if (searchSpinner) searchSpinner.classList.remove('hidden');
+      crumbFolder.innerHTML = `⏳ Buscando: "<strong>${escapeHtml(val)}</strong>"...`;
     } else {
       clearSearch.classList.add('hidden');
+      if (searchSpinner) searchSpinner.classList.add('hidden');
     }
-    renderList();
+
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      renderList();
+      if (searchSpinner) searchSpinner.classList.add('hidden');
+    }, 120);
   });
 
   // Botón X para borrar búsqueda y ocultar teclado
   clearSearch.addEventListener('click', () => {
+    if (searchTimer) clearTimeout(searchTimer);
     searchInput.value = '';
     clearSearch.classList.add('hidden');
+    if (searchSpinner) searchSpinner.classList.add('hidden');
     searchInput.blur();
     renderList();
   });
