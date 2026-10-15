@@ -1157,12 +1157,23 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
 
-        // 2. Click en el texto: SOLO MOSTRAR TEXTO COMPLETO (Sin reproducir)
+        // 2. Click en el texto:
+        // 1 toque: Mostrar/ocultar nombre completo
+        // 2 toques: Reproducir la canción de inmediato
         const infoEl = itemEl.querySelector('.item-info');
-        infoEl.setAttribute('title', 'Tocar para ver nombre completo');
+        infoEl.setAttribute('title', '1 toque: ver nombre completo • 2 toques: reproducir');
+        let lastInfoClickTime = 0;
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
+          const now = Date.now();
+          if (now - lastInfoClickTime < 450) {
+            // Doble toque: REPRODUCIR LA CANCIÓN
+            lastInfoClickTime = 0;
+            playBtn.click();
+            return;
+          }
+          lastInfoClickTime = now;
           const wasExpanded = itemEl.classList.contains('is-expanded');
           // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
           trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
@@ -1321,12 +1332,23 @@ document.addEventListener('DOMContentLoaded', () => {
           loadTrack(realIdx >= 0 ? realIdx : idx, true);
         });
 
-        // 2. Click en el texto: SOLO MOSTRAR TEXTO COMPLETO (Sin reproducir)
+        // 2. Click en el texto:
+        // 1 toque: Mostrar/ocultar nombre completo
+        // 2 toques: Reproducir la canción de inmediato
         const infoEl = itemEl.querySelector('.item-info');
-        infoEl.setAttribute('title', 'Tocar para ver nombre completo');
+        infoEl.setAttribute('title', '1 toque: ver nombre completo • 2 toques: reproducir');
+        let lastInfoClickTime = 0;
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
+          const now = Date.now();
+          if (now - lastInfoClickTime < 450) {
+            // Doble toque: REPRODUCIR LA CANCIÓN
+            lastInfoClickTime = 0;
+            playBtn.click();
+            return;
+          }
+          lastInfoClickTime = now;
           const wasExpanded = itemEl.classList.contains('is-expanded');
           // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
           trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {

@@ -26,6 +26,9 @@ public class TrackAdapter extends BaseAdapter {
     private List<Track> tracks;
     private int currentPlayingIndex = -1;
     private int selectedMarqueeIndex = -1;
+    private long lastClickTime = 0;
+    private int lastClickPosition = -1;
+    private static final long DOUBLE_CLICK_TIME_DELTA = 450; // ms para detectar doble toque táctil
     private OnTrackClickListener trackClickListener;
     private OnFavoriteClickListener favoriteClickListener;
 
@@ -171,22 +174,40 @@ public class TrackAdapter extends BaseAdapter {
                 }
             });
 
-            // 1. Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO
+            // 1. Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO (1 toque)
             holder.tvIndex.setOnClickListener(v -> {
                 if (trackClickListener != null) {
                     trackClickListener.onTrackClick(track, position);
                 }
             });
 
-            // 2. Click en el resto de la fila/texto: MOSTRAR NOMBRE COMPLETO (Sin reproducir)
-            convertView.setOnClickListener(v -> {
-                if (selectedMarqueeIndex == position) {
-                    selectedMarqueeIndex = -1; // Toggle para contraer
+            // 2. Click en la fila o en el texto:
+            // 1 toque: Muestra el nombre completo (expandir / contraer)
+            // 2 toques: Reproduce la canción
+            View.OnClickListener rowClickListener = v -> {
+                long clickTime = System.currentTimeMillis();
+                if (position == lastClickPosition && (clickTime - lastClickTime) < DOUBLE_CLICK_TIME_DELTA) {
+                    // Doble toque detectado: REPRODUCIR LA CANCIÓN
+                    lastClickTime = 0;
+                    lastClickPosition = -1;
+                    if (trackClickListener != null) {
+                        trackClickListener.onTrackClick(track, position);
+                    }
                 } else {
-                    selectedMarqueeIndex = position; // Expandir para leer todo
+                    // Primer toque (o toques espaciados): Expandir/Colapsar para leer el nombre completo
+                    lastClickTime = clickTime;
+                    lastClickPosition = position;
+                    if (selectedMarqueeIndex == position) {
+                        selectedMarqueeIndex = -1; // Toggle para contraer
+                    } else {
+                        selectedMarqueeIndex = position; // Expandir para leer todo
+                    }
+                    notifyDataSetChanged();
                 }
-                notifyDataSetChanged();
-            });
+            };
+
+            convertView.setOnClickListener(rowClickListener);
+            holder.tvTitle.setOnClickListener(rowClickListener);
         }
 
         return convertView;
