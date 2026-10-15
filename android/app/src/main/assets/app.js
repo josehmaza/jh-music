@@ -907,10 +907,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnNavBack) {
     btnNavBack.addEventListener('click', () => {
       searchInput.blur();
-      // 1. Si hay texto en el buscador, borrarlo y salir de búsqueda
+      // 1. Si hay texto en el buscador, borrarlo y volver a la carpeta seteada
       if (searchInput.value.trim().length > 0) {
         searchInput.value = '';
         clearSearch.classList.add('hidden');
+        if (currentFolder) {
+          currentSearchFilter = 'folder';
+        }
+        updateFilterChipsUI();
         renderList();
         return;
       }
@@ -1122,12 +1126,39 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           searchInput.blur();
           
-          let realIdx = currentPlaylist.findIndex(t => t.id === track.id);
-          if (realIdx === -1) {
-            currentPlaylist = [...allPool];
-            realIdx = currentPlaylist.findIndex(t => t.id === track.id);
+          // 1. Setear la carpeta actual a la carpeta de la canción seleccionada
+          currentFolder = track.folder;
+
+          // 2. Cargar en currentPlaylist todas las canciones de esa carpeta
+          const folderTracks = allPool.filter(t => t.folder === track.folder && (track.usbSource ? t.usbSource === track.usbSource : true));
+          currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+
+          // 3. Índice de la pista en esa carpeta
+          const realFolderIdx = currentPlaylist.findIndex(t => t.id === track.id);
+
+          // 4. Actualizar el chip de carpeta para que muestre el nuevo nombre
+          if (chipFilterFolder) {
+            chipFilterFolder.textContent = `📁 ${currentFolder.length > 15 ? currentFolder.slice(0, 13) + '…' : currentFolder}`;
+            chipFilterFolder.classList.remove('hidden');
           }
-          loadTrack(realIdx >= 0 ? realIdx : 0, true);
+
+          // 5. Reproducir la canción (actualiza reproductor izquierdo, metadata y previews)
+          loadTrack(realFolderIdx >= 0 ? realFolderIdx : 0, true);
+
+          // 6. La lista de búsqueda NO se oculta, sigue mostrando los resultados
+          // Marcamos visualmente esta canción como la que está sonando
+          trackListContainer.querySelectorAll('.list-item').forEach(el => el.classList.remove('is-playing'));
+          itemEl.classList.add('is-playing');
+          const iconWrap = itemEl.querySelector('.item-icon-wrap');
+          if (iconWrap) {
+            iconWrap.innerHTML = `
+              <div class="sound-wave-bars" style="height:14px; gap:2px;">
+                <span style="height:12px;background:#0c0e12"></span>
+                <span style="height:8px;background:#0c0e12"></span>
+                <span style="height:14px;background:#0c0e12"></span>
+              </div>
+            `;
+          }
         });
 
         // 2. Click en el texto: SOLO MOSTRAR TEXTO COMPLETO (Sin reproducir)
@@ -1337,6 +1368,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       clearSearch.classList.add('hidden');
       if (searchSpinner) searchSpinner.classList.add('hidden');
+      if (currentFolder) {
+        currentSearchFilter = 'folder';
+      }
+      updateFilterChipsUI();
+      renderList();
+      return;
     }
 
     if (searchTimer) clearTimeout(searchTimer);
@@ -1353,6 +1390,13 @@ document.addEventListener('DOMContentLoaded', () => {
     clearSearch.classList.add('hidden');
     if (searchSpinner) searchSpinner.classList.add('hidden');
     searchInput.blur();
+    // Al limpiar la búsqueda, mostrar las canciones de la carpeta que fue seteada al darle play
+    if (currentFolder) {
+      currentSearchFilter = 'folder';
+    } else {
+      currentSearchFilter = 'all';
+    }
+    updateFilterChipsUI();
     renderList();
   });
 

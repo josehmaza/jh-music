@@ -293,10 +293,16 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         hideKeyboard();
 
-        // 1. Si hay texto en el buscador, borrar búsqueda y restaurar vista
+        // 1. Si hay texto en el buscador, borrar búsqueda y restaurar vista en la carpeta que está sonando
         if (etSearch != null && etSearch.getText().length() > 0) {
             etSearch.setText("");
             if (btnSearchClear != null) btnSearchClear.setVisibility(View.GONE);
+            if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+            if (currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+                currentSearchFilter = FILTER_FOLDER;
+                updateFilterChipsVisibility();
+                updateFilterChipsUI();
+            }
             filterSearch("");
             return;
         }
@@ -538,6 +544,11 @@ public class MainActivity extends Activity {
 
                 if (q.trim().isEmpty()) {
                     if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+                    if (currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+                        currentSearchFilter = FILTER_FOLDER;
+                        updateFilterChipsVisibility();
+                updateFilterChipsUI();
+                    }
                     filterSearch("");
                     return;
                 }
@@ -564,6 +575,12 @@ public class MainActivity extends Activity {
             btnSearchClear.setVisibility(View.GONE);
             if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
             hideKeyboard();
+            // Al limpiar la búsqueda, mostrar las canciones de la carpeta seteada al darle play
+            if (currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+                currentSearchFilter = FILTER_FOLDER;
+                updateFilterChipsVisibility();
+                updateFilterChipsUI();
+            }
             filterSearch("");
         });
 
