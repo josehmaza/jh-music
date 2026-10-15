@@ -583,6 +583,88 @@
                         android:textSize="14sp" />
                 </LinearLayout>
 
+                <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) -->
+                <HorizontalScrollView
+                    android:id="@+id/scrollSearchFilters"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
+
+                    <LinearLayout
+                        android:id="@+id/layoutSearchFilters"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <!-- Filtro Esta Carpeta (Activo por defecto en pestaña Pistas) -->
+                        <TextView
+                            android:id="@+id/btnFilterFolder"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:background="@drawable/bg_chip_selected"
+                            android:text="📁 Esta Carpeta"
+                            android:textColor="#0d0f14"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro Todo -->
+                        <TextView
+                            android:id="@+id/btnFilterAll"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:text="🌐 TODO"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro USB 1 -->
+                        <TextView
+                            android:id="@+id/btnFilterUsb1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:text="💾 USB 1"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro USB 2 -->
+                        <TextView
+                            android:id="@+id/btnFilterUsb2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:text="💾 USB 2"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
                 <!-- Barra de Búsqueda con Botón X de Borrar -->
                 <LinearLayout
                     android:layout_width="match_parent"
