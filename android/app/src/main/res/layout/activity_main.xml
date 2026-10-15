@@ -198,94 +198,121 @@
                 android:gravity="center_horizontal">
 
                 <!-- Barra superior interna del reproductor -->
+                <!-- Barra superior y Carátula con Zona Táctil Ampliada para el Conductor -->
                 <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="32dp">
+                    android:layout_height="wrap_content">
 
                     <!-- Estado Dinámico: EN PAUSA / REPRODUCIENDO -->
                     <TextView
                         android:id="@+id/tvPlaybackStatus"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="36dp"
+                        android:gravity="center_vertical"
                         android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
+                        android:layout_alignParentTop="true"
                         android:text="● EN PAUSA"
                         android:textColor="@color/amber_accent"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Botón Alternar Buscador / Explorador de Música -->
-                    <ImageButton
-                        android:id="@+id/btnToggleExplorer"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_menu_search"
-                        android:tint="@color/accent_cyan"
-                        android:contentDescription="Mostrar u Ocultar Explorador" />
-                </RelativeLayout>
+                    <!-- Carátula / Vinyl Card centrada con Badge de Formato y Ecualizador Animado -->
+                    <FrameLayout
+                        android:id="@+id/layoutAlbumArtCard"
+                        android:layout_width="150dp"
+                        android:layout_height="150dp"
+                        android:layout_below="@id/tvPlaybackStatus"
+                        android:layout_centerHorizontal="true"
+                        android:layout_marginTop="2dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?android:attr/selectableItemBackground"
+                        android:background="@drawable/bg_album_card">
 
-                <!-- Carátula / Vinyl Card con Badge de Formato y Ecualizador Animado -->
-                <FrameLayout
-                    android:id="@+id/layoutAlbumArtCard"
-                    android:layout_width="150dp"
-                    android:layout_height="150dp"
-                    android:layout_marginTop="2dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
-                    android:background="@drawable/bg_album_card">
-
-                    <!-- Portada Real si existe en el archivo de audio -->
-                    <ImageView
-                        android:id="@+id/ivAlbumArt"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerCrop"
-                        android:visibility="gone" />
-
-                    <!-- Contenedor Placeholder: Vinilo concéntrico + Ecualizador animado -->
-                    <LinearLayout
-                        android:id="@+id/layoutAlbumPlaceholder"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical"
-                        android:gravity="center"
-                        android:paddingTop="8dp">
-
-                        <!-- Disco de Vinilo (3 círculos concéntricos) -->
+                        <!-- Portada Real si existe en el archivo de audio -->
                         <ImageView
-                            android:layout_width="68dp"
-                            android:layout_height="68dp"
-                            android:src="@drawable/ic_vinyl_disc" />
+                            android:id="@+id/ivAlbumArt"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone" />
 
-                        <!-- Barras de ecualizador animadas estilo web (5 barras cyan) -->
-                        <com.jh.caraudio.SoundWaveBarsView
-                            android:id="@+id/soundWaveBars"
-                            android:layout_width="60dp"
-                            android:layout_height="20dp"
-                            android:layout_marginTop="6dp" />
-                    </LinearLayout>
+                        <!-- Contenedor Placeholder: Vinilo concéntrico + Ecualizador animado -->
+                        <LinearLayout
+                            android:id="@+id/layoutAlbumPlaceholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingTop="8dp">
 
-                    <!-- Badge de Formato / Calidad MP3 320K -->
-                    <TextView
-                        android:id="@+id/tvFormatBadge"
+                            <!-- Disco de Vinilo (3 círculos concéntricos) -->
+                            <ImageView
+                                android:layout_width="68dp"
+                                android:layout_height="68dp"
+                                android:src="@drawable/ic_vinyl_disc" />
+
+                            <!-- Barras de ecualizador animadas estilo web (5 barras cyan) -->
+                            <com.jh.caraudio.SoundWaveBarsView
+                                android:id="@+id/soundWaveBars"
+                                android:layout_width="60dp"
+                                android:layout_height="20dp"
+                                android:layout_marginTop="6dp" />
+                        </LinearLayout>
+
+                        <!-- Badge de Formato / Calidad MP3 320K -->
+                        <TextView
+                            android:id="@+id/tvFormatBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="8dp"
+                            android:background="@drawable/bg_pill"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:paddingTop="3dp"
+                            android:paddingBottom="3dp"
+                            android:text="MP3 320K"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <!-- Zona Táctil Ergonómica (Área libre marcada en cuadro rojo + botón de búsqueda) -->
+                    <!-- Permite tocar o deslizar a la derecha para cerrar/abrir el explorador fácilmente al manejar -->
+                    <LinearLayout
+                        android:id="@+id/layoutExplorerToggleZone"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="top|end"
-                        android:layout_margin="8dp"
-                        android:background="@drawable/bg_pill"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingBottom="3dp"
-                        android:text="MP3 320K"
-                        android:textColor="@color/accent_cyan"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-                </FrameLayout>
+                        android:layout_alignParentTop="true"
+                        android:layout_alignParentEnd="true"
+                        android:layout_toEndOf="@id/layoutAlbumArtCard"
+                        android:layout_alignBottom="@id/layoutAlbumArtCard"
+                        android:minWidth="64dp"
+                        android:orientation="vertical"
+                        android:gravity="top|end"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:contentDescription="Alternar Explorador de Música">
+
+                        <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
+                        <ImageButton
+                            android:id="@+id/btnToggleExplorer"
+                            android:layout_width="54dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_btn_action"
+                            android:src="@android:drawable/ic_menu_search"
+                            android:tint="@color/accent_cyan"
+                            android:padding="8dp"
+                            android:contentDescription="Mostrar u Ocultar Explorador" />
+
+                        <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+                    </LinearLayout>
+                </RelativeLayout>
 
                 <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA -->
                 <TextView

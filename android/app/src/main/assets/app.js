@@ -658,6 +658,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Gestos táctiles de deslizamiento (Swipe) para ocultar / mostrar explorador
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const screenWidth = window.innerWidth;
+
+      // Deslizar hacia la derecha (Swipe Right 👉): Ocultar explorador
+      if (dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && touchStartX > screenWidth * 0.35) {
+        if (!isPlayerExpanded && dashboardGrid && btnToggleExpand) {
+          isPlayerExpanded = true;
+          dashboardGrid.classList.add('is-expanded');
+          btnToggleExpand.classList.remove('is-active');
+          btnToggleExpand.title = "Abrir buscador de archivos y pistas";
+          setTimeout(refreshAllMarquees, 320);
+        }
+      }
+      // Deslizar hacia la izquierda (Swipe Left 👈): Mostrar explorador
+      else if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.2 && touchStartX > screenWidth * 0.55) {
+        if (isPlayerExpanded && dashboardGrid && btnToggleExpand) {
+          isPlayerExpanded = false;
+          dashboardGrid.classList.remove('is-expanded');
+          btnToggleExpand.classList.add('is-active');
+          btnToggleExpand.title = "Ocultar buscador (reproductor a pantalla completa)";
+          setTimeout(refreshAllMarquees, 320);
+        }
+      }
+    }
+  }, { passive: true });
+
   window.addEventListener('resize', () => {
     refreshAllMarquees();
   });

@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
     // Reproductor Central
     private TextView tvPlaybackStatus;
     private ImageButton btnToggleExplorer;
+    private View layoutExplorerToggleZone;
     private View layoutAlbumArtCard;
     private ImageView ivAlbumArt;
     private SoundWaveBarsView soundWaveBars;
@@ -83,6 +84,13 @@ public class MainActivity extends Activity {
     private TextView tvTrackTitle, tvTrackArtist, tvTrackAlbum;
     private View layoutPrevCard, layoutNextCard;
     private TextView tvPrevTrackPreview, tvNextTrackPreview;
+
+    // Gestos globales del conductor para mostrar / ocultar explorador
+    private float globalTouchStartX = 0f;
+    private float globalTouchStartY = 0f;
+    private long globalTouchStartTime = 0;
+    private boolean globalTouchOnSeekbar = false;
+    private boolean globalGestureHandled = false;
     private SeekBar seekTrackProgress;
     private TextView tvTimeCurrent, tvTimeTotal;
     private ImageButton btnShuffle, btnPrev, btnPlayPause, btnNext, btnRepeat;
@@ -192,6 +200,7 @@ public class MainActivity extends Activity {
         // Reproductor central
         tvPlaybackStatus = findViewById(R.id.tvPlaybackStatus);
         btnToggleExplorer = findViewById(R.id.btnToggleExplorer);
+        layoutExplorerToggleZone = findViewById(R.id.layoutExplorerToggleZone);
         layoutAlbumArtCard = findViewById(R.id.layoutAlbumArtCard);
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
         soundWaveBars = findViewById(R.id.soundWaveBars);
@@ -281,14 +290,91 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-            View v = getCurrentFocus();
-            if (v instanceof EditText) {
-                Rect outRect = new Rect();
-                v.getGlobalVisibleRect(outRect);
-                if (!outRect.contains((int) ev.getRawX(), (int) ev.getRawY())) {
-                    hideKeyboard();
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN: {
+                globalTouchStartX = ev.getRawX();
+                globalTouchStartY = ev.getRawY();
+                globalTouchStartTime = System.currentTimeMillis();
+                globalGestureHandled = false;
+                globalTouchOnSeekbar = false;
+
+                // Ocultar teclado táctil si se toca fuera de EditText
+                View v = getCurrentFocus();
+                if (v instanceof EditText) {
+                    Rect outRect = new Rect();
+                    v.getGlobalVisibleRect(outRect);
+                    if (!outRect.contains((int) ev.getRawX(), (int) ev.getRawY())) {
+                        hideKeyboard();
+                    }
                 }
+
+                // Proteger deslizadores (seekbar y volumen) de gestos de panel
+                if (seekTrackProgress != null) {
+                    Rect seekRect = new Rect();
+                    if (seekTrackProgress.getGlobalVisibleRect(seekRect)) {
+                        seekRect.inset(0, -25);
+                        if (seekRect.contains((int) globalTouchStartX, (int) globalTouchStartY)) {
+                            globalTouchOnSeekbar = true;
+                        }
+                    }
+                }
+                if (seekVolume != null) {
+                    Rect volRect = new Rect();
+                    if (seekVolume.getGlobalVisibleRect(volRect)) {
+                        volRect.inset(-20, -20);
+                        if (volRect.contains((int) globalTouchStartX, (int) globalTouchStartY)) {
+                            globalTouchOnSeekbar = true;
+                        }
+                    }
+                }
+                break;
+            }
+
+            case MotionEvent.ACTION_MOVE: {
+                if (!globalGestureHandled && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
+                    float dx = ev.getRawX() - globalTouchStartX;
+                    float dy = ev.getRawY() - globalTouchStartY;
+                    int screenWidth = getResources().getDisplayMetrics().widthPixels;
+
+                    // 1. Si el explorador está OCULTO: Jalar de derecha a izquierda (<-) muestra el explorador
+                    if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
+                        if (globalTouchStartX > screenWidth * 0.55f && dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                            globalGestureHandled = true;
+                            layoutExplorerPanel.setVisibility(View.VISIBLE);
+                        }
+                    }
+                    // 2. Si el explorador está VISIBLE: Deslizar hacia la derecha (->) cierra el explorador
+                    else {
+                        if (globalTouchStartX > screenWidth * 0.38f && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.6f) {
+                            globalGestureHandled = true;
+                            hideKeyboard();
+                            layoutExplorerPanel.setVisibility(View.GONE);
+                        }
+                    }
+                }
+                break;
+            }
+
+            case MotionEvent.ACTION_UP: {
+                if (!globalGestureHandled && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
+                    float dx = ev.getRawX() - globalTouchStartX;
+                    float dy = ev.getRawY() - globalTouchStartY;
+                    int screenWidth = getResources().getDisplayMetrics().widthPixels;
+
+                    if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
+                        if (globalTouchStartX > screenWidth * 0.55f && dx < -50 && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                            globalGestureHandled = true;
+                            layoutExplorerPanel.setVisibility(View.VISIBLE);
+                        }
+                    } else {
+                        if (globalTouchStartX > screenWidth * 0.38f && dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                            globalGestureHandled = true;
+                            hideKeyboard();
+                            layoutExplorerPanel.setVisibility(View.GONE);
+                        }
+                    }
+                }
+                break;
             }
         }
         return super.dispatchTouchEvent(ev);
@@ -425,17 +511,8 @@ public class MainActivity extends Activity {
         if (layoutPrevCard != null) layoutPrevCard.setOnClickListener(v -> playPreviousTrack());
         if (layoutNextCard != null) layoutNextCard.setOnClickListener(v -> playNextTrack());
 
-        // Botón alternar explorador de música (mostrar u ocultar panel derecho)
-        if (btnToggleExplorer != null) {
-            btnToggleExplorer.setOnClickListener(v -> {
-                hideKeyboard();
-                if (layoutExplorerPanel.getVisibility() == View.VISIBLE) {
-                    layoutExplorerPanel.setVisibility(View.GONE);
-                } else {
-                    layoutExplorerPanel.setVisibility(View.VISIBLE);
-                }
-            });
-        }
+        // Botón y Zona Táctil Ergonómica para alternar o deslizar el explorador de música
+        setupExplorerToggleGestures();
 
         btnShuffle.setOnClickListener(v -> {
             isShuffle = !isShuffle;
@@ -494,6 +571,90 @@ public class MainActivity extends Activity {
         }
         // Activar marquesina en el título
         tvTrackTitle.setSelected(isPlaying);
+    }
+
+    // ==========================================
+    // GESTOS ERGONÓMICOS DEL EXPLORADOR PARA EL CONDUCTOR
+    // Botón ampliado y zona libre derecha (cuadro rojo) para tocar y deslizar
+    // ==========================================
+    private void setupExplorerToggleGestures() {
+        View.OnTouchListener toggleTouchListener = new View.OnTouchListener() {
+            private float downX, downY;
+            private long downTime;
+            private boolean swiped = false;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getRawX();
+                        downY = event.getRawY();
+                        downTime = System.currentTimeMillis();
+                        swiped = false;
+                        v.setPressed(true);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float dx = event.getRawX() - downX;
+                        float dy = event.getRawY() - downY;
+                        // Deslizar desde el área libre hacia la derecha -> cierra el explorador
+                        if (!swiped && dx > 35 && Math.abs(dx) > Math.abs(dy)) {
+                            swiped = true;
+                            v.setPressed(false);
+                            hideKeyboard();
+                            if (layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
+                                layoutExplorerPanel.setVisibility(View.GONE);
+                            }
+                            return true;
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setPressed(false);
+                        float totalDx = event.getRawX() - downX;
+                        float totalDy = event.getRawY() - downY;
+                        long duration = System.currentTimeMillis() - downTime;
+                        if (!swiped) {
+                            if (totalDx > 35 && Math.abs(totalDx) > Math.abs(totalDy)) {
+                                hideKeyboard();
+                                if (layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
+                                    layoutExplorerPanel.setVisibility(View.GONE);
+                                }
+                            } else if (duration < 500 && Math.abs(totalDx) < 30 && Math.abs(totalDy) < 30) {
+                                // Toque en la zona libre o botón -> conmuta el explorador
+                                toggleExplorerVisibility();
+                            }
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setPressed(false);
+                        break;
+                }
+                return false;
+            }
+        };
+
+        if (btnToggleExplorer != null) {
+            btnToggleExplorer.setOnClickListener(v -> toggleExplorerVisibility());
+            btnToggleExplorer.setOnTouchListener(toggleTouchListener);
+        }
+
+        if (layoutExplorerToggleZone != null) {
+            layoutExplorerToggleZone.setOnClickListener(v -> toggleExplorerVisibility());
+            layoutExplorerToggleZone.setOnTouchListener(toggleTouchListener);
+        }
+    }
+
+    private void toggleExplorerVisibility() {
+        hideKeyboard();
+        if (layoutExplorerPanel != null) {
+            if (layoutExplorerPanel.getVisibility() == View.VISIBLE) {
+                layoutExplorerPanel.setVisibility(View.GONE);
+            } else {
+                layoutExplorerPanel.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
     // ==========================================
