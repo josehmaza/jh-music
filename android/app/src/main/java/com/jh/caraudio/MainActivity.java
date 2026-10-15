@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
     // Reproductor Central
     private TextView tvPlaybackStatus;
     private ImageButton btnToggleExplorer;
+    private View layoutAlbumArtCard;
     private ImageView ivAlbumArt;
     private SoundWaveBarsView soundWaveBars;
     private TextView tvFormatBadge;
@@ -190,6 +191,7 @@ public class MainActivity extends Activity {
         // Reproductor central
         tvPlaybackStatus = findViewById(R.id.tvPlaybackStatus);
         btnToggleExplorer = findViewById(R.id.btnToggleExplorer);
+        layoutAlbumArtCard = findViewById(R.id.layoutAlbumArtCard);
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
         soundWaveBars = findViewById(R.id.soundWaveBars);
         tvFormatBadge = findViewById(R.id.tvFormatBadge);
@@ -411,6 +413,10 @@ public class MainActivity extends Activity {
     // ==========================================
     private void setupPlayerControls() {
         btnPlayPause.setOnClickListener(v -> togglePlayPause());
+        // Toque en el cuadro grande de carátula: reproduce / pausa de emergencia con 1 toque
+        if (layoutAlbumArtCard != null) {
+            layoutAlbumArtCard.setOnClickListener(v -> togglePlayPause());
+        }
         btnNext.setOnClickListener(v -> playNextTrack());
         btnPrev.setOnClickListener(v -> playPreviousTrack());
 

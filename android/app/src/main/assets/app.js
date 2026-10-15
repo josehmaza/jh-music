@@ -623,6 +623,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // =================== BOTONES DE NAVEGACIÓN Y CONTROL ===================
   btnPlayPause.addEventListener('click', togglePlayPause);
+
+  // Click en el cuadro grande de la carátula: Pausa / Reproduce rápido (fácil toque en conducción)
+  if (albumContainer) {
+    albumContainer.style.cursor = 'pointer';
+    albumContainer.setAttribute('title', 'Tocar para Pausar / Reproducir');
+    albumContainer.addEventListener('click', togglePlayPause);
+  }
+
   btnNext.addEventListener('click', nextTrack);
   btnPrev.addEventListener('click', prevTrack);
 

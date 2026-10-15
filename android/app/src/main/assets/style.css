@@ -567,6 +567,14 @@ body {
   justify-content: center;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle);
   overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.album-art-container:active {
+  transform: scale(0.97);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
 .album-art-img {

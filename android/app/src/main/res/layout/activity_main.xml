@@ -233,6 +233,9 @@
                     android:layout_width="165dp"
                     android:layout_height="165dp"
                     android:layout_marginTop="2dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
                     android:background="@drawable/bg_album_card">
 
                     <!-- Portada Real si existe en el archivo de audio -->
