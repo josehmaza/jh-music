@@ -1136,7 +1136,14 @@ document.addEventListener('DOMContentLoaded', () => {
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
-          itemEl.classList.toggle('is-expanded');
+          const wasExpanded = itemEl.classList.contains('is-expanded');
+          // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
+          trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
+            el.classList.remove('is-expanded');
+          });
+          if (!wasExpanded) {
+            itemEl.classList.add('is-expanded');
+          }
         });
 
         // Click en favorito
@@ -1291,7 +1298,14 @@ document.addEventListener('DOMContentLoaded', () => {
         infoEl.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
-          itemEl.classList.toggle('is-expanded');
+          const wasExpanded = itemEl.classList.contains('is-expanded');
+          // Cerrar cualquier otra pista que esté abierta (solo 1 abierta a la vez)
+          trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => {
+            el.classList.remove('is-expanded');
+          });
+          if (!wasExpanded) {
+            itemEl.classList.add('is-expanded');
+          }
         });
 
         // Click en favorito
