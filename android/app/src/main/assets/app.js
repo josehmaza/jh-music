@@ -401,6 +401,78 @@ function initApp() {
   // Modo Reproductor Expandido / Buscador de Archivos
   const dashboardGrid = document.querySelector('.dashboard-grid');
   const btnToggleExpand = document.getElementById('btnToggleExpand');
+  const btnAutoMix = document.getElementById('btnAutoMix');
+
+  // =================== AUTOMIX (simulado en la maqueta) ===================
+  // Misma regla que la app nativa: mezcla de 5 s, 2 s en mixes de 10 min o más,
+  // sin mezcla en canciones cortas (menos de 3 veces la mezcla) ni con Repetir.
+  const AUTOMIX_SEC = 5;
+  const AUTOMIX_LONG_TRACK_SEC = 600;
+  const AUTOMIX_LONG_TRACK_MIX_SEC = 2;
+  let isAutoMix = false;
+  let isMixing = false;
+  let mixEndTimer = null;
+  try {
+    isAutoMix = localStorage.getItem('jhmusic_automix') === '1';
+  } catch (e) {}
+
+  function updateAutoMixButton() {
+    if (!btnAutoMix) return;
+    btnAutoMix.classList.toggle('is-active', isAutoMix);
+    btnAutoMix.classList.toggle('is-mixing', isMixing);
+    btnAutoMix.title = isAutoMix ? "Automix activado: toca para desactivar" : "Automix: mezcla automática entre canciones";
+  }
+
+  function autoMixSecondsFor(current, next) {
+    if (!current || !next) return 0;
+    let mix = AUTOMIX_SEC;
+    if (current.durationSec >= AUTOMIX_LONG_TRACK_SEC) mix = Math.min(mix, AUTOMIX_LONG_TRACK_MIX_SEC);
+    if (current.durationSec < mix * 3 || next.durationSec < mix * 3) return 0;
+    return mix;
+  }
+
+  /** Siguiente para mezclar: en aleatorio se sortea ahora y nunca es la misma canción. */
+  function pickAutoMixNextIndex() {
+    const n = currentPlaylist.length;
+    if (!isShuffle) return (currentTrackIndex + 1) % n;
+    let index = Math.floor(Math.random() * (n - 1));
+    if (index >= currentTrackIndex) index++;
+    return index;
+  }
+
+  function startAutoMix(nextIndex, mixSec) {
+    // Como en la app: la canción nueva aparece al empezar la mezcla
+    loadTrack(nextIndex, true);
+    isMixing = true;
+    clearTimeout(mixEndTimer);
+    mixEndTimer = setTimeout(() => {
+      isMixing = false;
+      updateAutoMixButton();
+      updatePlayStateUI();
+    }, mixSec * 1000);
+    updateAutoMixButton();
+    updatePlayStateUI();
+  }
+
+  function cancelAutoMix() {
+    if (!isMixing) return;
+    clearTimeout(mixEndTimer);
+    isMixing = false;
+    updateAutoMixButton();
+  }
+
+  if (btnAutoMix) {
+    updateAutoMixButton();
+    btnAutoMix.addEventListener('click', () => {
+      isAutoMix = !isAutoMix;
+      if (!isAutoMix) cancelAutoMix();
+      try {
+        localStorage.setItem('jhmusic_automix', isAutoMix ? '1' : '0');
+      } catch (e) {}
+      updateAutoMixButton();
+      updatePlayStateUI();
+    });
+  }
 
   // Previsualización de Canción Anterior y Posterior
   const adjPrevCard = document.getElementById('adjPrevCard');
@@ -607,6 +679,7 @@ function initApp() {
   }
 
   function pauseAudio() {
+    cancelAutoMix(); // pausa en medio de una mezcla: queda solo la canción nueva
     isPlaying = false;
     clearInterval(nativeTrackerInterval);
     if (window.AndroidBridge && window.AndroidBridge.pauseNativeAudio) {
@@ -635,7 +708,8 @@ function initApp() {
         driverModeBadge.classList.remove('is-paused');
       }
       if (playbackStatusText) {
-        playbackStatusText.textContent = "REPRODUCIENDO";
+        playbackStatusText.textContent = isMixing ? "MEZCLANDO ⇄"
+          : (isAutoMix ? "REPRODUCIENDO · AUTOMIX" : "REPRODUCIENDO");
       }
     } else {
       playIcon.classList.remove('hidden');
@@ -674,6 +748,16 @@ function initApp() {
       const track = currentPlaylist[currentTrackIndex];
       const maxSec = track ? track.durationSec : 240;
 
+      // Automix: al llegar a los últimos segundos, pasar a la siguiente mezclando
+      if (isAutoMix && !isMixing && !isRepeat && currentPlaylist.length > 1) {
+        const next = currentPlaylist[(currentTrackIndex + 1) % currentPlaylist.length];
+        const mixSec = autoMixSecondsFor(track, next);
+        if (mixSec > 0 && maxSec - simCurrentSec <= mixSec) {
+          startAutoMix(pickAutoMixNextIndex(), mixSec);
+          return;
+        }
+      }
+
       if (simCurrentSec >= maxSec) {
         simCurrentSec = 0;
         if (isRepeat) {
@@ -695,6 +779,7 @@ function initApp() {
   }
 
   function nextTrack() {
+    cancelAutoMix();
     if (isShuffle) {
       const rand = Math.floor(Math.random() * currentPlaylist.length);
       loadTrack(rand, true);
@@ -704,6 +789,7 @@ function initApp() {
   }
 
   function prevTrack() {
+    cancelAutoMix();
     if (simCurrentSec > 3) {
       // Si ya avanzó más de 3 segundos, reiniciar la pista
       simCurrentSec = 0;

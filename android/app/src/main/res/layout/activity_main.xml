@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.0.1"
+                android:text="v2.1.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -709,6 +709,18 @@
                             android:tint="@color/accent_cyan"
                             android:padding="8dp"
                             android:contentDescription="Mostrar u Ocultar Explorador" />
+
+                        <!-- Botón Automix: mezcla automática entre canciones (mismo tamaño que la lupa) -->
+                        <ImageButton
+                            android:id="@+id/btnAutoMix"
+                            android:layout_width="54dp"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_btn_action"
+                            android:src="@drawable/ic_automix"
+                            android:padding="11dp"
+                            android:scaleType="fitCenter"
+                            android:contentDescription="Activar o desactivar Automix" />
 
                         <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
                         <View

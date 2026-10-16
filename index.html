@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.0.1</span>
+        <span class="version-badge" id="appVersionBadge">v2.1.0</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -185,16 +185,26 @@
         
         <!-- Barra superior del reproductor con botón de alternar explorador -->
         <div class="player-top-bar">
-          <!-- Botón Buscador / Explorador (Abre/oculta el explorador que está a su izquierda) -->
-          <button class="btn-toggle-expand" id="btnToggleExpand" title="Ocultar / Mostrar explorador de archivos">
-            <svg class="icon-music-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="6" x2="15" y2="6"/>
-              <line x1="3" y1="12" x2="11" y2="12"/>
-              <line x1="3" y1="18" x2="9" y2="18"/>
-              <circle cx="16.5" cy="15.5" r="4.5"/>
-              <line x1="19.8" y1="18.8" x2="22.5" y2="21.5"/>
-            </svg>
-          </button>
+          <div class="player-top-actions">
+            <!-- Botón Buscador / Explorador (Abre/oculta el explorador que está a su izquierda) -->
+            <button class="btn-toggle-expand" id="btnToggleExpand" title="Ocultar / Mostrar explorador de archivos">
+              <svg class="icon-music-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="15" y2="6"/>
+                <line x1="3" y1="12" x2="11" y2="12"/>
+                <line x1="3" y1="18" x2="9" y2="18"/>
+                <circle cx="16.5" cy="15.5" r="4.5"/>
+                <line x1="19.8" y1="18.8" x2="22.5" y2="21.5"/>
+              </svg>
+            </button>
+
+            <!-- Botón Automix: mezcla automática entre canciones (dos curvas cruzadas) -->
+            <button class="btn-toggle-expand btn-automix" id="btnAutoMix" title="Automix: mezcla automática entre canciones">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                <path d="M3 6C9 6 15 18 21 18"/>
+                <path d="M3 18C9 18 15 6 21 6"/>
+              </svg>
+            </button>
+          </div>
 
           <div class="driver-mode-badge" id="driverModeBadge">
             <span class="live-dot" id="liveDot"></span>

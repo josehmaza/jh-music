@@ -97,6 +97,18 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 | Repetir (último botón, a la derecha) | Alterna repetir la canción actual o seguir con la lista |
 | **▶ Reproducir Todo** (Pistas y Favoritos) | Reproduce la lista mostrada desde la primera |
 
+### Automix: mezcla entre canciones
+
+El botón con **dos curvas cruzadas**, debajo de la lupa, activa o desactiva Automix. Encendido se ve en cian, y la etiqueta del reproductor dice `● REPRODUCIENDO · AUTOMIX`. La app recuerda si lo dejaste encendido.
+
+Con Automix activado, los últimos **5 segundos** de cada canción se mezclan con el inicio de la siguiente: una baja mientras la otra sube, sin silencio entre canciones.
+
+- Con **Repetir** activado no mezcla: repite la canción.
+- Canciones de menos de 15 s no se mezclan, para que la mezcla no se coma la canción.
+- En canciones de más de 10 minutos (mixes de DJ) la mezcla dura solo 2 s.
+- **Pausa**, **adelantar** con la barra o **Siguiente/Anterior** durante una mezcla la terminan de inmediato.
+- En aleatorio también funciona: la siguiente se elige con anticipación.
+
 ### ¿Qué suena después?
 
 La cola (lo que usan Anterior y Siguiente) se fija **en el momento en que reproduces algo**:

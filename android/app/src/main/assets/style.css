@@ -564,6 +564,30 @@ body {
   height: 22px;
 }
 
+/* Lupa + Automix juntos a la izquierda de la barra del reproductor */
+.player-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Automix apagado: gris; encendido: cian como el resto de botones activos */
+.btn-toggle-expand.btn-automix {
+  color: var(--text-muted);
+}
+
+.btn-toggle-expand.btn-automix.is-active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  box-shadow: 0 0 10px var(--accent-blue-glow);
+}
+
+/* Mientras dura una mezcla, el ícono late suavemente */
+.btn-toggle-expand.btn-automix.is-mixing svg {
+  animation: pulse-glow 1s infinite;
+}
+
 .now-playing-card {
   display: flex;
   flex-direction: column;

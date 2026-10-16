@@ -20,6 +20,7 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | `FolderItem` | Carpeta agrupada por nombre (resultados de búsqueda en la pestaña Carpetas). Guarda su `SearchKey` |
 | `TreeNode` | Nodo del árbol de Carpetas: hijos, contador y lista de canciones directas |
 | `SearchText` | Utilidades del buscador con regex precompilados: normalizar, colapsar letras repetidas, rutas relativas |
+| `AutoMixer` | Automix: precarga de la siguiente canción y mezcla de igual potencia entre dos `MediaPlayer` |
 | `TrackAdapter` | Lista de canciones: resaltado de la que suena, toque / doble toque, favoritos, índice A-Z |
 | `FolderTreeAdapter` | Filas del árbol de Carpetas con el botón `[N ▶]` |
 | `FolderAdapter` | Lista plana de carpetas (resultados de búsqueda en Carpetas) |
@@ -133,6 +134,21 @@ Cada `Track` guarda un `SearchKey` inmutable con título, artista, álbum y carp
 | Canción sin carpeta | Copia de la lista mostrada | No cambia |
 
 La cola es una **copia**, para que abrir otra carpeta no altere lo que suena después.
+
+### Inicio de reproducción
+
+Todo inicio manual pasa por `startPlayback(track)`: cancela cualquier mezcla y precarga, prepara el archivo y llama a `onTrackStarted(track)`. Ese método, compartido con Automix, actualiza pantalla, resaltado, carátula y vistas previas. Los reproductores se crean con `createPlayer()`, que asigna el `OnCompletionListener` común (`onPlayerCompleted`).
+
+### Automix — `AutoMixer`
+
+Clase aparte que maneja dos `MediaPlayer` durante la mezcla y habla con la Activity mediante la interfaz `AutoMixer.Host`.
+
+1. **Tick cada 250 ms:** si Automix está activo y suena música, mira cuánto falta para el final.
+2. **Precarga:** cuando falta menos de mezcla + 15 s, pide la siguiente a `pickNextTrack()` (respeta Repetir y Aleatorio) y la prepara con `prepareAsync`.
+3. **Mezcla:** cuando falta menos que la duración de la mezcla, arranca la siguiente en volumen 0, la Activity la toma como `mediaPlayer` (`onMixStarted`) y un fundido de igual potencia ajusta los volúmenes cada 50 ms. Al terminar se libera el reproductor que salía.
+4. **Respaldo:** si la canción principal termina sin mezcla, `onPlayerCompleted` usa la siguiente ya preparada (`startPreparedNextNow`) antes de recurrir a `playNextTrack()`.
+
+La siguiente precargada se descarta con cualquier inicio manual, al cambiar Aleatorio o Repetir, y al re-escanear (`invalidateNext`). El estado se guarda en `SharedPreferences` (`automix_enabled`).
 
 ### Siguiente, anterior y fin de canción
 

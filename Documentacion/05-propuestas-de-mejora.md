@@ -17,7 +17,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente |
 | 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente |
 | 11 | Volumen de arranque limitado | 🟡 Usabilidad | Bajo | Pendiente |
-| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | Pendiente |
+| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fase 1 hecha** (botón Automix, mezcla de 5 s) |
 | 13 | Ecualizador | 🎵 Audio | Medio | Pendiente |
 | 14 | Extras opcionales | 🟢 Opcional | Variable | Pendiente |
 

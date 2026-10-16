@@ -87,6 +87,8 @@ public class MainActivity extends Activity {
     // Reproductor Central
     private TextView tvPlaybackStatus;
     private ImageButton btnToggleExplorer;
+    private ImageButton btnAutoMix;
+    private AutoMixer autoMixer;
     private View layoutExplorerToggleZone;
     private View layoutAlbumArtCard;
     private ImageView ivAlbumArt;
@@ -210,6 +212,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         handler = new Handler(Looper.getMainLooper());
+        autoMixer = new AutoMixer(handler, autoMixHost);
         scanExecutor = Executors.newSingleThreadExecutor();
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
@@ -228,6 +231,9 @@ public class MainActivity extends Activity {
         setupClock();
         setupVolumeControls();
         setupPlayerControls();
+        // Automix recuerda si quedó activado
+        autoMixer.setEnabled(getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_AUTOMIX, false));
+        updateAutoMixButton();
         setupExplorerControls();
         setupProgressUpdater();
 
@@ -275,6 +281,7 @@ public class MainActivity extends Activity {
         // Reproductor central
         tvPlaybackStatus = findViewById(R.id.tvPlaybackStatus);
         btnToggleExplorer = findViewById(R.id.btnToggleExplorer);
+        btnAutoMix = findViewById(R.id.btnAutoMix);
         layoutExplorerToggleZone = findViewById(R.id.layoutExplorerToggleZone);
         layoutAlbumArtCard = findViewById(R.id.layoutAlbumArtCard);
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
@@ -808,12 +815,14 @@ public class MainActivity extends Activity {
         btnShuffle.setOnClickListener(v -> {
             isShuffle = !isShuffle;
             btnShuffle.setSelected(isShuffle);
+            autoMixer.invalidateNext();
             Toast.makeText(this, isShuffle ? "Aleatorio activado" : "Modo secuencial", Toast.LENGTH_SHORT).show();
         });
 
         btnRepeat.setOnClickListener(v -> {
             isRepeat = !isRepeat;
             btnRepeat.setSelected(isRepeat);
+            autoMixer.invalidateNext();
             Toast.makeText(this, isRepeat ? "Repetir canción actual" : "Repetir carpeta", Toast.LENGTH_SHORT).show();
         });
 
@@ -838,6 +847,7 @@ public class MainActivity extends Activity {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 isUserSeeking = false;
                 if (mediaPlayer != null) {
+                    autoMixer.finishMixNow(); // adelantar en medio de una mezcla la cancela
                     int duration = mediaPlayer.getDuration();
                     if (duration > 0) {
                         int targetMs = (int) ((seekBar.getProgress() / 100f) * duration);
@@ -851,7 +861,7 @@ public class MainActivity extends Activity {
     private void updatePlaybackStateUI() {
         if (isPlaying) {
             btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
-            tvPlaybackStatus.setText("● REPRODUCIENDO");
+            tvPlaybackStatus.setText(autoMixer.isEnabled() ? "● REPRODUCIENDO · AUTOMIX" : "● REPRODUCIENDO");
             tvPlaybackStatus.setTextColor(Color.parseColor("#38bdf8"));
             if (soundWaveBars != null) soundWaveBars.setPlaying(true);
         } else {
@@ -869,9 +879,15 @@ public class MainActivity extends Activity {
     // Botón de lupa (click conmuta) y zona libre roja lateral (jalar a la izq oculta, a la der muestra; toques ignorados)
     // ==========================================
     private void setupExplorerToggleGestures() {
+        // Lupa y Automix están dentro de la zona de gestos: no son clicables por sí mismos para que
+        // el gesto de jalar funcione aunque empiece sobre ellos; el toque se detecta en la zona.
         if (btnToggleExplorer != null) {
             btnToggleExplorer.setClickable(false);
             btnToggleExplorer.setFocusable(false);
+        }
+        if (btnAutoMix != null) {
+            btnAutoMix.setClickable(false);
+            btnAutoMix.setFocusable(false);
         }
 
         if (layoutExplorerToggleZone != null) {
@@ -889,6 +905,8 @@ public class MainActivity extends Activity {
                             gestureHandled = false;
                             if (btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
                                 btnToggleExplorer.setPressed(true);
+                            } else if (btnAutoMix != null && isTouchOnView(btnAutoMix, downX, downY)) {
+                                btnAutoMix.setPressed(true);
                             }
                             return true;
 
@@ -916,6 +934,7 @@ public class MainActivity extends Activity {
 
                         case MotionEvent.ACTION_UP:
                             if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
+                            if (btnAutoMix != null) btnAutoMix.setPressed(false);
                             if (!gestureHandled && layoutExplorerPanel != null) {
                                 float totalDx = event.getRawX() - downX;
                                 float totalDy = event.getRawY() - downY;
@@ -930,6 +949,10 @@ public class MainActivity extends Activity {
                                         && btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
                                     // Toque simple sobre la lupa: alterna el explorador
                                     toggleExplorerVisibility();
+                                } else if (Math.abs(totalDx) <= 35 && Math.abs(totalDy) <= 35
+                                        && btnAutoMix != null && isTouchOnView(btnAutoMix, downX, downY)) {
+                                    // Toque simple sobre Automix: activa / desactiva la mezcla entre canciones
+                                    toggleAutoMix();
                                 }
                                 // Un toque simple en el resto de la zona libre NO hace nada (evita toques accidentales).
                             }
@@ -937,6 +960,7 @@ public class MainActivity extends Activity {
 
                         case MotionEvent.ACTION_CANCEL:
                             if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
+                            if (btnAutoMix != null) btnAutoMix.setPressed(false);
                             gestureHandled = false;
                             break;
                     }
@@ -2267,48 +2291,150 @@ public class MainActivity extends Activity {
             currentTrackIndex = index;
         }
 
+        if (!startPlayback(track)) {
+            Toast.makeText(this, "Error al reproducir: " + track.getTitle(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ==========================================
+    // INICIO DE REPRODUCCIÓN (compartido por toque, Siguiente/Anterior y Automix)
+    // ==========================================
+    private MediaPlayer createPlayer() {
+        MediaPlayer mp = new MediaPlayer();
+        mp.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        mp.setOnCompletionListener(this::onPlayerCompleted);
+        return mp;
+    }
+
+    private void onPlayerCompleted(MediaPlayer mp) {
+        if (autoMixer.isOutgoing(mp)) {
+            // La canción que salía en la mezcla terminó antes que el fundido
+            autoMixer.onOutgoingCompleted();
+            return;
+        }
+        if (mp != mediaPlayer) return;
+        if (isRepeat) {
+            playTrackFromQueue(getQueue(), currentTrackIndex);
+            return;
+        }
+        // Automix: si la canción terminó antes de lo previsto, la siguiente ya precargada entra al instante
+        if (autoMixer.startPreparedNextNow()) return;
+        playNextTrack();
+    }
+
+    /** Reproduce una canción desde cero (inicio manual). Devuelve false si el archivo no se pudo abrir. */
+    private boolean startPlayback(Track track) {
+        autoMixer.onManualPlayback();
         try {
             if (mediaPlayer == null) {
-                mediaPlayer = new MediaPlayer();
-                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                mediaPlayer.setOnCompletionListener(mp -> {
-                    if (isRepeat) {
-                        playTrackFromQueue(getQueue(), currentTrackIndex);
-                    } else {
-                        playNextTrack();
-                    }
-                });
+                mediaPlayer = createPlayer();
             } else {
                 mediaPlayer.reset();
             }
-
             mediaPlayer.setDataSource(track.getFilePath());
             mediaPlayer.prepare();
+            mediaPlayer.setVolume(1f, 1f);
             mediaPlayer.start();
             isPlaying = true;
-
-            trackAdapter.setCurrentPlayingTrack(track);
-            updatePlaybackStateUI();
-
-            // Actualizar información en pantalla con tipografía grande y clara
-            updateNowPlayingInfo(track);
-
-            int durationMs = mediaPlayer.getDuration();
-            tvTimeTotal.setText(formatMs(durationMs));
-            if (durationMs > 0) track.setDurationSec(durationMs / 1000);
-            tvTimeCurrent.setText("00:00");
-            seekTrackProgress.setProgress(0);
-
-            // Cargar carátula del archivo y bitrate exacto
-            loadAlbumArt(track);
-
-            // Previsualización de canción anterior y siguiente de la carpeta activa
-            updatePreviews();
-
+            onTrackStarted(track);
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Error al reproducir: " + track.getTitle(), Toast.LENGTH_SHORT).show();
+            return false;
         }
+    }
+
+    /** Actualiza la pantalla para la canción que acaba de empezar (a mano o por mezcla). */
+    private void onTrackStarted(Track track) {
+        // Marcar la canción en la lista mostrada (si está en ella)
+        trackAdapter.setCurrentPlayingTrack(track);
+        updatePlaybackStateUI();
+
+        // Actualizar información en pantalla con tipografía grande y clara
+        updateNowPlayingInfo(track);
+
+        int durationMs = mediaPlayer.getDuration();
+        tvTimeTotal.setText(formatMs(durationMs));
+        if (durationMs > 0) track.setDurationSec(durationMs / 1000);
+        tvTimeCurrent.setText("00:00");
+        seekTrackProgress.setProgress(0);
+
+        // Cargar carátula del archivo y bitrate exacto
+        loadAlbumArt(track);
+
+        // Previsualización de canción anterior y siguiente de la carpeta activa
+        updatePreviews();
+    }
+
+    // ==========================================
+    // AUTOMIX: mezcla automática entre canciones
+    // ==========================================
+    private static final String PREF_AUTOMIX = "automix_enabled";
+
+    private final AutoMixer.Host autoMixHost = new AutoMixer.Host() {
+        @Override
+        public MediaPlayer getCurrentPlayer() {
+            return mediaPlayer;
+        }
+
+        @Override
+        public boolean isPlaybackActive() {
+            return mediaPlayer != null && isPlaying && !isUserSeeking;
+        }
+
+        @Override
+        public AutoMixer.NextTrack pickNextTrack() {
+            if (isRepeat) return null;
+            List<Track> queue = getQueue();
+            if (queue.size() < 2 || currentTrackIndex < 0 || currentTrackIndex >= queue.size()) return null;
+            int index;
+            if (isShuffle) {
+                // Aleatorio: se sortea ahora (no al terminar) y nunca la misma canción
+                index = new Random().nextInt(queue.size() - 1);
+                if (index >= currentTrackIndex) index++;
+            } else {
+                index = (currentTrackIndex + 1) % queue.size();
+            }
+            return new AutoMixer.NextTrack(index, queue.get(index));
+        }
+
+        @Override
+        public boolean isStillNext(AutoMixer.NextTrack next) {
+            if (next == null || isRepeat) return false;
+            List<Track> queue = getQueue();
+            return next.index < queue.size() && queue.get(next.index) == next.track;
+        }
+
+        @Override
+        public MediaPlayer createPlayer() {
+            return MainActivity.this.createPlayer();
+        }
+
+        @Override
+        public void onMixStarted(MediaPlayer incoming, AutoMixer.NextTrack next) {
+            mediaPlayer = incoming;
+            currentTrackIndex = next.index;
+            isPlaying = true;
+            onTrackStarted(next.track);
+        }
+    };
+
+    private void toggleAutoMix() {
+        boolean on = !autoMixer.isEnabled();
+        autoMixer.setEnabled(on);
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_AUTOMIX, on).apply();
+        updateAutoMixButton();
+        updatePlaybackStateUI();
+        Toast.makeText(this, on
+                ? "Automix activado: las canciones se mezclan " + (AutoMixer.DEFAULT_MIX_MS / 1000) + " s"
+                : "Automix desactivado", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateAutoMixButton() {
+        if (btnAutoMix == null) return;
+        boolean on = autoMixer.isEnabled();
+        btnAutoMix.setSelected(on);
+        btnAutoMix.setColorFilter(Color.parseColor(on ? "#38bdf8" : "#64748b"), PorterDuff.Mode.SRC_IN);
     }
 
     /**
@@ -2331,6 +2457,8 @@ public class MainActivity extends Activity {
      */
     private void reconcileListsAfterRescan(Map<String, Track> tracksByPath) {
         Track playing = getCurrentTrack();
+        // La siguiente precargada puede ser del pendrive que se quitó: se vuelve a elegir
+        autoMixer.invalidateNext();
 
         remapTracks(currentPlaylist, tracksByPath);
         if (currentPlaylist.isEmpty()) {
@@ -2344,6 +2472,7 @@ public class MainActivity extends Activity {
             currentTrackIndex = getQueue().indexOf(stillPlaying);
         } else if (playing != null) {
             // La canción que sonaba estaba en el pendrive que se quitó
+            autoMixer.onManualPlayback();
             if (mediaPlayer != null) {
                 try {
                     mediaPlayer.release();
@@ -2483,46 +2612,7 @@ public class MainActivity extends Activity {
     private void playTrackFromQueue(List<Track> queue, int index) {
         if (queue.isEmpty() || index < 0 || index >= queue.size()) return;
         currentTrackIndex = index;
-        Track track = queue.get(index);
-
-        try {
-            if (mediaPlayer == null) {
-                mediaPlayer = new MediaPlayer();
-                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                mediaPlayer.setOnCompletionListener(mp -> {
-                    if (isRepeat) {
-                        playTrackFromQueue(getQueue(), currentTrackIndex);
-                    } else {
-                        playNextTrack();
-                    }
-                });
-            } else {
-                mediaPlayer.reset();
-            }
-
-            mediaPlayer.setDataSource(track.getFilePath());
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-            isPlaying = true;
-
-            // Marcar la canción en la lista mostrada (si está en ella)
-            trackAdapter.setCurrentPlayingTrack(track);
-            updatePlaybackStateUI();
-
-            updateNowPlayingInfo(track);
-
-            int durationMs = mediaPlayer.getDuration();
-            tvTimeTotal.setText(formatMs(durationMs));
-            if (durationMs > 0) track.setDurationSec(durationMs / 1000);
-            tvTimeCurrent.setText("00:00");
-            seekTrackProgress.setProgress(0);
-
-            loadAlbumArt(track);
-            updatePreviews();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        startPlayback(queue.get(index));
     }
 
     private void togglePlayPause() {
@@ -2535,6 +2625,8 @@ public class MainActivity extends Activity {
         }
 
         if (mediaPlayer.isPlaying()) {
+            // Pausa en medio de una mezcla: quedarse solo con la canción nueva
+            autoMixer.finishMixNow();
             mediaPlayer.pause();
             isPlaying = false;
         } else {
@@ -3075,6 +3167,7 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
         durationGeneration++;
         durationExecutor.shutdownNow();
+        autoMixer.release();
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();

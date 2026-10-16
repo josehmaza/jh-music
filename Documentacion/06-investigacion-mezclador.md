@@ -181,7 +181,24 @@ Transición entre canciones
 | Indicación del GPS durante una mezcla | Bajan las dos canciones |
 | Pendrive retirado en medio de una mezcla | Silencio limpio, sin cierre de la app |
 
-## 13. Plan por fases
+## 13. Estado de la implementación
+
+**Fase 1 implementada** en `AutoMixer.java`, activada con el botón Automix bajo la lupa.
+
+| Punto | Cómo quedó |
+|---|---|
+| Curva | Igual potencia (cos/sin) con `setVolume()` en pasos de 50 ms en todas las versiones de Android. `VolumeShaper` queda como mejora posible |
+| Duración | 5 s fijos (`DEFAULT_MIX_MS`); 2 s en canciones de 10 min o más; sin mezcla si alguna de las dos dura menos de 3 veces la mezcla |
+| Precarga | La siguiente se prepara con `prepareAsync` 15 s antes de la mezcla |
+| Respaldo | Si la canción termina antes de lo previsto, la siguiente ya preparada entra con un fundido de 300 ms |
+| Cambio de pantalla | La canción nueva se muestra **al empezar** la mezcla (no a la mitad, como proponía la §10) |
+| Pausa / adelantar / Siguiente / Anterior durante la mezcla | Terminan la mezcla de inmediato |
+| Aleatorio | La siguiente se sortea al precargar, nunca la misma canción |
+| Repetir, cola de 1 | Sin mezcla |
+
+Pendiente: pantalla de ajustes (§11), análisis de audio (fase 2), igualar volumen (fase 3), modo sin pausas (fase 4) y regla de "mismo álbum". Esta última necesita etiquetas reales de álbum y número de pista; hoy las pistas encontradas recorriendo carpetas usan el nombre de la carpeta como álbum.
+
+## 14. Plan por fases
 
 | Fase | Contenido | Esfuerzo |
 |---|---|---|
