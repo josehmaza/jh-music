@@ -27,7 +27,32 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    // Nombre del APK con la versión: JH-MUSIC-v1.9.8.apk
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "JH-MUSIC-v${variant.versionName}.apk"
+        }
+    }
 }
 
 dependencies {
+}
+
+// Al terminar assembleDebug, copia el APK a la raíz del repositorio
+// reemplazando el de la versión anterior (el historial de git conserva los viejos)
+tasks.register('copyApkToRoot') {
+    doLast {
+        def repoRoot = rootProject.projectDir.parentFile
+        project.delete(fileTree(repoRoot) { include 'JH-MUSIC-v*.apk', 'JH-CarAudio.apk' })
+        project.copy {
+            from layout.buildDirectory.dir('outputs/apk/debug')
+            include '*.apk'
+            into repoRoot
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.named('assembleDebug').configure { finalizedBy 'copyApkToRoot' }
 }
