@@ -14,6 +14,8 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35**, pensad
 | [02 · Arquitectura técnica](02-arquitectura-tecnica.md) | Quien modifica el código | Clases, flujo de datos, escaneo, buscador, cola de reproducción |
 | [03 · Compilación y versiones](03-compilacion-y-versiones.md) | Quien genera el APK | Requisitos, comandos, cómo subir la versión, instalación |
 | [04 · Historial de cambios](04-historial-de-cambios.md) | Todos | Qué cambió en cada versión |
+| [05 · Propuestas de mejora](05-propuestas-de-mejora.md) | Quien planifica | Mejoras y funciones pendientes, priorizadas para uso en el auto y radios de gama baja |
+| [06 · Investigación del mezclador](06-investigacion-mezclador.md) | Quien implemente la mezcla | Cómo hacer la transición automática entre canciones según género, formato y bitrate |
 
 ## Requisitos del radio
 
