@@ -147,6 +147,9 @@ public class MainActivity extends Activity {
     private boolean isRepeat = false;
     private boolean isMuted = false;
     private int currentTab = 0; // 0: Carpetas, 1: Pistas, 2: Favoritos
+    // Búsqueda de Pistas guardada al cambiar de pestaña (se descarta al abrir otra carpeta con [N ▶])
+    private String savedTracksQuery = "";
+    private int savedTracksFilter = FILTER_FOLDER;
     private String currentSelectedFolder = null;
     private String currentSelectedFolderUsbSource = null;
 
@@ -320,11 +323,11 @@ public class MainActivity extends Activity {
             @Override
             public void onNodeClick(TreeNode node, int position) {
                 hideKeyboard();
+                // Un toque solo explora (expande/contrae); la carpeta activa de Pistas se elige con [N ▶]
                 if (node.hasChildren()) {
                     node.setExpanded(!node.isExpanded());
                     updateVisibleTreeNodes();
                 }
-                selectFolderFromNode(node);
             }
 
             @Override
@@ -1014,7 +1017,7 @@ public class MainActivity extends Activity {
                         listViewContent.setAlpha(1.0f);
                         listViewContent.setEnabled(true);
                     }
-                    // Preservar el filtro que el usuario tiene activo (USB 1, USB 2, TODO, Carpeta)
+                    // Se conserva el chip activo; con el campo vacío Pistas muestra la carpeta activa
                     filterSearch("");
                     return;
                 }
@@ -1056,7 +1059,7 @@ public class MainActivity extends Activity {
                 listViewContent.setEnabled(true);
             }
             hideKeyboard();
-            // Al borrar la búsqueda, restaurar y mostrar las canciones de la carpeta actual seleccionada
+            // Al borrar la búsqueda se conserva el chip activo y se muestran las canciones de la carpeta activa
             updateFilterChipsVisibility();
             updateFilterChipsUI();
             filterSearch("");
@@ -1255,6 +1258,13 @@ public class MainActivity extends Activity {
 
     private void selectTab(int tabIndex) {
         hideKeyboard();
+        // Recordar la búsqueda de Pistas (texto + chip) para recuperarla al volver a la pestaña
+        if (currentTab == 1 && etSearch != null) {
+            savedTracksQuery = etSearch.getText().toString();
+            savedTracksFilter = currentSearchFilter;
+        }
+        boolean restoreTracksSearch = tabIndex == 1 && !savedTracksQuery.trim().isEmpty();
+
         if (searchRunnable != null) {
             searchDebounceHandler.removeCallbacks(searchRunnable);
         }
@@ -1315,7 +1325,10 @@ public class MainActivity extends Activity {
             listViewContent.setAdapter(trackAdapter);
             String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
             tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder : "🎵 Todas las Pistas");
-            if (currentSelectedFolder != null) {
+            if (restoreTracksSearch) {
+                // Hay una búsqueda pendiente: conservar el chip con el que se estaba buscando
+                currentSearchFilter = savedTracksFilter;
+            } else if (currentSelectedFolder != null) {
                 currentSearchFilter = FILTER_FOLDER;
             } else if (currentSearchFilter == FILTER_FOLDER) {
                 currentSearchFilter = FILTER_ALL;
@@ -1330,7 +1343,18 @@ public class MainActivity extends Activity {
         }
 
         updateFilterChipsVisibility();
-        filterByTab();
+        if (restoreTracksSearch) {
+            etSearch.setText(savedTracksQuery);
+            etSearch.setSelection(savedTracksQuery.length());
+            // Relanzar la búsqueda de inmediato, sin esperar el debounce del TextWatcher
+            if (searchRunnable != null) {
+                searchDebounceHandler.removeCallbacks(searchRunnable);
+            }
+            searchVersion++;
+            performAsyncSearch(savedTracksQuery, searchVersion);
+        } else {
+            filterByTab();
+        }
     }
 
     private void openFolder(String folderName, String usbSource) {
@@ -1354,6 +1378,7 @@ public class MainActivity extends Activity {
         }
 
         currentSearchFilter = FILTER_FOLDER;
+        savedTracksQuery = ""; // Se eligió otra carpeta: la búsqueda anterior de Pistas ya no aplica
         selectTab(1);
         String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
         tvCurrentPath.setText("📁 " + usbTag + folderName);
@@ -1583,22 +1608,9 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void selectFolderFromNode(TreeNode node) {
-        if (node == null) return;
-        currentSelectedFolder = node.getName();
-        currentSelectedFolderUsbSource = node.getUsbSource();
-        String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-        tvCurrentPath.setText("📁 " + usbTag + node.getName());
-
-        List<Track> folderTracks = getTracksForNode(node);
-        if (!folderTracks.isEmpty()) {
-            currentPlaylist.clear();
-            currentPlaylist.addAll(folderTracks);
-            tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
-        }
-        if (folderTreeAdapter != null) {
-            folderTreeAdapter.setSelectedFolder(node.getName());
-        }
+    /** El número de la pestaña Pistas es siempre el de la carpeta activa, nunca el de una búsqueda. */
+    private void updateTracksTabCount() {
+        tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
     }
 
     private void playFolderFromNode(TreeNode node) {
@@ -1616,13 +1628,14 @@ public class MainActivity extends Activity {
         if (!folderTracks.isEmpty()) {
             currentPlaylist.clear();
             currentPlaylist.addAll(folderTracks);
-            tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
+            updateTracksTabCount();
         }
         if (folderTreeAdapter != null) {
             folderTreeAdapter.setSelectedFolder(node.getName());
         }
 
         currentSearchFilter = FILTER_FOLDER;
+        savedTracksQuery = ""; // Se eligió otra carpeta: la búsqueda anterior de Pistas ya no aplica
         selectTab(1);
         String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
         tvCurrentPath.setText("📁 " + usbTag + node.getName() + " (" + currentPlaylist.size() + ")");
@@ -2037,8 +2050,8 @@ public class MainActivity extends Activity {
                     }
                     String filterLabel = filter == FILTER_FOLDER ? " [" + (folder != null ? folder : "Carpeta") + "]" :
                             (filter == FILTER_USB1 ? " [USB 1]" : (filter == FILTER_USB2 ? " [USB 2]" : " [Todo]"));
+                    // La cantidad de resultados va en la ruta; el número de la pestaña sigue siendo el de la carpeta
                     tvCurrentPath.setText("🔍 Pistas" + filterLabel + ": \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
-                    tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
                     trackAdapter.setTracks(displayedTracks);
                     updateFastScrollerVisibility();
                 });
@@ -2118,37 +2131,28 @@ public class MainActivity extends Activity {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
 
-            // Sin texto en el buscador, Pistas solo muestra la carpeta elegida en Carpetas USB
-            // (o la de la última canción reproducida). Los chips TODO / USB 1 / USB 2 definen dónde buscar.
-            if (currentSearchFilter == FILTER_USB1) {
-                tvCurrentPath.setText("🔍 Escribe para buscar en USB 1");
-            } else if (currentSearchFilter == FILTER_USB2) {
-                tvCurrentPath.setText("🔍 Escribe para buscar en USB 2");
-            } else if (currentSearchFilter == FILTER_ALL) {
-                tvCurrentPath.setText("🔍 Elige una carpeta o escribe para buscar");
-            } else {
-                // FILTER_FOLDER: mostrar canciones de la carpeta actual seleccionada
-                if (currentPlaylist != null && !currentPlaylist.isEmpty()) {
-                    displayedTracks.addAll(currentPlaylist);
-                } else if (currentSelectedFolder != null) {
-                    for (Track t : allTracks) {
-                        if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
-                            if (isTrackFromUsb(t, currentSelectedFolderUsbSource)) {
-                                displayedTracks.add(t);
-                            }
+            // Sin texto en el buscador, Pistas muestra siempre la carpeta activa (la elegida con [N ▶]
+            // o la de la última canción reproducida), sea cual sea el chip. Los chips solo definen dónde buscar.
+            if (currentPlaylist != null && !currentPlaylist.isEmpty()) {
+                displayedTracks.addAll(currentPlaylist);
+            } else if (currentSelectedFolder != null) {
+                for (Track t : allTracks) {
+                    if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
+                        if (isTrackFromUsb(t, currentSelectedFolderUsbSource)) {
+                            displayedTracks.add(t);
                         }
                     }
                 }
-                // Si aún no se eligió ninguna carpeta, la lista queda vacía (no se elige una automáticamente)
-                String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🔍 Elige una carpeta o escribe para buscar");
             }
+            // Si aún no se eligió ninguna carpeta, la lista queda vacía (no se elige una automáticamente)
+            String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+            tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🔍 Elige una carpeta o escribe para buscar");
 
             trackAdapter.setTracks(displayedTracks);
             if (listViewContent.getAdapter() != trackAdapter) {
                 listViewContent.setAdapter(trackAdapter);
             }
-            tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
+            updateTracksTabCount();
             if (currentTrackIndex >= 0 && currentTrackIndex < displayedTracks.size()) {
                 trackAdapter.setCurrentPlayingIndex(currentTrackIndex);
             }
@@ -2178,8 +2182,12 @@ public class MainActivity extends Activity {
 
         Track track = displayedTracks.get(index);
 
-        // Si la canción pertenece a una carpeta, configurar esa carpeta como la activa y llenar la lista
-        if (track.getFolder() != null && !track.getFolder().isEmpty()) {
+        int indexInPlaylist = currentPlaylist.indexOf(track);
+        if (indexInPlaylist >= 0) {
+            // La canción ya es de la carpeta activa: conservar esa lista tal cual (la del botón [N ▶])
+            currentTrackIndex = indexInPlaylist;
+        } else if (track.getFolder() != null && !track.getFolder().isEmpty()) {
+            // Canción de otra carpeta (p. ej. desde una búsqueda): su carpeta pasa a ser la activa
             currentSelectedFolder = track.getFolder();
             currentSelectedFolderUsbSource = track.getUsbSource();
             if (currentSelectedFolderUsbSource == null || currentSelectedFolderUsbSource.isEmpty()) {
@@ -2207,6 +2215,10 @@ public class MainActivity extends Activity {
                 }
             }
             currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
+            updateTracksTabCount();
+            if (folderTreeAdapter != null) {
+                folderTreeAdapter.setSelectedFolder(currentSelectedFolder);
+            }
         } else {
             currentTrackIndex = index;
         }
@@ -2655,8 +2667,8 @@ public class MainActivity extends Activity {
                 updateVisibleTreeNodes();
 
                 tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
-                // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una o se busque)
-                tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
+                // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una)
+                updateTracksTabCount();
 
                 filterByTab();
 
