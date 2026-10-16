@@ -15,6 +15,8 @@ public class TreeNode {
     private int level;
     private TreeNode parent;
     private List<TreeNode> children = new ArrayList<>();
+    // Canciones que están directamente en esta carpeta (las que cuenta el botón [N ▶])
+    private final List<Track> directTracks = new ArrayList<>();
 
     public TreeNode(String id, String name, String path, String usbSource, boolean isUsbRoot, int directTrackCount) {
         this.id = id;
@@ -45,8 +47,15 @@ public class TreeNode {
         this.totalTrackCount++; 
     }
     
-    public void incrementTotalCount() { 
-        this.totalTrackCount++; 
+    public void incrementTotalCount() {
+        this.totalTrackCount++;
+    }
+
+    public List<Track> getDirectTracks() { return directTracks; }
+
+    public void addDirectTrack(Track track) {
+        directTracks.add(track);
+        incrementDirectCount();
     }
 
     public boolean isExpanded() { return isExpanded; }

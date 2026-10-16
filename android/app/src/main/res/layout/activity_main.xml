@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v1.9.7"
+                android:text="v1.9.8"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -395,7 +395,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@null"
-                        android:hint="Buscar canción, carpeta o artista..."
+                        android:hint="Buscar carpeta..."
                         android:textColorHint="@color/text_muted"
                         android:textColor="@color/text_primary"
                         android:textSize="17sp"
@@ -565,6 +565,7 @@
 
                     <Button
                         android:id="@+id/btnPlayAll"
+                        android:visibility="gone"
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:background="@drawable/bg_btn_action"

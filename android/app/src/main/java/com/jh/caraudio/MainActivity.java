@@ -682,6 +682,7 @@ public class MainActivity extends Activity {
 
         seekVolume.setOnVolumeChangeListener((percent, fromUser) -> {
             if (fromUser && audioManager != null) {
+                if (isMuted) setMuted(false);
                 currentVolPercent = percent;
                 int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
                 int target = Math.round((percent / 100f) * max);
@@ -693,6 +694,17 @@ public class MainActivity extends Activity {
 
     private void updateVolumeUI() {
         if (audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // El mute pudo quedar activo al salir con HOME o venir del sistema del radio: leer el estado real
+            isMuted = audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
+        }
+        btnVolMute.setSelected(isMuted);
+        if (isMuted) {
+            // En mute getStreamVolume devuelve 0: se conserva el último porcentaje real para restaurarlo al desmutear
+            tvVolPercent.setText("MUTE");
+            return;
+        }
+
         int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         int current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         int percent = max > 0 ? Math.round(((float) current / max) * 100) : 0;
@@ -704,6 +716,7 @@ public class MainActivity extends Activity {
 
     private void adjustVolumeStep(boolean up) {
         if (audioManager == null) return;
+        if (isMuted) setMuted(false);
         // Incremento / decremento de 5 en 5 exacto a pedido de Hernan
         int nextPercent = up ? Math.min(100, currentVolPercent + 5) : Math.max(0, currentVolPercent - 5);
         currentVolPercent = nextPercent;
@@ -718,15 +731,23 @@ public class MainActivity extends Activity {
 
     private void toggleMute() {
         if (audioManager == null) return;
-        isMuted = !isMuted;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            isMuted = audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
+        }
+        setMuted(!isMuted);
+    }
+
+    private void setMuted(boolean mute) {
+        if (audioManager == null) return;
+        isMuted = mute;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                    isMuted ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE, 0);
+                    mute ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE, 0);
         } else {
-            audioManager.setStreamMute(AudioManager.STREAM_MUSIC, isMuted);
+            audioManager.setStreamMute(AudioManager.STREAM_MUSIC, mute);
         }
-        btnVolMute.setSelected(isMuted);
-        tvVolPercent.setText(isMuted ? "MUTE" : (currentVolPercent + "%"));
+        // Al desmutear se lee el volumen real restaurado por el sistema (no el valor guardado en la app)
+        updateVolumeUI();
     }
 
     // ==========================================
@@ -830,6 +851,9 @@ public class MainActivity extends Activity {
                             downX = event.getRawX();
                             downY = event.getRawY();
                             gestureHandled = false;
+                            if (btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
+                                btnToggleExplorer.setPressed(true);
+                            }
                             return true;
 
                         case MotionEvent.ACTION_MOVE:
@@ -855,6 +879,7 @@ public class MainActivity extends Activity {
                             break;
 
                         case MotionEvent.ACTION_UP:
+                            if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
                             if (!gestureHandled && layoutExplorerPanel != null) {
                                 float totalDx = event.getRawX() - downX;
                                 float totalDy = event.getRawY() - downY;
@@ -865,12 +890,17 @@ public class MainActivity extends Activity {
                                     } else if (totalDx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
                                         layoutExplorerPanel.setVisibility(View.VISIBLE);
                                     }
+                                } else if (Math.abs(totalDx) <= 35 && Math.abs(totalDy) <= 35
+                                        && btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
+                                    // Toque simple sobre la lupa: alterna el explorador
+                                    toggleExplorerVisibility();
                                 }
-                                // Si fue un simple toque (tap, Math.abs(totalDx) <= 35), NO se hace nada.
+                                // Un toque simple en el resto de la zona libre NO hace nada (evita toques accidentales).
                             }
                             return true;
 
                         case MotionEvent.ACTION_CANCEL:
+                            if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
                             gestureHandled = false;
                             break;
                     }
@@ -878,6 +908,13 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    private boolean isTouchOnView(View view, float rawX, float rawY) {
+        Rect rect = new Rect();
+        if (!view.getGlobalVisibleRect(rect)) return false;
+        rect.inset(-10, -10);
+        return rect.contains((int) rawX, (int) rawY);
     }
 
     private void toggleExplorerVisibility() {
@@ -942,7 +979,13 @@ public class MainActivity extends Activity {
 
         btnPlayAll.setOnClickListener(v -> {
             hideKeyboard();
+            // Solo visible en Pistas y Favoritos: reproduce la lista que se está mostrando
             if (!displayedTracks.isEmpty()) {
+                playTrack(0);
+            } else if (!currentPlaylist.isEmpty()) {
+                displayedTracks.clear();
+                displayedTracks.addAll(currentPlaylist);
+                trackAdapter.setTracks(displayedTracks);
                 playTrack(0);
             }
         });
@@ -1234,6 +1277,15 @@ public class MainActivity extends Activity {
         }
 
         currentTab = tabIndex;
+        if (btnPlayAll != null) {
+            // En Carpetas USB cada carpeta tiene su propio botón [N ▶]
+            btnPlayAll.setVisibility(tabIndex == 0 ? View.GONE : View.VISIBLE);
+        }
+        if (etSearch != null) {
+            // El texto de ayuda indica qué busca cada pestaña
+            etSearch.setHint(tabIndex == 0 ? "Buscar carpeta..." :
+                    (tabIndex == 1 ? "Buscar canción o artista..." : "Buscar en favoritos..."));
+        }
         tabFolders.setBackgroundResource(tabIndex == 0 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
         tabFolders.setTextColor(tabIndex == 0 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
         tabFolders.setTypeface(null, Typeface.BOLD);
@@ -1388,12 +1440,12 @@ public class MainActivity extends Activity {
                     }
                     child.incrementTotalCount();
                     if (i == parts.length - 1) {
-                        child.incrementDirectCount();
+                        child.addDirectTrack(track);
                     }
                     currentNode = child;
                 }
             } else {
-                rootNode.incrementDirectCount();
+                rootNode.addDirectTrack(track);
             }
         }
 
@@ -1551,7 +1603,8 @@ public class MainActivity extends Activity {
 
     private void playFolderFromNode(TreeNode node) {
         if (node == null) return;
-        openFolderFromNode(node, true);
+        // Al pulsar el botón de la carpeta en Carpetas USB: abrirla en la pestaña Pistas sin autoreproducir
+        openFolderFromNode(node, false);
     }
 
     private void openFolderFromNode(TreeNode node, boolean autoPlay) {
@@ -1563,6 +1616,10 @@ public class MainActivity extends Activity {
         if (!folderTracks.isEmpty()) {
             currentPlaylist.clear();
             currentPlaylist.addAll(folderTracks);
+            tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
+        }
+        if (folderTreeAdapter != null) {
+            folderTreeAdapter.setSelectedFolder(node.getName());
         }
 
         currentSearchFilter = FILTER_FOLDER;
@@ -1589,30 +1646,33 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    /**
+     * Canciones que están directamente en la carpeta del nodo: las mismas que cuenta el botón [N ▶].
+     * Si la carpeta solo tiene subcarpetas (o es la raíz del USB), devuelve todas las de sus subcarpetas.
+     */
     private List<Track> getTracksForNode(TreeNode node) {
         List<Track> list = new ArrayList<>();
         if (node == null) return list;
-        String nodePath = node.getPath();
-        String nodeName = node.getName();
-        String nodeUsb = node.getUsbSource();
 
+        if (!node.getDirectTracks().isEmpty()) {
+            list.addAll(node.getDirectTracks());
+            return list;
+        }
+
+        Set<Track> subtreeTracks = new HashSet<>();
+        collectSubtreeTracks(node, subtreeTracks);
+        // Recorrer allTracks para conservar el orden alfabético global
         for (Track t : allTracks) {
-            // 1. Debe coincidir el pendrive USB correspondiente al nodo
-            if (!isTrackFromUsb(t, nodeUsb)) {
-                continue;
-            }
-
-            boolean match = false;
-            if (nodePath != null && !nodePath.isEmpty() && t.getFilePath() != null && t.getFilePath().startsWith(nodePath)) {
-                match = true;
-            } else if (nodeName != null && nodeName.equalsIgnoreCase(t.getFolder())) {
-                match = true;
-            }
-            if (match) {
-                list.add(t);
-            }
+            if (subtreeTracks.contains(t)) list.add(t);
         }
         return list;
+    }
+
+    private void collectSubtreeTracks(TreeNode node, Set<Track> out) {
+        out.addAll(node.getDirectTracks());
+        for (TreeNode child : node.getChildren()) {
+            collectSubtreeTracks(child, out);
+        }
     }
 
     private void revealPlayingFolderInTree(Track track) {
@@ -2058,23 +2118,14 @@ public class MainActivity extends Activity {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
 
+            // Sin texto en el buscador, Pistas solo muestra la carpeta elegida en Carpetas USB
+            // (o la de la última canción reproducida). Los chips TODO / USB 1 / USB 2 definen dónde buscar.
             if (currentSearchFilter == FILTER_USB1) {
-                for (Track t : allTracks) {
-                    if (isTrackFromUsb(t, "USB 1")) {
-                        displayedTracks.add(t);
-                    }
-                }
-                tvCurrentPath.setText("🎵 Pistas USB 1 (" + displayedTracks.size() + ")");
+                tvCurrentPath.setText("🔍 Escribe para buscar en USB 1");
             } else if (currentSearchFilter == FILTER_USB2) {
-                for (Track t : allTracks) {
-                    if (isTrackFromUsb(t, "USB 2")) {
-                        displayedTracks.add(t);
-                    }
-                }
-                tvCurrentPath.setText("🎵 Pistas USB 2 (" + displayedTracks.size() + ")");
+                tvCurrentPath.setText("🔍 Escribe para buscar en USB 2");
             } else if (currentSearchFilter == FILTER_ALL) {
-                displayedTracks.addAll(allTracks);
-                tvCurrentPath.setText("🎵 Todas las pistas (" + displayedTracks.size() + ")");
+                tvCurrentPath.setText("🔍 Elige una carpeta o escribe para buscar");
             } else {
                 // FILTER_FOLDER: mostrar canciones de la carpeta actual seleccionada
                 if (currentPlaylist != null && !currentPlaylist.isEmpty()) {
@@ -2087,19 +2138,10 @@ public class MainActivity extends Activity {
                             }
                         }
                     }
-                } else if (!allTracks.isEmpty()) {
-                    currentSelectedFolder = allTracks.get(0).getFolder();
-                    currentSelectedFolderUsbSource = allTracks.get(0).getUsbSource();
-                    for (Track t : allTracks) {
-                        if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
-                            if (isTrackFromUsb(t, currentSelectedFolderUsbSource)) {
-                                displayedTracks.add(t);
-                            }
-                        }
-                    }
                 }
+                // Si aún no se eligió ninguna carpeta, la lista queda vacía (no se elige una automáticamente)
                 String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🎵 Pistas (" + displayedTracks.size() + ")");
+                tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🔍 Elige una carpeta o escribe para buscar");
             }
 
             trackAdapter.setTracks(displayedTracks);
@@ -2613,7 +2655,8 @@ public class MainActivity extends Activity {
                 updateVisibleTreeNodes();
 
                 tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
-                tabTracks.setText("🎵 Pistas (" + allTracks.size() + ")");
+                // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una o se busque)
+                tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
 
                 filterByTab();
 
