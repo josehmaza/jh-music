@@ -16,7 +16,11 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
@@ -26,12 +30,14 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 import android.text.style.ImageSpan;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -42,6 +48,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -89,6 +96,7 @@ public class MainActivity extends Activity {
     private ImageButton btnToggleExplorer;
     private ImageButton btnAutoMix;
     private AutoMixer autoMixer;
+    private AudioAnalyzer audioAnalyzer;
     private View layoutExplorerToggleZone;
     private View layoutAlbumArtCard;
     private ImageView ivAlbumArt;
@@ -212,7 +220,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         handler = new Handler(Looper.getMainLooper());
-        autoMixer = new AutoMixer(handler, autoMixHost);
+        audioAnalyzer = new AudioAnalyzer();
+        autoMixer = new AutoMixer(handler, autoMixHost, audioAnalyzer);
         scanExecutor = Executors.newSingleThreadExecutor();
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
@@ -231,6 +240,7 @@ public class MainActivity extends Activity {
         setupClock();
         setupVolumeControls();
         setupPlayerControls();
+        setupMixGlow();
         // Automix recuerda si quedó activado
         autoMixer.setEnabled(getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_AUTOMIX, false));
         updateAutoMixButton();
@@ -2322,9 +2332,38 @@ public class MainActivity extends Activity {
         playNextTrack();
     }
 
-    /** Reproduce una canción desde cero (inicio manual). Devuelve false si el archivo no se pudo abrir. */
     private boolean startPlayback(Track track) {
+        return startPlayback(track, false);
+    }
+
+    /**
+     * Reproduce una canción desde cero (inicio manual). Devuelve false si el archivo no se pudo abrir.
+     * quickFade: con Automix activo y música sonando, cambia con un fundido corto en vez de un corte seco.
+     */
+    private boolean startPlayback(Track track, boolean quickFade) {
+        boolean fade = quickFade && autoMixer.isEnabled() && mediaPlayer != null && isPlaying;
         autoMixer.onManualPlayback();
+        if (fade) {
+            MediaPlayer old = mediaPlayer;
+            MediaPlayer incoming = createPlayer();
+            try {
+                incoming.setDataSource(track.getFilePath());
+                incoming.prepare();
+            } catch (Exception e) {
+                e.printStackTrace();
+                releasePlayerQuietly(incoming);
+                return false;
+            }
+            mediaPlayer = incoming;
+            if (autoMixer.fadeManual(old, incoming)) {
+                isPlaying = true;
+                onTrackStarted(track);
+                return true;
+            }
+            // No pudo arrancar con fundido: volver al reproductor anterior y seguir por el camino normal
+            mediaPlayer = old;
+            releasePlayerQuietly(incoming);
+        }
         try {
             if (mediaPlayer == null) {
                 mediaPlayer = createPlayer();
@@ -2344,8 +2383,35 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static void releasePlayerQuietly(MediaPlayer mp) {
+        try {
+            mp.release();
+        } catch (Exception ignored) {}
+    }
+
     /** Actualiza la pantalla para la canción que acaba de empezar (a mano o por mezcla). */
     private void onTrackStarted(Track track) {
+        onTrackStarted(track, false);
+    }
+
+    /** smoothUi: mezcla automática; los datos de la canción cambian con un fundido en vez de saltar. */
+    private void onTrackStarted(Track track, boolean smoothUi) {
+        // Automix analiza en segundo plano dónde se apaga esta canción
+        autoMixer.onTrackStarted(track);
+
+        int durationMs = mediaPlayer.getDuration();
+        if (durationMs > 0) track.setDurationSec(durationMs / 1000);
+
+        if (smoothUi) {
+            startNowPlayingCrossfade(track);
+        } else {
+            cancelNowPlayingCrossfade();
+            showTrackOnScreen(track);
+        }
+    }
+
+    /** Pone en pantalla los datos de la canción que suena. */
+    private void showTrackOnScreen(Track track) {
         // Marcar la canción en la lista mostrada (si está en ella)
         trackAdapter.setCurrentPlayingTrack(track);
         updatePlaybackStateUI();
@@ -2353,9 +2419,11 @@ public class MainActivity extends Activity {
         // Actualizar información en pantalla con tipografía grande y clara
         updateNowPlayingInfo(track);
 
-        int durationMs = mediaPlayer.getDuration();
+        int durationMs = 0;
+        try {
+            durationMs = mediaPlayer != null ? mediaPlayer.getDuration() : 0;
+        } catch (Exception ignored) {}
         tvTimeTotal.setText(formatMs(durationMs));
-        if (durationMs > 0) track.setDurationSec(durationMs / 1000);
         tvTimeCurrent.setText("00:00");
         seekTrackProgress.setProgress(0);
 
@@ -2364,6 +2432,157 @@ public class MainActivity extends Activity {
 
         // Previsualización de canción anterior y siguiente de la carpeta activa
         updatePreviews();
+    }
+
+    // Fundido de los datos en pantalla al empezar una mezcla: lo de la canción que sale se apaga
+    // y lo de la que entra aparece. Con Handler (no Animator): en radios con animaciones
+    // desactivadas los Animator saltan al final sin animar.
+    private static final int NOW_PLAYING_FADE_OUT_MS = 600;
+    private static final int NOW_PLAYING_FADE_IN_MS = 700;
+    private View[] nowPlayingViews;
+    private Track nowPlayingFadeTarget;
+    private boolean nowPlayingSwapped;
+    private long nowPlayingFadeStartMs;
+
+    private final Runnable nowPlayingFadeRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long elapsed = SystemClock.uptimeMillis() - nowPlayingFadeStartMs;
+            if (!nowPlayingSwapped) {
+                float alpha = 1f - elapsed / (float) NOW_PLAYING_FADE_OUT_MS;
+                if (alpha <= 0f) {
+                    // Totalmente apagado: cambiar a los datos de la canción nueva
+                    nowPlayingSwapped = true;
+                    setNowPlayingAlpha(0f);
+                    showTrackOnScreen(nowPlayingFadeTarget);
+                } else {
+                    setNowPlayingAlpha(alpha);
+                }
+            } else {
+                float alpha = (elapsed - NOW_PLAYING_FADE_OUT_MS) / (float) NOW_PLAYING_FADE_IN_MS;
+                if (alpha >= 1f) {
+                    setNowPlayingAlpha(1f);
+                    nowPlayingFadeTarget = null;
+                    return;
+                }
+                setNowPlayingAlpha(Math.max(0f, alpha));
+            }
+            handler.postDelayed(this, 30);
+        }
+    };
+
+    // Carátula real (detrás del disco y las barras): en la mezcla automática cambia con fundido cruzado
+    private static final int ALBUM_ART_FADE_MS = 700;
+    private String albumArtFadeForPath;   // canción cuya carátula debe entrar con fundido
+
+    private int albumArtFadeToken = 0;    // cada cambio de carátula invalida el fundido anterior
+
+    /**
+     * Con carátula: se ve la imagen completa y las barras animadas quedan encima, abajo, sobre una
+     * sombra suave; el disco (dibujo de "sin carátula") se oculta. Sin carátula: disco y barras centrados.
+     */
+    private void setCoverMode(boolean hasCover) {
+        View vinyl = findViewById(R.id.ivVinylDisc);
+        LinearLayout placeholder = findViewById(R.id.layoutAlbumPlaceholder);
+        if (vinyl == null || placeholder == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        vinyl.setVisibility(hasCover ? View.GONE : View.VISIBLE);
+        placeholder.setGravity(hasCover ? (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL) : Gravity.CENTER);
+        placeholder.setBackgroundResource(hasCover ? R.drawable.bg_cover_scrim : 0);
+        placeholder.setPadding(0, Math.round(8 * density), 0, hasCover ? Math.round(12 * density) : 0);
+    }
+
+    private void showAlbumArt(Bitmap art, boolean smooth) {
+        albumArtFadeToken++;
+        Drawable previous = ivAlbumArt.getVisibility() == View.VISIBLE ? ivAlbumArt.getDrawable() : null;
+        setCoverMode(art != null);
+        if (!smooth) {
+            ivAlbumArt.setAlpha(1f);
+            if (art != null) {
+                ivAlbumArt.setVisibility(View.VISIBLE);
+                ivAlbumArt.setImageBitmap(art);
+            } else {
+                ivAlbumArt.setVisibility(View.GONE);
+            }
+            return;
+        }
+        if (art != null) {
+            final Drawable next = new BitmapDrawable(getResources(), art);
+            if (previous != null) {
+                // De una carátula a otra: se disuelve una en la otra
+                final TransitionDrawable transition = new TransitionDrawable(new Drawable[]{previous, next});
+                transition.setCrossFadeEnabled(true);
+                ivAlbumArt.setAlpha(1f);
+                ivAlbumArt.setImageDrawable(transition);
+                transition.startTransition(ALBUM_ART_FADE_MS);
+                // Al terminar, dejar solo la nueva (evita encadenar transiciones canción tras canción)
+                handler.postDelayed(() -> {
+                    if (ivAlbumArt.getDrawable() == transition) ivAlbumArt.setImageDrawable(next);
+                }, ALBUM_ART_FADE_MS + 50);
+            } else {
+                // Sin carátula antes: aparece sobre el fondo del cuadro
+                ivAlbumArt.setImageDrawable(next);
+                ivAlbumArt.setVisibility(View.VISIBLE);
+                fadeViewAlpha(ivAlbumArt, 0f, 1f, null);
+            }
+        } else if (previous != null) {
+            // La nueva no trae carátula: la anterior se desvanece
+            fadeViewAlpha(ivAlbumArt, 1f, 0f, () -> {
+                ivAlbumArt.setVisibility(View.GONE);
+                ivAlbumArt.setAlpha(1f);
+            });
+        }
+    }
+
+    /** Fundido de opacidad con Handler (no Animator), para radios con animaciones desactivadas. */
+    private void fadeViewAlpha(final View view, final float from, final float to, final Runnable onEnd) {
+        final long start = SystemClock.uptimeMillis();
+        final int token = albumArtFadeToken;
+        view.setAlpha(from);
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (token != albumArtFadeToken) return; // otra carátula ya tomó el control
+                float t = Math.min(1f, (SystemClock.uptimeMillis() - start) / (float) ALBUM_ART_FADE_MS);
+                view.setAlpha(from + (to - from) * t);
+                if (t < 1f) {
+                    handler.postDelayed(this, 30);
+                } else if (onEnd != null) {
+                    onEnd.run();
+                }
+            }
+        });
+    }
+
+    private void startNowPlayingCrossfade(Track track) {
+        albumArtFadeForPath = track.getFilePath();
+        if (nowPlayingViews == null) {
+            // Solo los textos: el cuadro de la carátula (disco, barras, formato) queda siempre visible con su borde neón
+            nowPlayingViews = new View[]{tvTrackTitle, tvTrackArtist, tvTrackArtistDot, tvTrackAlbum,
+                    tvTimeCurrent, tvTimeTotal, tvPrevTrackPreview, tvNextTrackPreview};
+        }
+        handler.removeCallbacks(nowPlayingFadeRunnable);
+        nowPlayingFadeTarget = track;
+        nowPlayingSwapped = false;
+        nowPlayingFadeStartMs = SystemClock.uptimeMillis();
+        handler.post(nowPlayingFadeRunnable);
+    }
+
+    /** Un cambio a mano durante el fundido manda: se cancela y la pantalla queda visible. */
+    private void cancelNowPlayingCrossfade() {
+        handler.removeCallbacks(nowPlayingFadeRunnable);
+        albumArtFadeForPath = null;
+        if (nowPlayingFadeTarget != null) {
+            nowPlayingFadeTarget = null;
+            setNowPlayingAlpha(1f);
+        }
+    }
+
+    private void setNowPlayingAlpha(float alpha) {
+        if (nowPlayingViews == null) return;
+        for (View v : nowPlayingViews) {
+            if (v != null) v.setAlpha(alpha);
+        }
     }
 
     // ==========================================
@@ -2411,13 +2630,75 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public void onMixStarted(MediaPlayer incoming, AutoMixer.NextTrack next) {
+        public void onMixStarted(MediaPlayer incoming, AutoMixer.NextTrack next, boolean automatic) {
             mediaPlayer = incoming;
             currentTrackIndex = next.index;
             isPlaying = true;
-            onTrackStarted(next.track);
+            onTrackStarted(next.track, automatic);
+        }
+
+        @Override
+        public void onMixVisualChanged(boolean mixing) {
+            showMixGlow(mixing);
         }
     };
+
+    // Borde neón que late alrededor del reproductor mientras dura una mezcla.
+    // Se anima con Handler (no con Animator): en radios con animaciones desactivadas los Animator no se mueven.
+    private GradientDrawable mixGlowHalo;
+    private GradientDrawable mixGlowLine;
+    private long mixGlowStartMs;
+    private static final int MIX_GLOW_PERIOD_MS = 1400;
+
+    private final Runnable mixGlowRunnable = new Runnable() {
+        @Override
+        public void run() {
+            float phase = ((SystemClock.uptimeMillis() - mixGlowStartMs) % MIX_GLOW_PERIOD_MS) / (float) MIX_GLOW_PERIOD_MS;
+            float pulse = 0.55f + 0.45f * (0.5f + 0.5f * (float) Math.sin(phase * 2 * Math.PI));
+            mixGlowLine.setAlpha(Math.round(255 * pulse));
+            mixGlowHalo.setAlpha(Math.round(150 * pulse));
+            handler.postDelayed(this, 50);
+        }
+    };
+
+    private void setupMixGlow() {
+        // El borde neón va en el cuadro de la carátula
+        View card = layoutAlbumArtCard;
+        if (card == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        // Halo ancho y suave + línea fina brillante = efecto neón
+        mixGlowHalo = new GradientDrawable();
+        mixGlowHalo.setCornerRadius(18 * density);
+        mixGlowHalo.setColor(Color.TRANSPARENT);
+        mixGlowHalo.setStroke(Math.round(8 * density), Color.parseColor("#38bdf8"));
+        mixGlowHalo.setAlpha(0);
+        mixGlowLine = new GradientDrawable();
+        mixGlowLine.setCornerRadius(18 * density);
+        mixGlowLine.setColor(Color.TRANSPARENT);
+        mixGlowLine.setStroke(Math.round(3 * density), Color.parseColor("#7dd3fc"));
+        mixGlowLine.setAlpha(0);
+        // En primer plano (foreground) para que quede ENCIMA de la carátula, que ocupa todo el cuadro;
+        // se conserva el efecto de toque que ya tenía el cuadro
+        if (card instanceof FrameLayout) {
+            FrameLayout frame = (FrameLayout) card;
+            Drawable touchEffect = frame.getForeground();
+            frame.setForeground(touchEffect != null
+                    ? new LayerDrawable(new Drawable[]{mixGlowHalo, mixGlowLine, touchEffect})
+                    : new LayerDrawable(new Drawable[]{mixGlowHalo, mixGlowLine}));
+        }
+    }
+
+    private void showMixGlow(boolean on) {
+        if (mixGlowLine == null) return;
+        handler.removeCallbacks(mixGlowRunnable);
+        if (on) {
+            mixGlowStartMs = SystemClock.uptimeMillis();
+            handler.post(mixGlowRunnable);
+        } else {
+            mixGlowLine.setAlpha(0);
+            mixGlowHalo.setAlpha(0);
+        }
+    }
 
     private void toggleAutoMix() {
         boolean on = !autoMixer.isEnabled();
@@ -2610,9 +2891,13 @@ public class MainActivity extends Activity {
     }
 
     private void playTrackFromQueue(List<Track> queue, int index) {
+        playTrackFromQueue(queue, index, false);
+    }
+
+    private void playTrackFromQueue(List<Track> queue, int index, boolean quickFade) {
         if (queue.isEmpty() || index < 0 || index >= queue.size()) return;
         currentTrackIndex = index;
-        startPlayback(queue.get(index));
+        startPlayback(queue.get(index), quickFade);
     }
 
     private void togglePlayPause() {
@@ -2637,6 +2922,8 @@ public class MainActivity extends Activity {
     }
 
     private void playNextTrack() {
+        // Automix: si la siguiente ya está precargada, usarla directo (instantáneo con pendrive lento)
+        if (autoMixer.skipToPreparedNext()) return;
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
         int nextIndex;
@@ -2645,14 +2932,14 @@ public class MainActivity extends Activity {
         } else {
             nextIndex = (currentTrackIndex + 1) % queue.size();
         }
-        playTrackFromQueue(queue, nextIndex);
+        playTrackFromQueue(queue, nextIndex, true);
     }
 
     private void playPreviousTrack() {
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
         int prevIndex = (currentTrackIndex - 1 + queue.size()) % queue.size();
-        playTrackFromQueue(queue, prevIndex);
+        playTrackFromQueue(queue, prevIndex, true);
     }
 
     private void updatePreviews() {
@@ -2703,12 +2990,10 @@ public class MainActivity extends Activity {
             final String finalFormat = exactFormat;
             final String finalArtist = (embeddedArtist != null && !embeddedArtist.trim().isEmpty()) ? embeddedArtist.trim() : null;
             handler.post(() -> {
-                if (finalArt != null) {
-                    ivAlbumArt.setVisibility(View.VISIBLE);
-                    ivAlbumArt.setImageBitmap(finalArt);
-                } else {
-                    ivAlbumArt.setVisibility(View.GONE);
-                }
+                // En una mezcla automática la carátula cambia con fundido cruzado
+                boolean smooth = filePath != null && filePath.equals(albumArtFadeForPath);
+                if (smooth) albumArtFadeForPath = null;
+                showAlbumArt(finalArt, smooth);
                 if (finalFormat != null) {
                     track.setFormat(finalFormat);
                     List<Track> queue = getQueue();
@@ -3168,6 +3453,9 @@ public class MainActivity extends Activity {
         durationGeneration++;
         durationExecutor.shutdownNow();
         autoMixer.release();
+        audioAnalyzer.shutdown();
+        handler.removeCallbacks(mixGlowRunnable);
+        handler.removeCallbacks(nowPlayingFadeRunnable);
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();

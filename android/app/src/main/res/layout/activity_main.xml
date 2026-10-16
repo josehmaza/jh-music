@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.1.0"
+                android:text="v2.2.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -592,7 +592,9 @@
             android:padding="8dp"
             android:gravity="center_horizontal">
 
+            <!-- Cuadro del reproductor -->
             <LinearLayout
+                android:id="@+id/layoutPlayerCard"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
@@ -619,7 +621,7 @@
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Carátula / Vinyl Card centrada con Badge de Formato y Ecualizador Animado -->
+                    <!-- Carátula / Vinyl Card centrada con Badge de Formato y Ecualizador Animado (durante una mezcla de Automix: borde neón que late) -->
                     <FrameLayout
                         android:id="@+id/layoutAlbumArtCard"
                         android:layout_width="150dp"
@@ -649,8 +651,9 @@
                             android:gravity="center"
                             android:paddingTop="8dp">
 
-                            <!-- Disco de Vinilo (3 círculos concéntricos) -->
+                            <!-- Disco de Vinilo (3 círculos concéntricos); se oculta cuando hay carátula -->
                             <ImageView
+                                android:id="@+id/ivVinylDisc"
                                 android:layout_width="68dp"
                                 android:layout_height="68dp"
                                 android:src="@drawable/ic_vinyl_disc" />

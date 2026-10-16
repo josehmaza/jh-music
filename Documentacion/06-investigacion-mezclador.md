@@ -196,7 +196,22 @@ Transición entre canciones
 | Aleatorio | La siguiente se sortea al precargar, nunca la misma canción |
 | Repetir, cola de 1 | Sin mezcla |
 
-Pendiente: pantalla de ajustes (§11), análisis de audio (fase 2), igualar volumen (fase 3), modo sin pausas (fase 4) y regla de "mismo álbum". Esta última necesita etiquetas reales de álbum y número de pista; hoy las pistas encontradas recorriendo carpetas usan el nombre de la carpeta como álbum.
+**Fase 2 implementada** en `AudioAnalyzer.java`. Motivo: al probar la fase 1, en las canciones con un final largo que se apaga, la mezcla en los últimos 5 s ocurría cuando la canción ya casi no se oía.
+
+| Punto | Cómo quedó |
+|---|---|
+| Qué se analiza | Primeros 10 s y últimos 25 s, decodificados a PCM con `MediaExtractor` + `MediaCodec`; nivel RMS cada 100 ms, suavizado a 1 s |
+| Decodificador | **Por software** (`OMX.google.*` / `c2.android.*`), para no quitarle decodificadores por hardware a la música. Si no hay, el del sistema |
+| Hilo | Uno solo, de baja prioridad, una canción a la vez, con límite de 10 s por canción |
+| Cuándo | Al empezar a sonar una canción (su final) y al precargar la siguiente (su inicio), solo con Automix activo. Resultados en memoria, hasta 300 canciones |
+| Fade-out | Si la canción baja más de **8 dB** respecto a su parte fuerte durante más de 1,5 s antes del fin real, la mezcla empieza ahí y dura lo que dure el apagado (entre 2 y 5 s) |
+| Final seco | Mezcla de 3 s que termina en el fin real |
+| Silencios | Se ignora el silencio final (menos de −45 dBFS) y la canción que entra salta su silencio inicial (máx. 8 s) |
+| Si falla | Se marca como "sin análisis" y se usa la mezcla de la fase 1 |
+
+Los umbrales (`SILENCE_DB`, `FADE_DROP_DB`, `FADE_MIN_MS`, `ABRUPT_MIX_MS`) están en `AudioAnalyzer` y `AutoMixer` para ajustarlos al probar con música real. Un efecto a vigilar: una canción con un final tranquilo intencional (por ejemplo, un piano suave) se mezclaría desde que empieza esa parte tranquila.
+
+Pendiente: pantalla de ajustes (§11), igualar volumen (fase 3, ya se mide `referenceDb`), modo sin pausas (fase 4) y regla de "mismo álbum". Esta última necesita etiquetas reales de álbum y número de pista; hoy las pistas encontradas recorriendo carpetas usan el nombre de la carpeta como álbum.
 
 ## 14. Plan por fases
 

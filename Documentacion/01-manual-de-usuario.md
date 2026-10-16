@@ -86,6 +86,12 @@ Al reproducir una canción de los resultados, **su carpeta pasa a ser la carpeta
 
 La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
+### Cuadro de la carátula
+
+- **Si la canción trae carátula:** se ve la imagen completa, con las barras animadas abajo sobre una sombra suave y la etiqueta de formato (`MP3 320K`) arriba.
+- **Si no trae:** se muestra el disco con las barras animadas debajo.
+- **Tocar el cuadro** pausa o reanuda.
+
 ### Controles del reproductor
 
 | Control | Función |
@@ -101,7 +107,16 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 El botón con **dos curvas cruzadas**, debajo de la lupa, activa o desactiva Automix. Encendido se ve en cian, y la etiqueta del reproductor dice `● REPRODUCIENDO · AUTOMIX`. La app recuerda si lo dejaste encendido.
 
-Con Automix activado, los últimos **5 segundos** de cada canción se mezclan con el inicio de la siguiente: una baja mientras la otra sube, sin silencio entre canciones.
+Con Automix activado, el final de cada canción se mezcla con el inicio de la siguiente: una baja mientras la otra sube, sin silencio entre canciones.
+
+La app escucha el final de cada canción para mezclar en el lugar justo:
+- Si la canción **se va apagando**, la mezcla empieza cuando ya bajó de volumen, sin esperar a que quede en silencio.
+- Si **termina de golpe**, la mezcla es corta (3 s) y no cuenta el silencio que pueda quedar al final.
+- La canción que entra **salta su silencio inicial**.
+
+Mientras dura la mezcla, el **cuadro de la carátula muestra un borde azul neón que late**. Al empezar la mezcla, el título, el artista y los tiempos de la canción que sale se apagan suavemente y aparecen los de la nueva; el cuadro de la carátula no se apaga. Desde ese momento la pantalla muestra la canción nueva, y la tarjeta "Siguiente" ya indica la que viene después: si tocas Siguiente durante la mezcla, pasas a esa.
+
+Ese análisis tarda unos segundos al empezar cada canción. Si no alcanza a terminar, o falla con algún archivo, se mezclan simplemente los últimos 5 segundos.
 
 - Con **Repetir** activado no mezcla: repite la canción.
 - Canciones de menos de 15 s no se mezclan, para que la mezcla no se coma la canción.
@@ -129,7 +144,9 @@ Abrir otra carpeta mientras suena música **no** cambia lo que viene después, h
 - Si ajustas el volumen estando en silencio, primero se quita el silencio.
 - Si el silencio lo puso el sistema o quedó activo al salir con HOME, la app lo detecta al volver.
 
-## 6. Mandos del volante
+## 6. Mandos del volante o multimedia (opcional)
+
+El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la app responde a las teclas multimedia estándar de Android, por si se conecta un control Bluetooth o se usa en otro auto:
 
 | Botón | Acción |
 |---|---|

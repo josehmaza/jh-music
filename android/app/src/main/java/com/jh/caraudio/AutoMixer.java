@@ -33,8 +33,14 @@ final class AutoMixer {
         /** Reproductor nuevo con los mismos listeners que el principal. */
         MediaPlayer createPlayer();
 
-        /** La siguiente empezó a sonar: pasa a ser el reproductor principal y se actualiza la pantalla. */
-        void onMixStarted(MediaPlayer incoming, NextTrack next);
+        /**
+         * La siguiente empezó a sonar: pasa a ser el reproductor principal y se actualiza la pantalla.
+         * automatic = mezcla automática (la pantalla cambia con fundido suave); false = cambio a mano.
+         */
+        void onMixStarted(MediaPlayer incoming, NextTrack next, boolean automatic);
+
+        /** Empieza o termina una mezcla automática (para mostrar el borde neón del reproductor). */
+        void onMixVisualChanged(boolean mixing);
     }
 
     static final class NextTrack {
@@ -49,16 +55,24 @@ final class AutoMixer {
 
     static final int DEFAULT_MIX_MS = 5000;
     private static final int PRELOAD_LEAD_MS = 15000;     // precargar 15 s antes de empezar la mezcla
+    // Mezcla inteligente (con análisis del audio)
+    private static final int FADE_MIN_MS = 1500;          // si la canción se apaga durante más de esto: es un fade-out
+    private static final int MIN_MIX_MS = 2000;
+    private static final int ABRUPT_MIX_MS = 3000;        // final seco: mezcla corta para no encimar dos canciones fuertes
+    private static final int MIN_SKIP_INTRO_MS = 300;     // silencio inicial menor a esto no se salta
     private static final int LONG_TRACK_MS = 10 * 60 * 1000; // mixes largos (sets de DJ)
     private static final int LONG_TRACK_MIX_MS = 2000;
     private static final int EARLY_END_FADE_MS = 300;     // entrada al terminar antes de lo previsto
+    static final int QUICK_FADE_MS = 500;                 // Siguiente / Anterior a mano: cambio suave pero inmediato
     private static final int TICK_MS = 250;
     private static final int FADE_STEP_MS = 50;           // pasos más largos se oyen "escalonados"
 
     private final Handler handler;
     private final Host host;
+    private final AudioAnalyzer analyzer;
 
     private boolean enabled = false;
+    private String currentPath;          // canción principal (para buscar su análisis)
     private int mixDurationMs = DEFAULT_MIX_MS;
 
     // Precarga de la siguiente
@@ -71,6 +85,7 @@ final class AutoMixer {
     private MediaPlayer outgoing;
     private long fadeStartMs;
     private int fadeDurationMs;
+    private boolean visibleMix = false;  // mezcla automática (se muestra el borde neón); el fundido de Siguiente no
 
     private final Runnable tickRunnable = new Runnable() {
         @Override
@@ -87,19 +102,27 @@ final class AutoMixer {
         }
     };
 
-    AutoMixer(Handler handler, Host host) {
+    AutoMixer(Handler handler, Host host, AudioAnalyzer analyzer) {
         this.handler = handler;
         this.host = host;
+        this.analyzer = analyzer;
     }
 
     boolean isEnabled() {
         return enabled;
     }
 
+    /** Empezó a sonar una canción (a mano o por mezcla): analizar su final en segundo plano. */
+    void onTrackStarted(Track track) {
+        currentPath = track != null ? track.getFilePath() : null;
+        if (enabled) analyzer.request(currentPath);
+    }
+
     void setEnabled(boolean on) {
         enabled = on;
         handler.removeCallbacks(tickRunnable);
         if (on) {
+            analyzer.request(currentPath);
             handler.post(tickRunnable);
         } else {
             finishMixNow();
@@ -141,7 +164,37 @@ final class AutoMixer {
             cancelPreload();
             return false;
         }
-        startMix(current, EARLY_END_FADE_MS);
+        startMix(current, EARLY_END_FADE_MS, false);
+        return true;
+    }
+
+    /**
+     * Siguiente a mano cuando la próxima canción ya está precargada: se usa directo (cambio
+     * instantáneo aunque el pendrive sea lento) con un fundido corto. False si no había nada listo.
+     */
+    boolean skipToPreparedNext() {
+        MediaPlayer current = host.getCurrentPlayer();
+        if (!enabled || isMixing() || current == null || !nextReady || nextPlayer == null
+                || !host.isStillNext(nextTrack)) {
+            return false;
+        }
+        startMix(current, QUICK_FADE_MS, false);
+        return true;
+    }
+
+    /**
+     * Fundido corto a mano (Siguiente / Anterior): la Activity ya dejó {@code incoming} preparado y
+     * como reproductor principal; aquí arranca en volumen 0 y se cruza con {@code old}.
+     */
+    boolean fadeManual(MediaPlayer old, MediaPlayer incoming) {
+        finishMixNow();
+        try {
+            incoming.setVolume(0f, 0f);
+            incoming.start();
+        } catch (Exception e) {
+            return false;
+        }
+        beginFade(old, QUICK_FADE_MS, false);
         return true;
     }
 
@@ -152,6 +205,7 @@ final class AutoMixer {
             releaseQuietly(outgoing);
             outgoing = null;
         }
+        setVisibleMix(false);
         MediaPlayer current = host.getCurrentPlayer();
         if (current != null) {
             try {
@@ -183,15 +237,17 @@ final class AutoMixer {
         }
         if (durationMs <= 0) return;
 
-        int mixMs = mixDurationFor(durationMs, 0);
-        if (mixMs == 0) return;
-        int remainingMs = durationMs - positionMs;
+        int baseMixMs = mixDurationFor(durationMs, 0);
+        if (baseMixMs == 0) return;
+        int[] plan = planMix(durationMs, baseMixMs);
+        int mixStartMs = plan[0];
+        int mixMs = plan[1];
 
-        if (preloadedFor != current && remainingMs <= mixMs + PRELOAD_LEAD_MS) {
+        if (preloadedFor != current && positionMs >= mixStartMs - PRELOAD_LEAD_MS) {
             preload(current);
         }
 
-        if (nextReady && remainingMs <= mixMs) {
+        if (nextReady && positionMs >= mixStartMs) {
             if (!host.isStillNext(nextTrack)) {
                 cancelPreload();
                 return;
@@ -200,10 +256,35 @@ final class AutoMixer {
             try {
                 nextDurationMs = nextPlayer.getDuration();
             } catch (Exception ignored) {}
-            int finalMixMs = mixDurationFor(durationMs, nextDurationMs);
-            if (finalMixMs == 0) return; // la siguiente es muy corta: entrará al terminar (respaldo)
-            startMix(current, Math.max(EARLY_END_FADE_MS, Math.min(finalMixMs, remainingMs)));
+            if (mixDurationFor(durationMs, nextDurationMs) == 0) return; // la siguiente es muy corta: entrará al terminar (respaldo)
+            int remainingMs = durationMs - positionMs;
+            startMix(current, Math.max(EARLY_END_FADE_MS, Math.min(mixMs, remainingMs)), true);
         }
+    }
+
+    /**
+     * Dónde empieza la mezcla y cuánto dura: {inicio ms, duración ms}.
+     * Con análisis: mezcla donde la canción empieza a apagarse (fade-out) o justo antes de su fin real
+     * (ignorando el silencio final). Sin análisis: los últimos segundos del archivo.
+     */
+    private int[] planMix(int durationMs, int baseMixMs) {
+        AudioAnalyzer.Result analysis = analyzer.get(currentPath);
+        if (analysis == null || analysis.contentEndMs <= 0) {
+            return new int[]{durationMs - baseMixMs, baseMixMs};
+        }
+        int endMs = Math.min(analysis.contentEndMs, durationMs);
+        int startMs;
+        int mixMs;
+        if (analysis.loudEndMs < endMs - FADE_MIN_MS) {
+            // Se apaga: mezclar desde que ya bajó claramente, sin esperar al silencio
+            startMs = analysis.loudEndMs;
+            mixMs = Math.max(MIN_MIX_MS, Math.min(baseMixMs, endMs - startMs));
+        } else {
+            // Final seco: mezcla corta que termina en el fin real
+            mixMs = Math.min(baseMixMs, ABRUPT_MIX_MS);
+            startMs = endMs - mixMs;
+        }
+        return new int[]{Math.max(0, startMs), mixMs};
     }
 
     /** Reglas de duración de la mezcla; 0 = no mezclar. */
@@ -220,6 +301,7 @@ final class AutoMixer {
         preloadedFor = forPlayer; // aunque falle, no reintentar en cada tick para esta misma canción
         NextTrack next = host.pickNextTrack();
         if (next == null) return;
+        analyzer.request(next.track.getFilePath()); // para saltar su silencio inicial al entrar
 
         final MediaPlayer player = host.createPlayer();
         nextPlayer = player;
@@ -244,7 +326,7 @@ final class AutoMixer {
         }
     }
 
-    private void startMix(MediaPlayer current, int durationMs) {
+    private void startMix(MediaPlayer current, int durationMs, boolean visible) {
         MediaPlayer incoming = nextPlayer;
         NextTrack next = nextTrack;
         nextPlayer = null;
@@ -253,19 +335,36 @@ final class AutoMixer {
 
         try {
             incoming.setVolume(0f, 0f);
+            // Saltar el silencio inicial de la que entra, para que no haya hueco
+            AudioAnalyzer.Result nextAnalysis = next != null ? analyzer.get(next.track.getFilePath()) : null;
+            if (nextAnalysis != null && nextAnalysis.contentStartMs >= MIN_SKIP_INTRO_MS) {
+                incoming.seekTo(nextAnalysis.contentStartMs);
+            }
             incoming.start();
         } catch (Exception e) {
             releaseQuietly(incoming);
             return;
         }
 
-        outgoing = current;
+        preloadedFor = null;
+        host.onMixStarted(incoming, next, visible);
+        beginFade(current, durationMs, visible);
+    }
+
+    /** Cruza volúmenes entre {@code old} (sale) y el reproductor principal (entra). */
+    private void beginFade(MediaPlayer old, int durationMs, boolean visible) {
+        outgoing = old;
         fadeStartMs = SystemClock.uptimeMillis();
         fadeDurationMs = durationMs;
-        preloadedFor = null;
-
-        host.onMixStarted(incoming, next);
+        setVisibleMix(visible);
+        handler.removeCallbacks(fadeRunnable);
         handler.post(fadeRunnable);
+    }
+
+    private void setVisibleMix(boolean visible) {
+        if (visibleMix == visible) return;
+        visibleMix = visible;
+        host.onMixVisualChanged(visible);
     }
 
     private void stepFade() {
@@ -296,6 +395,7 @@ final class AutoMixer {
             releaseQuietly(outgoing);
             outgoing = null;
         }
+        setVisibleMix(false);
         MediaPlayer current = host.getCurrentPlayer();
         if (current != null) {
             try {

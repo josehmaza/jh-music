@@ -15,12 +15,13 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 
 | Clase | Responsabilidad |
 |---|---|
-| `MainActivity` | Toda la lógica: escaneo USB, árbol de carpetas, pestañas, buscador, cola y reproducción, volumen, gestos y mandos del volante |
+| `MainActivity` | Toda la lógica: escaneo USB, árbol de carpetas, pestañas, buscador, cola y reproducción, volumen, gestos y teclas multimedia |
 | `Track` | Una canción: ruta, título, artista, álbum, carpeta, pendrive, formato, duración (0 = desconocida), favorito. Guarda su `SearchKey` |
 | `FolderItem` | Carpeta agrupada por nombre (resultados de búsqueda en la pestaña Carpetas). Guarda su `SearchKey` |
 | `TreeNode` | Nodo del árbol de Carpetas: hijos, contador y lista de canciones directas |
 | `SearchText` | Utilidades del buscador con regex precompilados: normalizar, colapsar letras repetidas, rutas relativas |
 | `AutoMixer` | Automix: precarga de la siguiente canción y mezcla de igual potencia entre dos `MediaPlayer` |
+| `AudioAnalyzer` | Analiza inicio y final de cada canción (silencios y fade-out) para que Automix mezcle en el lugar correcto |
 | `TrackAdapter` | Lista de canciones: resaltado de la que suena, toque / doble toque, favoritos, índice A-Z |
 | `FolderTreeAdapter` | Filas del árbol de Carpetas con el botón `[N ▶]` |
 | `FolderAdapter` | Lista plana de carpetas (resultados de búsqueda en Carpetas) |
@@ -148,6 +149,8 @@ Clase aparte que maneja dos `MediaPlayer` durante la mezcla y habla con la Activ
 3. **Mezcla:** cuando falta menos que la duración de la mezcla, arranca la siguiente en volumen 0, la Activity la toma como `mediaPlayer` (`onMixStarted`) y un fundido de igual potencia ajusta los volúmenes cada 50 ms. Al terminar se libera el reproductor que salía.
 4. **Respaldo:** si la canción principal termina sin mezcla, `onPlayerCompleted` usa la siguiente ya preparada (`startPreparedNextNow`) antes de recurrir a `playNextTrack()`.
 
+**Mezcla inteligente:** `onTrackStarted` pide a `AudioAnalyzer` el análisis del final de la canción, y la precarga pide el del inicio de la siguiente. `planMix()` usa ese análisis para decidir dónde empieza la mezcla y cuánto dura (fade-out → desde que bajó 8 dB; final seco → 3 s antes del fin real), y `startMix` salta el silencio inicial de la que entra. Sin análisis se usan los últimos 5 s. Detalle en [06 · Investigación del mezclador](06-investigacion-mezclador.md#13-estado-de-la-implementación).
+
 La siguiente precargada se descarta con cualquier inicio manual, al cambiar Aleatorio o Repetir, y al re-escanear (`invalidateNext`). El estado se guarda en `SharedPreferences` (`automix_enabled`).
 
 ### Siguiente, anterior y fin de canción
@@ -176,7 +179,7 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 - **Lupa:** está dentro de esa zona y no es clicable por sí misma; un toque simple sobre ella se detecta en el `OnTouchListener` de la zona (`isTouchOnView`).
 - **`TrackAdapter`:** un toque en la fila espera 280 ms para distinguirlo de un doble toque. Uno expande el nombre; dos reproducen.
 - **Modo inmersivo** a pantalla completa y pantalla siempre encendida (`FLAG_KEEP_SCREEN_ON`).
-- **Mandos del volante** en `onKeyDown`: `MEDIA_PLAY_PAUSE`, `HEADSETHOOK`, `MEDIA_NEXT`, `MEDIA_PREVIOUS`, `VOLUME_UP/DOWN`, `VOLUME_MUTE`.
+- **Teclas multimedia** (control Bluetooth u otro auto; el Tucson del proyecto no tiene botones en el volante) en `onKeyDown`: `MEDIA_PLAY_PAUSE`, `HEADSETHOOK`, `MEDIA_NEXT`, `MEDIA_PREVIOUS`, `VOLUME_UP/DOWN`, `VOLUME_MUTE`.
 
 ## 9. Recursos
 

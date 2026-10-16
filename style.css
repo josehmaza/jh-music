@@ -588,6 +588,54 @@ body {
   animation: pulse-glow 1s infinite;
 }
 
+/* Borde neón que late en el cuadro de la carátula mientras se mezclan dos canciones */
+.album-art-container.is-mixing {
+  animation: art-mix-halo 1.4s ease-in-out infinite;
+}
+
+.album-art-container.is-mixing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  border: 3px solid #38bdf8;
+  box-shadow:
+    inset 0 0 6px rgba(125, 211, 252, 0.9),
+    inset 0 0 22px rgba(56, 189, 248, 0.6);
+  animation: mix-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes mix-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Fundido de los datos de la canción al empezar una mezcla (título, artista, carátula, tiempos) */
+.np-fade {
+  transition: opacity 0.6s ease;
+}
+
+.np-hidden {
+  opacity: 0 !important;
+}
+
+/* Copia de la carátula anterior que se desvanece encima de la nueva durante la mezcla */
+.album-art-img.art-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* encima de la carátula nueva, debajo de las barras animadas */
+  pointer-events: none;
+  transition: opacity 0.7s ease;
+}
+
+/* Halo exterior del cuadro, al mismo ritmo que el borde */
+@keyframes art-mix-halo {
+  0%, 100% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 10px rgba(56, 189, 248, 0.35); }
+  50% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 26px rgba(56, 189, 248, 0.8); }
+}
+
 .now-playing-card {
   display: flex;
   flex-direction: column;
@@ -648,6 +696,27 @@ body {
   color: var(--text-muted);
 }
 
+/* Con carátula: la imagen ocupa el cuadro y las barras animadas quedan encima, abajo,
+   sobre una sombra suave para que se distingan sobre cualquier color */
+.album-art-container.has-cover .album-art-img {
+  position: absolute;
+  inset: 0;
+}
+
+.album-art-container.has-cover .album-placeholder {
+  position: absolute;
+  inset: 0;
+  justify-content: flex-end;
+  padding-bottom: 14px;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
+  z-index: 2;
+}
+
+.album-art-container.has-cover .vinyl-icon {
+  display: none;
+}
+
 .sound-wave-bars {
   display: flex;
   align-items: flex-end;
@@ -687,6 +756,7 @@ body {
   padding: 3px 7px;
   border-radius: 5px;
   font-family: var(--font-mono);
+  z-index: 2; /* siempre visible, también encima de la carátula */
 }
 
 /* Metadatos */

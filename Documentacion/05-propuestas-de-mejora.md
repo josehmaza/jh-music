@@ -13,7 +13,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 5 | Carátulas reducidas al tamaño del cuadro | 🟠 Media | Muy bajo | Pendiente |
 | 6 | Biblioteca guardada para arrancar al instante | 🟠 Media | Medio | Pendiente |
 | 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | Pendiente |
-| 8 | Carpeta siguiente / anterior desde el volante | 🟡 Usabilidad | Bajo | Pendiente |
+| 8 | Carpeta siguiente / anterior con pulsación larga en pantalla | 🟡 Usabilidad | Bajo | Pendiente |
 | 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente |
 | 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente |
 | 11 | Volumen de arranque limitado | 🟡 Usabilidad | Bajo | Pendiente |
@@ -58,13 +58,13 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ### 3. Reproducción independiente de la pantalla
 
-**Problema.** La reproducción vive dentro de la pantalla (`Activity`) y los mandos del volante solo funcionan con la app al frente (`onKeyDown`). En un radio con poca RAM:
+**Problema.** La reproducción vive dentro de la pantalla (`Activity`) y las teclas multimedia solo se atienden con la app al frente (`onKeyDown`). En un radio con poca RAM:
 - Si se abre el GPS encima, Android puede **cerrar la app para liberar memoria** y la música se corta.
-- Con el GPS al frente, **los botones del volante no responden**.
+- Con el GPS al frente, un control Bluetooth o multimedia no respondería (el auto no tiene botones en el volante, así que esto es secundario).
 
 **Propuesta.** Pasar la reproducción a un **servicio en primer plano** con `MediaSession`, el estándar de Android para reproductores:
 - La música sigue con la app minimizada o con el GPS al frente.
-- El volante funciona desde cualquier pantalla.
+- Los controles de la notificación y de un control Bluetooth funcionan desde cualquier pantalla.
 - Aparece una notificación con título y controles.
 - La pantalla pasa a ser solo el control remoto del servicio.
 
@@ -126,12 +126,12 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ## 🟡 Usabilidad al manejar
 
-### 8. Carpeta siguiente / anterior desde el volante
+### 8. Carpeta siguiente / anterior con pulsación larga en pantalla
 
-**Problema.** Con varias carpetas (Descargas, MIX, ENG…), cambiar de carpeta obliga a mirar la pantalla y tocar el árbol.
+**Problema.** Con varias carpetas (Descargas, MIX, ENG…), cambiar de carpeta obliga a mirar la pantalla y buscar en el árbol. El auto no tiene botones en el volante.
 
 **Propuesta.**
-- Mantener presionado Siguiente o Anterior en el volante (o en pantalla) para pasar a la carpeta siguiente o anterior y reproducir su primera canción.
+- **Mantener presionado** Siguiente o Anterior **en la pantalla** (unos 0,6 s) para pasar a la carpeta siguiente o anterior y reproducir su primera canción. Un toque corto sigue cambiando de canción.
 - Mostrar el nombre de la carpeta en grande durante 2–3 segundos.
 
 **Esfuerzo:** bajo.
@@ -243,5 +243,5 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 2 | #1 Retomar sesión | Mejora inmediata en el uso diario |
 | 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones |
 | 4 | #12 Mezcla automática, #13 Ecualizador | Se apoyan en el servicio de reproducción del paso 3 |
-| 5 | #6 Biblioteca en caché, #8 carpeta por volante | Rendimiento y comodidad |
+| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad |
 | 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones |

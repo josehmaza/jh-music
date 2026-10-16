@@ -218,6 +218,32 @@ function initApp() {
     }
   ];
 
+  // Carátulas de ejemplo (SVG generado aquí mismo, sin internet) para ver en la maqueta cómo cambia
+  // la carátula en una mezcla de Automix. Orden A-Z: Colegiala → Cumbia del Sol → El Aguacate (sin) → Guaracadita
+  function demoCover(colorA, colorB, line1, line2) {
+    const titleSize = line1.length > 10 ? 26 : 34; // nombres largos en letra más chica para que no se corten
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+      `<stop offset="0" stop-color="${colorA}"/><stop offset="1" stop-color="${colorB}"/></linearGradient></defs>` +
+      `<rect width="300" height="300" fill="url(#g)"/>` +
+      `<circle cx="230" cy="220" r="90" fill="#ffffff" fill-opacity="0.12"/>` +
+      `<circle cx="50" cy="270" r="70" fill="#000000" fill-opacity="0.15"/>` +
+      `<text x="24" y="150" font-family="Arial, sans-serif" font-size="${titleSize}" font-weight="900" fill="#ffffff">${line1}</text>` +
+      `<text x="24" y="182" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff" fill-opacity="0.85">${line2}</text>` +
+      `</svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  const demoCovers = [
+    { prefix: 'Colegiala', url: demoCover('#f97316', '#be185d', 'COLEGIALA', 'Cumbia Tropical') },
+    { prefix: 'Cumbia del Sol', url: demoCover('#facc15', '#ea580c', 'CUMBIA DEL SOL', 'Edición Radio') },
+    { prefix: 'Guaracadita', url: demoCover('#22d3ee', '#7c3aed', 'GUARACHA', 'Ultra Bass 2024') }
+  ];
+  sampleTracks.forEach(t => {
+    const cover = demoCovers.find(c => t.title.startsWith(c.prefix));
+    if (cover) t.coverUrl = cover.url;
+  });
+
   // Helper de ordenamiento alfabético natural para títulos de pistas (A-Z)
   function sortTracksAlphabetically(trackList) {
     if (!trackList || !Array.isArray(trackList)) return trackList;
@@ -417,6 +443,8 @@ function initApp() {
   } catch (e) {}
 
   function updateAutoMixButton() {
+    const artBox = document.getElementById('albumContainer');
+    if (artBox) artBox.classList.toggle('is-mixing', isMixing); // borde neón en la carátula durante la mezcla
     if (!btnAutoMix) return;
     btnAutoMix.classList.toggle('is-active', isAutoMix);
     btnAutoMix.classList.toggle('is-mixing', isMixing);
@@ -440,9 +468,45 @@ function initApp() {
     return index;
   }
 
+  // Fundido de los datos en pantalla al empezar una mezcla: lo de la canción que sale se apaga
+  // y lo de la que entra aparece (igual que en la app)
+  const NOW_PLAYING_FADE_MS = 600;
+  // Solo los textos. El cuadro de la carátula queda siempre visible con su borde neón; su imagen
+  // (si la canción la trae) cambia con fundido cruzado aparte (crossfadeAlbumArt).
+  const NOW_PLAYING_FADE_SELECTORS = ['#trackTitle', '.track-details',
+    '#prevTrackTitle', '#nextTrackTitle', '#currentTime', '#totalDuration'];
+  const ALBUM_ART_FADE_MS = 700;
+
+  /** Carátula vieja → nueva: la vieja (copia encima) se desvanece mientras la nueva queda debajo. */
+  function crossfadeAlbumArt(oldVisible, oldSrc) {
+    const container = document.getElementById('albumContainer');
+    const img = document.getElementById('albumArt');
+    if (!container || !img) return;
+    const newVisible = !img.classList.contains('hidden');
+    if (oldVisible) {
+      const ghost = document.createElement('img');
+      ghost.src = oldSrc;
+      ghost.className = 'album-art-img art-ghost np-fade';
+      container.appendChild(ghost);
+      setTimeout(() => ghost.classList.add('np-hidden'), 30);
+      setTimeout(() => ghost.remove(), ALBUM_ART_FADE_MS + 100);
+    } else if (newVisible) {
+      img.classList.add('np-fade', 'np-hidden');
+      setTimeout(() => img.classList.remove('np-hidden'), 30);
+    }
+  }
+  let nowPlayingSwapTimer = null;
+
+  function nowPlayingElements() {
+    return NOW_PLAYING_FADE_SELECTORS.map(s => document.querySelector(s)).filter(Boolean);
+  }
+
+  function showNowPlaying() {
+    nowPlayingElements().forEach(el => el.classList.remove('np-hidden'));
+  }
+
   function startAutoMix(nextIndex, mixSec) {
-    // Como en la app: la canción nueva aparece al empezar la mezcla
-    loadTrack(nextIndex, true);
+    // El neón se enciende al empezar la mezcla y dura toda la mezcla
     isMixing = true;
     clearTimeout(mixEndTimer);
     mixEndTimer = setTimeout(() => {
@@ -452,9 +516,25 @@ function initApp() {
     }, mixSec * 1000);
     updateAutoMixButton();
     updatePlayStateUI();
+
+    // Los datos de la canción que sale se apagan; ya apagados, se cambia a la nueva y aparece
+    const elements = nowPlayingElements();
+    elements.forEach(el => el.classList.add('np-fade', 'np-hidden'));
+    clearTimeout(nowPlayingSwapTimer);
+    nowPlayingSwapTimer = setTimeout(() => {
+      const artImg = document.getElementById('albumArt');
+      const oldArtVisible = !!artImg && !artImg.classList.contains('hidden');
+      const oldArtSrc = artImg ? artImg.src : '';
+      loadTrack(nextIndex, true);
+      crossfadeAlbumArt(oldArtVisible, oldArtSrc);
+      // Un instante después del cambio, para que el navegador aplique la transición de aparición
+      nowPlayingSwapTimer = setTimeout(showNowPlaying, 30);
+    }, NOW_PLAYING_FADE_MS);
   }
 
   function cancelAutoMix() {
+    clearTimeout(nowPlayingSwapTimer);
+    showNowPlaying();
     if (!isMixing) return;
     clearTimeout(mixEndTimer);
     isMixing = false;
@@ -532,14 +612,16 @@ function initApp() {
     progressCurrent.style.width = "0%";
     simCurrentSec = 0;
 
-    // Carátula
+    // Carátula: con imagen, se ve completa y las barras animadas siguen encima (abajo, sobre una
+    // sombra suave); el disco solo se muestra cuando no hay carátula
+    albumPlaceholder.classList.remove('hidden');
     if (track.coverUrl) {
       albumArt.src = track.coverUrl;
       albumArt.classList.remove('hidden');
-      albumPlaceholder.classList.add('hidden');
+      albumContainer.classList.add('has-cover');
     } else {
       albumArt.classList.add('hidden');
-      albumPlaceholder.classList.remove('hidden');
+      albumContainer.classList.remove('has-cover');
     }
 
     // Mensaje de saludo en cabecera
