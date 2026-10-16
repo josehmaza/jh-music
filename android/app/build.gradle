@@ -10,8 +10,8 @@ android {
         applicationId "com.jh.caraudio"
         minSdk 21
         targetSdk 28
-        versionCode 16
-        versionName "1.9.6"
+        versionCode 17
+        versionName "1.9.7"
     }
 
     buildTypes {

@@ -50,7 +50,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
-import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -948,7 +947,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Búsqueda inteligente optimizada: debounce de 350ms para no trabar el teclado
+        // Búsqueda inteligente optimizada: debounce adaptativo (500ms con 1-2 letras, 250ms después)
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -989,9 +988,11 @@ public class MainActivity extends Activity {
                 }
                 tvCurrentPath.setText("⏳ Buscando: \"" + q + "\"...");
 
-                // Esperar a que el usuario termine de teclear (250ms)
+                // Esperar a que el usuario termine de teclear: con 1-2 letras casi todo coincide y
+                // seguramente seguirá escribiendo, así que se espera más (500ms); si no, 250ms
+                int debounceMs = q.trim().length() <= 2 ? 500 : 250;
                 searchRunnable = () -> performAsyncSearch(q, thisVersion);
-                searchDebounceHandler.postDelayed(searchRunnable, 250);
+                searchDebounceHandler.postDelayed(searchRunnable, debounceMs);
             }
 
             @Override
@@ -1669,14 +1670,35 @@ public class MainActivity extends Activity {
     // Normalización de tildes + deduplicación de letras + fuzzy match
     // ==========================================
     private String normalizeText(String text) {
-        if (text == null) return "";
-        String n = Normalizer.normalize(text, Normalizer.Form.NFD);
-        return n.replaceAll("\\p{InCombiningDiacriticalMarks}+", "").toLowerCase().trim();
+        return SearchText.normalize(text);
     }
 
     private String dedupChars(String s) {
-        if (s == null) return "";
-        return s.replaceAll("([a-z])\\1+", "$1");
+        return SearchText.dedup(s);
+    }
+
+    /** Resultado de búsqueda con su puntaje ya calculado (una vez por elemento, no en cada comparación del sort). */
+    private static final class Scored<T> {
+        final T item;
+        final int score;
+
+        Scored(T item, int score) {
+            this.item = item;
+            this.score = score;
+        }
+    }
+
+    private static <T> List<T> sortByScore(List<Scored<T>> scored) {
+        Collections.sort(scored, (a, b) -> Integer.compare(b.score, a.score));
+        List<T> sorted = new ArrayList<>(scored.size());
+        for (Scored<T> s : scored) sorted.add(s.item);
+        return sorted;
+    }
+
+    private static String[] dedupTokens(String[] tokens) {
+        String[] out = new String[tokens.length];
+        for (int i = 0; i < tokens.length; i++) out[i] = SearchText.dedup(tokens[i]);
+        return out;
     }
 
     private int levenshtein(String a, String b) {
@@ -1714,15 +1736,14 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean fastTrackMatches(Track track, String[] tokens) {
-        String haystack = normalizeText(track.getTitle() + " " + track.getArtist() + " " + track.getAlbum() + " " + track.getFolder() + " " + track.getFilePath());
-        String haystackDedup = dedupChars(haystack);
+    private boolean fastTrackMatches(Track track, String[] tokens, String[] tokensDedup) {
+        Track.SearchKey key = track.getSearchKey();
 
-        for (String token : tokens) {
-            if (token.isEmpty()) continue;
-            // Búsqueda ultra rápida en subcadenas (<0.01ms por pista)
-            if (haystack.contains(token)) continue;
-            if (haystackDedup.contains(dedupChars(token))) continue;
+        for (int i = 0; i < tokens.length; i++) {
+            if (tokens[i].isEmpty()) continue;
+            // Búsqueda ultra rápida en subcadenas sobre texto ya normalizado
+            if (key.haystack.contains(tokens[i])) continue;
+            if (key.haystackDedup.contains(tokensDedup[i])) continue;
             return false;
         }
         return true;
@@ -1730,13 +1751,14 @@ public class MainActivity extends Activity {
 
     private int calculateTrackRelevance(Track track, String normQuery, String[] tokens) {
         int score = 0;
-        String titleNorm = normalizeText(track.getTitle());
-        String artistNorm = normalizeText(track.getArtist());
-        String albumNorm = normalizeText(track.getAlbum());
-        String folderNorm = normalizeText(track.getFolder());
+        Track.SearchKey key = track.getSearchKey();
+        String titleNorm = key.title;
+        String artistNorm = key.artist;
+        String albumNorm = key.album;
+        String folderNorm = key.folder;
 
-        String[] titleWords = titleNorm.split("[^a-z0-9]+");
-        String[] artistWords = artistNorm.split("[^a-z0-9]+");
+        String[] titleWords = key.titleWords;
+        String[] artistWords = key.artistWords;
 
         if (titleNorm.equals(normQuery)) {
             score += 25000;
@@ -1793,8 +1815,9 @@ public class MainActivity extends Activity {
 
     private int calculateFolderRelevance(FolderItem folder, String normQuery, String[] tokens) {
         int score = 0;
-        String nameNorm = normalizeText(folder.getName());
-        String[] words = nameNorm.split("[^a-z0-9]+");
+        FolderItem.SearchKey key = folder.getSearchKey();
+        String nameNorm = key.name;
+        String[] words = key.words;
 
         if (nameNorm.equals(normQuery)) {
             score += 20000;
@@ -1841,11 +1864,12 @@ public class MainActivity extends Activity {
             if (targetVersion != searchVersion) return;
 
             String norm = normalizeText(rawQuery);
-            String[] tokens = norm.split("\\s+");
+            String[] tokens = SearchText.tokens(norm);
+            String[] tokensDedup = dedupTokens(tokens);
 
             if (tab == 0) {
                 // PESTAÑA CARPETAS: Buscar con filtro USB 1 / USB 2 / TODO
-                List<FolderItem> matchedFolders = new ArrayList<>();
+                List<Scored<FolderItem>> scoredFolders = new ArrayList<>();
                 for (FolderItem f : folderList) {
                     if (targetVersion != searchVersion) return;
                     if (filter == FILTER_USB1) {
@@ -1858,23 +1882,19 @@ public class MainActivity extends Activity {
                         }
                     }
 
-                    String fText = normalizeText(f.getName() + " " + f.getPath());
-                    String fDedup = dedupChars(fText);
+                    FolderItem.SearchKey key = f.getSearchKey();
                     boolean match = true;
-                    for (String token : tokens) {
-                        if (token.isEmpty()) continue;
-                        if (!fText.contains(token) && !fDedup.contains(dedupChars(token))) {
+                    for (int i = 0; i < tokens.length; i++) {
+                        if (tokens[i].isEmpty()) continue;
+                        if (!key.haystack.contains(tokens[i]) && !key.haystackDedup.contains(tokensDedup[i])) {
                             match = false;
                             break;
                         }
                     }
-                    if (match) matchedFolders.add(f);
+                    if (match) scoredFolders.add(new Scored<>(f, calculateFolderRelevance(f, norm, tokens)));
                 }
 
-                Collections.sort(matchedFolders, (f1, f2) -> Integer.compare(
-                        calculateFolderRelevance(f2, norm, tokens),
-                        calculateFolderRelevance(f1, norm, tokens)
-                ));
+                List<FolderItem> matchedFolders = sortByScore(scoredFolders);
 
                 if (targetVersion != searchVersion) return;
 
@@ -1930,18 +1950,15 @@ public class MainActivity extends Activity {
                     sourceTracks.addAll(allTracks);
                 }
 
-                List<Track> matchedTracks = new ArrayList<>();
+                List<Scored<Track>> scoredTracks = new ArrayList<>();
                 for (Track t : sourceTracks) {
                     if (targetVersion != searchVersion) return;
-                    if (fastTrackMatches(t, tokens)) {
-                        matchedTracks.add(t);
+                    if (fastTrackMatches(t, tokens, tokensDedup)) {
+                        scoredTracks.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens)));
                     }
                 }
 
-                Collections.sort(matchedTracks, (t1, t2) -> Integer.compare(
-                        calculateTrackRelevance(t2, norm, tokens),
-                        calculateTrackRelevance(t1, norm, tokens)
-                ));
+                List<Track> matchedTracks = sortByScore(scoredTracks);
 
                 if (targetVersion != searchVersion) return;
 
@@ -1968,19 +1985,16 @@ public class MainActivity extends Activity {
 
             } else {
                 // PESTAÑA FAVORITOS: Buscar en todas las canciones favoritas
-                List<Track> matchedFavs = new ArrayList<>();
+                List<Scored<Track>> scoredFavs = new ArrayList<>();
                 for (Track t : allTracks) {
                     if (targetVersion != searchVersion) return;
                     if (!t.isFavorite()) continue;
-                    if (fastTrackMatches(t, tokens)) {
-                        matchedFavs.add(t);
+                    if (fastTrackMatches(t, tokens, tokensDedup)) {
+                        scoredFavs.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens)));
                     }
                 }
 
-                Collections.sort(matchedFavs, (t1, t2) -> Integer.compare(
-                        calculateTrackRelevance(t2, norm, tokens),
-                        calculateTrackRelevance(t1, norm, tokens)
-                ));
+                List<Track> matchedFavs = sortByScore(scoredFavs);
 
                 if (targetVersion != searchVersion) return;
 
@@ -2007,7 +2021,7 @@ public class MainActivity extends Activity {
 
     private void filterSearch(String rawQuery) {
         String norm = normalizeText(rawQuery);
-        String[] tokens = norm.split("\\s+");
+        String[] tokens = SearchText.tokens(norm);
         boolean hasQuery = !norm.isEmpty() && tokens.length > 0 && !tokens[0].isEmpty();
 
         // Si hay búsqueda activa: ejecutar de forma asíncrona según la pestaña y filtro
@@ -2543,6 +2557,10 @@ public class MainActivity extends Activity {
             }
 
             List<FolderItem> generatedFolders = new ArrayList<>(folderMap.values());
+
+            // Precalcular aquí (hilo de escaneo) el texto normalizado del buscador, para que cada búsqueda solo compare
+            for (Track t : foundTracks) t.getSearchKey();
+            for (FolderItem f : generatedFolders) f.getSearchKey();
 
             boolean fUsb1 = false;
             boolean fUsb2 = false;
