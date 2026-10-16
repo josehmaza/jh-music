@@ -2133,9 +2133,8 @@ function initApp() {
     crumbFolder.textContent = `${usbTag}${node.name}`;
     songCountEl.textContent = currentPlaylist.length;
 
-    // Abrir lista de pistas y comenzar reproducción inmediata
+    // Abrir lista de pistas mostrando las canciones de la carpeta seleccionada (sin autoreproducir a pedido de Hernan)
     tabButtons[1].click();
-    loadTrack(0, true);
   }
 
   function getAllTreeIds(nodes) {
