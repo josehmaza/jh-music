@@ -153,12 +153,23 @@
           <span class="crumb root" id="crumbRoot"></span>
           <span class="crumb active" id="crumbFolder"></span>
         </div>
-        <div class="scroll-track-list" id="trackListContainer">
-          <!-- Se llena dinámicamente -->
+        <!-- Contenedor con FastScroller y Burbuja Flotante A-Z para 200+ pistas -->
+        <div class="track-list-wrapper">
+          <div class="scroll-track-list" id="trackListContainer">
+            <!-- Se llena dinámicamente -->
+          </div>
+
+          <!-- FastScroller Lateral Ergonómico -->
+          <div class="web-fast-scroller" id="webFastScroller" style="display: none;">
+            <div class="web-fast-thumb" id="webFastThumb"></div>
+          </div>
+
+          <!-- Burbuja Flotante Central A-Z -->
+          <div class="web-fast-bubble" id="webFastBubble">
+            <span class="bubble-letter" id="webBubbleLetter">A</span>
+            <span class="bubble-count" id="webBubbleCount">1 / 200</span>
+          </div>
         </div>
-
-
-
       </section>
 
       <!-- COLUMNA 3: REPRODUCTOR, CARÁTULA Y CONTROLES DE PISTA (Ahora a la derecha) -->

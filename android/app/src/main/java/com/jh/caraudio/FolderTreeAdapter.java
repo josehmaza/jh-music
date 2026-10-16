@@ -167,6 +167,20 @@ public class FolderTreeAdapter extends BaseAdapter {
                 holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node);
             }
 
+            // Clic en la flecha de despliegue
+            holder.ivTreeArrow.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onNodeClick(node, position);
+                }
+            });
+
+            // Clic en el icono
+            holder.frameTreeIcon.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onNodeClick(node, position);
+                }
+            });
+
             // Clic en la fila (expandir / contraer y seleccionar)
             convertView.setOnClickListener(v -> {
                 if (listener != null) {

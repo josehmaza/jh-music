@@ -37,6 +37,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -114,6 +115,16 @@ public class MainActivity extends Activity {
     private Button btnPlayAll;
     private ListView listViewContent;
     private ImageButton btnCollapseAllTree;
+    private View scrollSearchFilters;
+
+    // FastScroller lateral ergonómico y burbuja flotante A-Z para 200+ canciones
+    private LinearLayout layoutFastScrollerTrack;
+    private View viewFastScrollThumb;
+    private LinearLayout layoutFastScrollBubble;
+    private TextView tvFastScrollBubbleLetter;
+    private TextView tvFastScrollBubbleTrackNumber;
+    private final Handler fastScrollHandler = new Handler(Looper.getMainLooper());
+    private Runnable hideBubbleRunnable;
 
     // Adaptadores
     private TrackAdapter trackAdapter;
@@ -186,6 +197,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         initViews();
+        setupFastScroller();
         buildTreeFromTracks(allTracks);
         updateVisibleTreeNodes();
         setupClock();
@@ -195,6 +207,10 @@ public class MainActivity extends Activity {
         setupProgressUpdater();
 
         checkAndRequestStoragePermissions();
+
+        // Ocultar teclado por defecto y remover foco del buscador al abrir la app
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        if (etSearch != null) etSearch.clearFocus();
     }
 
     private void initViews() {
@@ -246,6 +262,9 @@ public class MainActivity extends Activity {
         btnSearchClear = findViewById(R.id.btnSearchClear);
         pbSearchLoading = findViewById(R.id.pbSearchLoading);
         tvCurrentPath = findViewById(R.id.tvCurrentPath);
+        if (tvCurrentPath != null) {
+            tvCurrentPath.setVisibility(View.GONE);
+        }
         tvStorageStatus = findViewById(R.id.tvStorageStatus);
         btnPlayAll = findViewById(R.id.btnPlayAll);
         listViewContent = findViewById(R.id.listViewContent);
@@ -255,6 +274,7 @@ public class MainActivity extends Activity {
         }
 
         // Filtros de búsqueda (Esta Carpeta, TODO, USB 1, USB 2)
+        scrollSearchFilters = findViewById(R.id.scrollSearchFilters);
         btnFilterFolder = findViewById(R.id.btnFilterFolder);
         btnFilterAll = findViewById(R.id.btnFilterAll);
         btnFilterUsb1 = findViewById(R.id.btnFilterUsb1);
@@ -300,6 +320,145 @@ public class MainActivity extends Activity {
         listViewContent.setAdapter(folderTreeAdapter);
     }
 
+    // ==========================================
+    // FASTSCROLLER ERGONÓMICO Y BURBUJA FLOTANTE A-Z PARA CONDUCCIÓN
+    // ==========================================
+    private void setupFastScroller() {
+        layoutFastScrollerTrack = findViewById(R.id.layoutFastScrollerTrack);
+        viewFastScrollThumb = findViewById(R.id.viewFastScrollThumb);
+        layoutFastScrollBubble = findViewById(R.id.layoutFastScrollBubble);
+        tvFastScrollBubbleLetter = findViewById(R.id.tvFastScrollBubbleLetter);
+        tvFastScrollBubbleTrackNumber = findViewById(R.id.tvFastScrollBubbleTrackNumber);
+
+        hideBubbleRunnable = () -> {
+            if (layoutFastScrollBubble != null) {
+                layoutFastScrollBubble.animate()
+                        .alpha(0f)
+                        .setDuration(220)
+                        .withEndAction(() -> {
+                            if (layoutFastScrollBubble != null) {
+                                layoutFastScrollBubble.setVisibility(View.GONE);
+                            }
+                        })
+                        .start();
+            }
+        };
+
+        if (listViewContent != null) {
+            listViewContent.setOnScrollListener(new AbsListView.OnScrollListener() {
+                @Override
+                public void onScrollStateChanged(AbsListView view, int scrollState) {}
+
+                @Override
+                public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                    if (layoutFastScrollerTrack != null && layoutFastScrollerTrack.getVisibility() == View.VISIBLE && totalItemCount > 0) {
+                        int trackHeight = layoutFastScrollerTrack.getHeight();
+                        int thumbHeight = (viewFastScrollThumb != null && viewFastScrollThumb.getHeight() > 0) ? viewFastScrollThumb.getHeight() : 46;
+                        float maxTranslation = Math.max(0, trackHeight - thumbHeight);
+                        float ratio = (float) firstVisibleItem / (float) Math.max(1, totalItemCount - visibleItemCount);
+                        ratio = Math.max(0f, Math.min(1f, ratio));
+                        if (viewFastScrollThumb != null) {
+                            viewFastScrollThumb.setTranslationY(ratio * maxTranslation);
+                        }
+                    }
+                }
+            });
+        }
+
+        if (layoutFastScrollerTrack != null) {
+            layoutFastScrollerTrack.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                        case MotionEvent.ACTION_MOVE: {
+                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                            fastScrollHandler.removeCallbacks(hideBubbleRunnable);
+
+                            int trackHeight = layoutFastScrollerTrack.getHeight();
+                            if (trackHeight <= 0) return true;
+
+                            float y = event.getY();
+                            y = Math.max(0, Math.min(y, trackHeight));
+                            float ratio = y / (float) trackHeight;
+
+                            int thumbHeight = (viewFastScrollThumb != null && viewFastScrollThumb.getHeight() > 0) ? viewFastScrollThumb.getHeight() : 46;
+                            float maxTranslation = Math.max(0, trackHeight - thumbHeight);
+                            if (viewFastScrollThumb != null) {
+                                viewFastScrollThumb.setTranslationY(ratio * maxTranslation);
+                            }
+
+                            int itemCount = (listViewContent != null && listViewContent.getAdapter() != null)
+                                    ? listViewContent.getAdapter().getCount()
+                                    : 0;
+
+                            if (itemCount > 0) {
+                                int targetIndex = Math.min((int) (ratio * itemCount), itemCount - 1);
+                                listViewContent.setSelectionFromTop(targetIndex, 0);
+                                updateFastScrollBubble(targetIndex, itemCount);
+                            }
+                            return true;
+                        }
+
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL: {
+                            fastScrollHandler.removeCallbacks(hideBubbleRunnable);
+                            fastScrollHandler.postDelayed(hideBubbleRunnable, 450);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
+    private void updateFastScrollBubble(int position, int totalCount) {
+        if (layoutFastScrollBubble == null) return;
+
+        String letter = "#";
+        if (listViewContent != null && listViewContent.getAdapter() == trackAdapter && position >= 0 && position < displayedTracks.size()) {
+            Track t = displayedTracks.get(position);
+            if (t != null && t.getTitle() != null && !t.getTitle().trim().isEmpty()) {
+                char ch = Character.toUpperCase(t.getTitle().trim().charAt(0));
+                if (ch >= 'A' && ch <= 'Z') {
+                    letter = String.valueOf(ch);
+                }
+            }
+        } else if (listViewContent != null && listViewContent.getAdapter() == folderTreeAdapter && position >= 0 && position < visibleTreeNodes.size()) {
+            TreeNode node = visibleTreeNodes.get(position);
+            if (node != null && node.getName() != null && !node.getName().trim().isEmpty()) {
+                char ch = Character.toUpperCase(node.getName().trim().charAt(0));
+                if (ch >= 'A' && ch <= 'Z') {
+                    letter = String.valueOf(ch);
+                }
+            }
+        }
+
+        if (tvFastScrollBubbleLetter != null) {
+            tvFastScrollBubbleLetter.setText(letter);
+        }
+        if (tvFastScrollBubbleTrackNumber != null) {
+            tvFastScrollBubbleTrackNumber.setText((position + 1) + " / " + totalCount);
+        }
+
+        layoutFastScrollBubble.animate().cancel();
+        layoutFastScrollBubble.setAlpha(1f);
+        layoutFastScrollBubble.setVisibility(View.VISIBLE);
+    }
+
+    private void updateFastScrollerVisibility() {
+        if (layoutFastScrollerTrack == null) return;
+        int count = (listViewContent != null && listViewContent.getAdapter() != null)
+                ? listViewContent.getAdapter().getCount()
+                : 0;
+        if (count > 12) {
+            layoutFastScrollerTrack.setVisibility(View.VISIBLE);
+        } else {
+            layoutFastScrollerTrack.setVisibility(View.GONE);
+        }
+    }
+
     private void setupClock() {
         clockRunnable = new Runnable() {
             @Override
@@ -323,6 +482,9 @@ public class MainActivity extends Activity {
                 imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
             }
             view.clearFocus();
+        }
+        if (etSearch != null) {
+            etSearch.clearFocus();
         }
     }
 
@@ -387,17 +549,19 @@ public class MainActivity extends Activity {
 
                     // Si el explorador está OCULTO: Jalar hacia la derecha muestra el explorador
                     if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
-                        if (dx > 40 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
+                        if (dx > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             layoutExplorerPanel.setVisibility(View.VISIBLE);
+                            return true;
                         }
                     }
                     // Si el explorador está VISIBLE: Deslizar hacia la izquierda cierra el explorador
                     else {
-                        if (dx < -40 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
+                        if (dx < -35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
                             layoutExplorerPanel.setVisibility(View.GONE);
+                            return true;
                         }
                     }
                 }
@@ -405,7 +569,10 @@ public class MainActivity extends Activity {
             }
 
             case MotionEvent.ACTION_UP: {
-                if (!globalGestureHandled && globalTouchInToggleZone && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
+                if (globalGestureHandled) {
+                    return true;
+                }
+                if (globalTouchInToggleZone && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
                     float dx = ev.getRawX() - globalTouchStartX;
                     float dy = ev.getRawY() - globalTouchStartY;
 
@@ -413,12 +580,14 @@ public class MainActivity extends Activity {
                         if (dx > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             layoutExplorerPanel.setVisibility(View.VISIBLE);
+                            return true;
                         }
                     } else {
                         if (dx < -35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
                             layoutExplorerPanel.setVisibility(View.GONE);
+                            return true;
                         }
                     }
                 }
@@ -623,74 +792,74 @@ public class MainActivity extends Activity {
 
     // ==========================================
     // GESTOS ERGONÓMICOS DEL EXPLORADOR PARA EL CONDUCTOR
-    // Botón ampliado y zona libre derecha (cuadro rojo) para tocar y deslizar
+    // Botón de lupa (click conmuta) y zona libre roja lateral (jalar a la izq oculta, a la der muestra; toques ignorados)
     // ==========================================
     private void setupExplorerToggleGestures() {
-        View.OnTouchListener toggleTouchListener = new View.OnTouchListener() {
-            private float downX, downY;
-            private long downTime;
-            private boolean swiped = false;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        downX = event.getRawX();
-                        downY = event.getRawY();
-                        downTime = System.currentTimeMillis();
-                        swiped = false;
-                        v.setPressed(true);
-                        return true;
-
-                    case MotionEvent.ACTION_MOVE:
-                        float dx = event.getRawX() - downX;
-                        float dy = event.getRawY() - downY;
-                        // Deslizar desde el área libre hacia la derecha -> cierra el explorador
-                        if (!swiped && dx > 35 && Math.abs(dx) > Math.abs(dy)) {
-                            swiped = true;
-                            v.setPressed(false);
-                            hideKeyboard();
-                            if (layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
-                                layoutExplorerPanel.setVisibility(View.GONE);
-                            }
-                            return true;
-                        }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        v.setPressed(false);
-                        float totalDx = event.getRawX() - downX;
-                        float totalDy = event.getRawY() - downY;
-                        long duration = System.currentTimeMillis() - downTime;
-                        if (!swiped) {
-                            if (totalDx > 35 && Math.abs(totalDx) > Math.abs(totalDy)) {
-                                hideKeyboard();
-                                if (layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
-                                    layoutExplorerPanel.setVisibility(View.GONE);
-                                }
-                            } else if (duration < 500 && Math.abs(totalDx) < 30 && Math.abs(totalDy) < 30) {
-                                // Toque en la zona libre o botón -> conmuta el explorador
-                                toggleExplorerVisibility();
-                            }
-                        }
-                        return true;
-
-                    case MotionEvent.ACTION_CANCEL:
-                        v.setPressed(false);
-                        break;
-                }
-                return false;
-            }
-        };
-
         if (btnToggleExplorer != null) {
-            btnToggleExplorer.setOnClickListener(v -> toggleExplorerVisibility());
-            btnToggleExplorer.setOnTouchListener(toggleTouchListener);
+            btnToggleExplorer.setClickable(false);
+            btnToggleExplorer.setFocusable(false);
         }
 
         if (layoutExplorerToggleZone != null) {
-            layoutExplorerToggleZone.setOnClickListener(v -> toggleExplorerVisibility());
-            layoutExplorerToggleZone.setOnTouchListener(toggleTouchListener);
+            // NUNCA asignar setOnClickListener a layoutExplorerToggleZone para evitar alternar con un simple toque accidental
+            layoutExplorerToggleZone.setOnTouchListener(new View.OnTouchListener() {
+                private float downX, downY;
+                private boolean gestureHandled = false;
+
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            downX = event.getRawX();
+                            downY = event.getRawY();
+                            gestureHandled = false;
+                            return true;
+
+                        case MotionEvent.ACTION_MOVE:
+                            if (!gestureHandled && layoutExplorerPanel != null) {
+                                float dx = event.getRawX() - downX;
+                                float dy = event.getRawY() - downY;
+                                if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
+                                    // Jalar hacia la IZQUIERDA (<-) oculta el explorador
+                                    if (dx < -35 && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
+                                        gestureHandled = true;
+                                        hideKeyboard();
+                                        layoutExplorerPanel.setVisibility(View.GONE);
+                                        return true;
+                                    }
+                                    // Jalar hacia la DERECHA (->) muestra el explorador
+                                    else if (dx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
+                                        gestureHandled = true;
+                                        layoutExplorerPanel.setVisibility(View.VISIBLE);
+                                        return true;
+                                    }
+                                }
+                            }
+                            break;
+
+                        case MotionEvent.ACTION_UP:
+                            if (!gestureHandled && layoutExplorerPanel != null) {
+                                float totalDx = event.getRawX() - downX;
+                                float totalDy = event.getRawY() - downY;
+                                if (Math.abs(totalDx) > 35 && Math.abs(totalDx) > Math.abs(totalDy) * 1.1f) {
+                                    if (totalDx < -35 && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
+                                        hideKeyboard();
+                                        layoutExplorerPanel.setVisibility(View.GONE);
+                                    } else if (totalDx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
+                                        layoutExplorerPanel.setVisibility(View.VISIBLE);
+                                    }
+                                }
+                                // Si fue un simple toque (tap, Math.abs(totalDx) <= 35), NO se hace nada.
+                            }
+                            return true;
+
+                        case MotionEvent.ACTION_CANCEL:
+                            gestureHandled = false;
+                            break;
+                    }
+                    return true;
+                }
+            });
         }
     }
 
@@ -811,12 +980,9 @@ public class MainActivity extends Activity {
             btnSearchClear.setVisibility(View.GONE);
             if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
             hideKeyboard();
-            // Al limpiar la búsqueda, mostrar las canciones de la carpeta seteada al darle play
-            if (currentTab != 0 && currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
-                currentSearchFilter = FILTER_FOLDER;
-                updateFilterChipsVisibility();
-                updateFilterChipsUI();
-            }
+            // Al borrar la búsqueda, restaurar y mostrar las canciones de la carpeta actual seleccionada
+            updateFilterChipsVisibility();
+            updateFilterChipsUI();
             filterSearch("");
         });
 
@@ -858,7 +1024,9 @@ public class MainActivity extends Activity {
     private void setSearchFilter(int filter) {
         currentSearchFilter = filter;
         updateFilterChipsUI();
-        filterSearch(etSearch.getText().toString());
+        if (etSearch != null && etSearch.getText().length() > 0) {
+            filterSearch(etSearch.getText().toString());
+        }
     }
 
     private void updateFilterChipsUI() {
@@ -962,6 +1130,15 @@ public class MainActivity extends Activity {
     }
 
     private void updateFilterChipsVisibility() {
+        // En la pestaña Carpetas USB (currentTab == 0), se oculta completamente la barra de filtros (TODO, USB 1, USB 2)
+        // porque el árbol jerárquico ya organiza los pendrives como nodos raíz y los botones solo restan espacio vertical
+        if (scrollSearchFilters != null) {
+            scrollSearchFilters.setVisibility(currentTab == 0 ? View.GONE : View.VISIBLE);
+        }
+        if (currentTab == 0) {
+            return;
+        }
+
         if (btnFilterFolder != null) {
             if (currentTab == 1 && currentSelectedFolder != null) {
                 btnFilterFolder.setVisibility(View.VISIBLE);
@@ -1089,7 +1266,7 @@ public class MainActivity extends Activity {
             if (usb == null || usb.isEmpty()) {
                 usb = (path != null && path.toLowerCase().contains("udisk2")) ? "USB 2" : "USB 1";
             }
-            boolean isUsb2 = "USB 2".equalsIgnoreCase(usb) || (path != null && path.toLowerCase().contains("udisk2"));
+            boolean isUsb2 = "USB 2".equalsIgnoreCase(usb) || (path != null && (path.toLowerCase().contains("udisk2") || path.toLowerCase().contains("usb1")));
             String usbId = isUsb2 ? "usb2" : "usb1";
             String usbName = isUsb2 ? "USB 2 (udisk2)" : "USB 1 (udisk1)";
             String usbPath = isUsb2 ? "/storage/udisk2/" : "/storage/udisk1/";
@@ -1103,15 +1280,21 @@ public class MainActivity extends Activity {
 
             // Extraer ruta relativa de directorios (sin el nombre del archivo mp3)
             String relDir = "";
-            if (path != null && path.startsWith(usbPath)) {
-                relDir = path.substring(usbPath.length());
-            } else if (path != null) {
-                int udiskIdx = path.indexOf("udisk");
-                if (udiskIdx != -1) {
-                    int slashAfter = path.indexOf('/', udiskIdx);
-                    if (slashAfter != -1 && slashAfter < path.length() - 1) {
-                        relDir = path.substring(slashAfter + 1);
+            if (path != null) {
+                String lower = path.toLowerCase();
+                String[] usbPatterns = {"udisk2", "udisk1", "usb1", "usb0", "udisk3", "usb2"};
+                for (String pat : usbPatterns) {
+                    int idx = lower.indexOf(pat);
+                    if (idx != -1) {
+                        int slashAfter = path.indexOf('/', idx);
+                        if (slashAfter != -1 && slashAfter < path.length() - 1) {
+                            relDir = path.substring(slashAfter + 1);
+                        }
+                        break;
                     }
+                }
+                if (relDir.isEmpty() && path.startsWith(usbPath)) {
+                    relDir = path.substring(usbPath.length());
                 }
             }
 
@@ -1147,6 +1330,13 @@ public class MainActivity extends Activity {
             } else {
                 rootNode.incrementDirectCount();
             }
+        }
+
+        if (hasUsb1 && !rootUsbMap.containsKey("usb1")) {
+            rootUsbMap.put("usb1", new TreeNode("usb1", "USB 1 (udisk1)", "/storage/udisk1/", "USB 1", true, 0));
+        }
+        if (hasUsb2 && !rootUsbMap.containsKey("usb2")) {
+            rootUsbMap.put("usb2", new TreeNode("usb2", "USB 2 (udisk2)", "/storage/udisk2/", "USB 2", true, 0));
         }
 
         for (TreeNode root : rootUsbMap.values()) {
@@ -1665,6 +1855,7 @@ public class MainActivity extends Activity {
                     tvCurrentPath.setText("🔍 Pistas" + filterLabel + ": \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
                     tabTracks.setText("🎵 Pistas (" + displayedTracks.size() + ")");
                     trackAdapter.setTracks(displayedTracks);
+                    updateFastScrollerVisibility();
                 });
 
             } else {
@@ -1705,6 +1896,7 @@ public class MainActivity extends Activity {
                     String filterLabel = filter == FILTER_USB1 ? " [USB 1]" : (filter == FILTER_USB2 ? " [USB 2]" : "");
                     tvCurrentPath.setText("⭐ Favoritos" + filterLabel + ": \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
                     trackAdapter.setTracks(displayedTracks);
+                    updateFastScrollerVisibility();
                 });
             }
         });
@@ -1743,30 +1935,32 @@ public class MainActivity extends Activity {
         } else if (currentTab == 1) {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
-            if (currentSearchFilter == FILTER_FOLDER && currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+
+            // En la pestaña Pistas SIEMPRE se muestran las canciones de la carpeta seleccionada actual
+            if (currentPlaylist != null && !currentPlaylist.isEmpty()) {
                 displayedTracks.addAll(currentPlaylist);
-                String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                tvCurrentPath.setText("📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")");
-            } else if (currentSearchFilter == FILTER_USB1) {
+            } else if (currentSelectedFolder != null) {
                 for (Track t : allTracks) {
-                    if ("USB 1".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk1") || t.getFilePath().contains("usb0")))) {
+                    if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
                         displayedTracks.add(t);
                     }
                 }
-                tvCurrentPath.setText("💾 Pistas USB 1 (" + displayedTracks.size() + ")");
-            } else if (currentSearchFilter == FILTER_USB2) {
+                currentPlaylist.clear();
+                currentPlaylist.addAll(displayedTracks);
+            } else if (!allTracks.isEmpty()) {
+                currentSelectedFolder = allTracks.get(0).getFolder();
+                currentSelectedFolderUsbSource = allTracks.get(0).getUsbSource();
                 for (Track t : allTracks) {
-                    if ("USB 2".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk2") || t.getFilePath().contains("usb1")))) {
+                    if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
                         displayedTracks.add(t);
                     }
                 }
-                tvCurrentPath.setText("💾 Pistas USB 2 (" + displayedTracks.size() + ")");
-            } else {
-                List<Track> source = (currentSelectedFolder != null && !currentPlaylist.isEmpty() && currentSearchFilter == FILTER_FOLDER) ? currentPlaylist : allTracks;
-                displayedTracks.addAll(source);
-                String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
-                tvCurrentPath.setText(currentSelectedFolder != null && currentSearchFilter == FILTER_FOLDER ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🎵 Todas las Pistas (" + displayedTracks.size() + ")");
+                currentPlaylist.clear();
+                currentPlaylist.addAll(displayedTracks);
             }
+
+            String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+            tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🎵 Pistas (" + displayedTracks.size() + ")");
 
             trackAdapter.setTracks(displayedTracks);
             if (listViewContent.getAdapter() != trackAdapter) {
@@ -1799,6 +1993,7 @@ public class MainActivity extends Activity {
             }
             tvCurrentPath.setText("⭐ Mis Favoritos (" + displayedTracks.size() + ")");
         }
+        updateFastScrollerVisibility();
     }
 
     // ==========================================
@@ -2419,6 +2614,26 @@ public class MainActivity extends Activity {
         if (hasFocus) {
             setImmersiveMode();
             updateVolumeUI();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setImmersiveMode();
+        if (etSearch != null) {
+            etSearch.clearFocus();
+        }
+        hideKeyboard();
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        hideKeyboard();
+        if (etSearch != null) {
+            etSearch.clearFocus();
         }
     }
 

@@ -11,12 +11,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageButton;
+import android.widget.SectionIndexer;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TrackAdapter extends BaseAdapter {
+public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
     public interface OnTrackClickListener {
         void onTrackClick(Track track, int position);
@@ -38,16 +39,76 @@ public class TrackAdapter extends BaseAdapter {
     private OnTrackClickListener trackClickListener;
     private OnFavoriteClickListener favoriteClickListener;
 
+    private String[] sections = new String[0];
+    private int[] sectionPositions = new int[0];
+
     public TrackAdapter(Context context, List<Track> tracks, OnTrackClickListener trackListener, OnFavoriteClickListener favListener) {
         this.context = context;
         this.tracks = tracks != null ? tracks : new ArrayList<>();
         this.trackClickListener = trackListener;
         this.favoriteClickListener = favListener;
+        buildSections();
     }
 
     public void setTracks(List<Track> tracks) {
         this.tracks = tracks != null ? tracks : new ArrayList<>();
+        buildSections();
         notifyDataSetChanged();
+    }
+
+    private void buildSections() {
+        if (tracks == null || tracks.isEmpty()) {
+            sections = new String[0];
+            sectionPositions = new int[0];
+            return;
+        }
+        List<String> sectionList = new ArrayList<>();
+        List<Integer> positionList = new ArrayList<>();
+
+        for (int i = 0; i < tracks.size(); i++) {
+            Track t = tracks.get(i);
+            String title = (t != null && t.getTitle() != null) ? t.getTitle().trim() : "";
+            String initial = "#";
+            if (!title.isEmpty()) {
+                char ch = Character.toUpperCase(title.charAt(0));
+                if (ch >= 'A' && ch <= 'Z') {
+                    initial = String.valueOf(ch);
+                }
+            }
+            if (!sectionList.contains(initial)) {
+                sectionList.add(initial);
+                positionList.add(i);
+            }
+        }
+        sections = sectionList.toArray(new String[0]);
+        sectionPositions = new int[positionList.size()];
+        for (int i = 0; i < positionList.size(); i++) {
+            sectionPositions[i] = positionList.get(i);
+        }
+    }
+
+    @Override
+    public Object[] getSections() {
+        return sections;
+    }
+
+    @Override
+    public int getPositionForSection(int sectionIndex) {
+        if (sectionPositions == null || sectionPositions.length == 0) return 0;
+        if (sectionIndex < 0) return 0;
+        if (sectionIndex >= sectionPositions.length) return sectionPositions[sectionPositions.length - 1];
+        return sectionPositions[sectionIndex];
+    }
+
+    @Override
+    public int getSectionForPosition(int position) {
+        if (sectionPositions == null || sectionPositions.length == 0) return 0;
+        for (int i = sectionPositions.length - 1; i >= 0; i--) {
+            if (position >= sectionPositions[i]) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     public void setCurrentPlayingIndex(int index) {

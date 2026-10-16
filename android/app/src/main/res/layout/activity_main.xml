@@ -194,13 +194,16 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical"
                 android:background="@drawable/bg_panel_card"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:padding="8dp">
 
-                <!-- Pestañas de Navegación Ampliadas para Conducción (16sp y 44dp) -->
+                <!-- Pestañas de Navegación Ampliadas para Conducción (16sp y 44dp) y Botón Colapsar Árbol -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
                     <Button
                         android:id="@+id/tabFolders"
@@ -236,14 +239,27 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
+
+                    <!-- Botón Colapsar Todo a nivel de Pendrives (Visible en pestaña Carpetas USB) -->
+                    <ImageButton
+                        android:id="@+id/btnCollapseAllTree"
+                        android:layout_width="40dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@drawable/ic_collapse_all"
+                        android:tint="@color/accent_cyan"
+                        android:padding="8dp"
+                        android:contentDescription="Colapsar todo el árbol" />
                 </LinearLayout>
 
-                <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) en 16sp y 34dp -->
+                <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) en 16sp y 34dp (Oculto en pestaña Carpetas USB) -->
                 <HorizontalScrollView
                     android:id="@+id/scrollSearchFilters"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
+                    android:visibility="gone"
                     android:scrollbars="none"
                     android:overScrollMode="never">
 
@@ -380,56 +396,88 @@
                         android:contentDescription="Borrar búsqueda" />
                 </LinearLayout>
 
-                <!-- Ruta actual / Migas de pan con Scroll Horizontal y Botón Colapsar Todo el Árbol -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="5dp">
+                <!-- TextView oculto para mantener compatibilidad sin consumir espacio vertical -->
+                <TextView
+                    android:id="@+id/tvCurrentPath"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
 
-                    <HorizontalScrollView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:scrollbars="none"
-                        android:overScrollMode="never">
-
-                        <TextView
-                            android:id="@+id/tvCurrentPath"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:singleLine="true"
-                            android:text="📂 Carpetas USB"
-                            android:textColor="@color/accent_cyan"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </HorizontalScrollView>
-
-                    <!-- Botón Colapsar Todo a nivel de Pendrives (Visible en modo árbol) -->
-                    <ImageButton
-                        android:id="@+id/btnCollapseAllTree"
-                        android:layout_width="36dp"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@drawable/ic_collapse_all"
-                        android:tint="@color/accent_cyan"
-                        android:padding="6dp"
-                        android:contentDescription="Colapsar todo el árbol" />
-                </LinearLayout>
-
-                <!-- Lista de Elementos (Canciones o Carpetas) -->
-                <ListView
-                    android:id="@+id/listViewContent"
+                <!-- Contenedor de Lista con FastScroller Táctil y Burbuja Flotante A-Z para 200+ canciones -->
+                <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:layout_marginTop="4dp"
-                    android:divider="@color/border_panel"
-                    android:dividerHeight="1dp"
-                    android:descendantFocusability="blocksDescendants"
-                    android:cacheColorHint="#00000000" />
+                    android:layout_marginTop="4dp">
+
+                    <ListView
+                        android:id="@+id/listViewContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:divider="@color/border_panel"
+                        android:dividerHeight="1dp"
+                        android:descendantFocusability="blocksDescendants"
+                        android:cacheColorHint="#00000000"
+                        android:fastScrollEnabled="true"
+                        android:fastScrollAlwaysVisible="false"
+                        android:scrollbars="vertical" />
+
+                    <!-- Deslizador Rápido Táctil Ergonómico Lateral para Conducción (38dp de ancho táctil) -->
+                    <LinearLayout
+                        android:id="@+id/layoutFastScrollerTrack"
+                        android:layout_width="38dp"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="end"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_fastscroll_track"
+                        android:visibility="gone"
+                        android:clickable="true"
+                        android:focusable="false"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp">
+
+                        <!-- Deslizador / Thumb táctil que se arrastra verticalmente -->
+                        <View
+                            android:id="@+id/viewFastScrollThumb"
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:background="@drawable/bg_fastscroll_thumb" />
+                    </LinearLayout>
+
+                    <!-- Burbuja Flotante de Previsualización Prominente (Letra A-Z y Número de Pista) -->
+                    <LinearLayout
+                        android:id="@+id/layoutFastScrollBubble"
+                        android:layout_width="120dp"
+                        android:layout_height="110dp"
+                        android:layout_gravity="center"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_bubble_floating"
+                        android:elevation="14dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvFastScrollBubbleLetter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="A"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="44sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvFastScrollBubbleTrackNumber"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="-2dp"
+                            android:text="1 / 200"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </FrameLayout>
 
                 <!-- Pie de Estado de Almacenamiento y Botón Reproducir Todo -->
                 <LinearLayout
@@ -567,21 +615,22 @@
                     </FrameLayout>
 
                     <!-- Zona Táctil Ergonómica (Área libre marcada en cuadro rojo + botón de búsqueda) -->
-                    <!-- Permite tocar o deslizar a la derecha para cerrar/abrir el explorador fácilmente al manejar -->
+                    <!-- Permite tocar, mantener y jalar hacia la izquierda para ocultar o hacia la derecha para mostrar -->
                     <LinearLayout
                         android:id="@+id/layoutExplorerToggleZone"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
                         android:layout_alignParentTop="true"
                         android:layout_alignParentStart="true"
                         android:layout_toStartOf="@id/layoutAlbumArtCard"
                         android:layout_alignBottom="@id/layoutAlbumArtCard"
                         android:minWidth="64dp"
+                        android:background="@android:color/transparent"
                         android:orientation="vertical"
                         android:gravity="top|start"
                         android:clickable="true"
-                        android:focusable="true"
-                        android:contentDescription="Alternar Explorador de Música">
+                        android:focusable="false"
+                        android:contentDescription="Área de gesto para alternar explorador">
 
                         <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
                         <ImageButton

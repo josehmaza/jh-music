@@ -878,18 +878,9 @@ function initApp() {
 
   // Alternador de Buscador de Música y Archivos / Modo Reproductor Completo
   let isPlayerExpanded = false;
-  if (btnToggleExpand && dashboardGrid) {
-    btnToggleExpand.addEventListener('click', () => {
-      isPlayerExpanded = !isPlayerExpanded;
-      dashboardGrid.classList.toggle('is-expanded', isPlayerExpanded);
-      btnToggleExpand.classList.toggle('is-active', !isPlayerExpanded);
-      if (isPlayerExpanded) {
-        btnToggleExpand.title = "Abrir buscador de archivos y pistas";
-      } else {
-        btnToggleExpand.title = "Ocultar buscador (reproductor a pantalla completa)";
-      }
-      setTimeout(refreshAllMarquees, 320);
-    });
+  // El botón ya no alterna con click directo; se maneja exclusivamente por gesto de arrastre táctil
+  if (btnToggleExpand) {
+    btnToggleExpand.style.cursor = "grab";
   }
 
   // =================== ZONA EXCLUSIVA DE GESTOS TÁCTILES / ARRASTRE ===================
@@ -1286,7 +1277,9 @@ function initApp() {
       searchInput.blur();
       currentSearchFilter = chip.getAttribute('data-filter');
       updateFilterChipsUI();
-      renderList();
+      if (searchInput.value.trim().length > 0) {
+        renderList();
+      }
     });
   });
 
@@ -1841,20 +1834,9 @@ function initApp() {
         filtered = favPool;
         crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
       } else {
-        if (currentSearchFilter === 'usb1') {
-          filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
-          crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
-        } else if (currentSearchFilter === 'usb2') {
-          filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
-          crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
-        } else if (currentSearchFilter === 'all') {
-          filtered = [...allPool];
-          crumbFolder.textContent = `Todas las Pistas (${filtered.length})`;
-        } else {
-          filtered = currentPlaylist;
-          const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
-          crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
-        }
+        filtered = currentPlaylist;
+        const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+        crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
         sortTracksAlphabetically(filtered);
       }
 
@@ -1960,6 +1942,133 @@ function initApp() {
 
     // Activar marquesina en la canción que está sonando en la lista
     setTimeout(refreshAllMarquees, 70);
+    setTimeout(updateWebFastScroller, 80);
+  }
+
+  // =================== FASTSCROLLER TÁCTIL ERGONÓMICO Y BURBUJA A-Z ===================
+  const webFastScroller = document.getElementById('webFastScroller');
+  const webFastThumb = document.getElementById('webFastThumb');
+  const webFastBubble = document.getElementById('webFastBubble');
+  const webBubbleLetter = document.getElementById('webBubbleLetter');
+  const webBubbleCount = document.getElementById('webBubbleCount');
+  let webHideBubbleTimer = null;
+
+  function updateWebFastScroller() {
+    if (!webFastScroller || !trackListContainer) return;
+    const items = trackListContainer.querySelectorAll('.list-item');
+    if (items.length > 8) {
+      webFastScroller.style.display = 'flex';
+      syncWebThumbPosition();
+    } else {
+      webFastScroller.style.display = 'none';
+      if (webFastBubble) webFastBubble.classList.remove('is-active');
+    }
+  }
+
+  function syncWebThumbPosition() {
+    if (!webFastScroller || !webFastThumb || !trackListContainer) return;
+    const maxScroll = trackListContainer.scrollHeight - trackListContainer.clientHeight;
+    if (maxScroll <= 0) {
+      webFastThumb.style.transform = 'translateY(0)';
+      return;
+    }
+    const ratio = Math.max(0, Math.min(1, trackListContainer.scrollTop / maxScroll));
+    const scrollerHeight = webFastScroller.clientHeight;
+    const thumbHeight = webFastThumb.clientHeight || 44;
+    const maxTravel = Math.max(0, scrollerHeight - thumbHeight);
+    webFastThumb.style.transform = `translateY(${ratio * maxTravel}px)`;
+  }
+
+  if (trackListContainer) {
+    trackListContainer.addEventListener('scroll', () => {
+      syncWebThumbPosition();
+    }, { passive: true });
+  }
+
+  function handleFastScroll(clientY) {
+    if (!webFastScroller || !trackListContainer) return;
+    const rect = webFastScroller.getBoundingClientRect();
+    const scrollerHeight = rect.height;
+    if (scrollerHeight <= 0) return;
+
+    let offsetY = clientY - rect.top;
+    offsetY = Math.max(0, Math.min(offsetY, scrollerHeight));
+    const ratio = offsetY / scrollerHeight;
+
+    const maxScroll = trackListContainer.scrollHeight - trackListContainer.clientHeight;
+    trackListContainer.scrollTop = ratio * maxScroll;
+
+    const thumbHeight = webFastThumb ? (webFastThumb.clientHeight || 44) : 44;
+    const maxTravel = Math.max(0, scrollerHeight - thumbHeight);
+    if (webFastThumb) {
+      webFastThumb.style.transform = `translateY(${ratio * maxTravel}px)`;
+    }
+
+    const items = trackListContainer.querySelectorAll('.list-item');
+    if (items.length > 0) {
+      const targetIdx = Math.min(Math.floor(ratio * items.length), items.length - 1);
+      const targetItem = items[targetIdx];
+      const titleEl = targetItem ? targetItem.querySelector('.item-title') : null;
+      let letter = '#';
+      if (titleEl && titleEl.textContent) {
+        const firstChar = titleEl.textContent.trim().charAt(0).toUpperCase();
+        if (firstChar >= 'A' && firstChar <= 'Z') letter = firstChar;
+      }
+
+      if (webBubbleLetter) webBubbleLetter.textContent = letter;
+      if (webBubbleCount) webBubbleCount.textContent = `${targetIdx + 1} / ${items.length}`;
+
+      clearTimeout(webHideBubbleTimer);
+      if (webFastBubble) webFastBubble.classList.add('is-active');
+    }
+  }
+
+  if (webFastScroller) {
+    let isDraggingScroller = false;
+
+    webFastScroller.addEventListener('mousedown', (e) => {
+      isDraggingScroller = true;
+      handleFastScroll(e.clientY);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDraggingScroller) {
+        handleFastScroll(e.clientY);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDraggingScroller) {
+        isDraggingScroller = false;
+        clearTimeout(webHideBubbleTimer);
+        webHideBubbleTimer = setTimeout(() => {
+          if (webFastBubble) webFastBubble.classList.remove('is-active');
+        }, 450);
+      }
+    });
+
+    webFastScroller.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        isDraggingScroller = true;
+        handleFastScroll(e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (isDraggingScroller && e.touches && e.touches.length === 1) {
+        handleFastScroll(e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      if (isDraggingScroller) {
+        isDraggingScroller = false;
+        clearTimeout(webHideBubbleTimer);
+        webHideBubbleTimer = setTimeout(() => {
+          if (webFastBubble) webFastBubble.classList.remove('is-active');
+        }, 450);
+      }
+    }, { passive: true });
   }
 
   // =================== GESTIÓN Y REPRODUCCIÓN DEL ÁRBOL JERÁRQUICO ===================
