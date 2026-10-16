@@ -2,6 +2,8 @@ package com.jh.caraudio;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
@@ -139,28 +141,39 @@ public class TrackAdapter extends BaseAdapter {
                 convertView.setBackgroundColor(isPlaying ? Color.parseColor("#172030") : Color.TRANSPARENT);
             }
 
-            holder.tvArtist.setText(track.getArtist() + " • " + track.getAlbum());
+            String artist = track.getArtist();
+            String album = track.getAlbum();
+            if (artist != null && !artist.trim().isEmpty() && !"Pendrive".equalsIgnoreCase(artist.trim())) {
+                holder.tvArtist.setText(artist + " • " + album);
+            } else {
+                holder.tvArtist.setText(album != null ? album : "");
+            }
 
-            // Badge de almacenamiento USB 1 / USB 2 / INTERNA
+            // Badge de almacenamiento con icono USB vectorial y número
             String source = track.getUsbSource();
             String path = track.getFilePath();
             if (source == null && path != null) {
-                if (path.contains("udisk1")) source = "USB 1";
-                else if (path.contains("udisk2")) source = "USB 2";
-                else source = "INTERNA";
+                if (path.contains("udisk2") || path.contains("usb1")) source = "USB 2";
+                else source = "USB 1";
             }
             if ("USB 2".equalsIgnoreCase(source) || (source != null && source.contains("2"))) {
-                holder.tvUsbBadge.setText("USB 2");
+                int color = Color.parseColor("#c084fc");
+                holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
+                holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
+                holder.tvUsbBadge.setText("2");
                 holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb2);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#c084fc"));
-            } else if ("INTERNA".equalsIgnoreCase(source) || (path != null && (path.contains("sdcard") || path.contains("emulated")))) {
-                holder.tvUsbBadge.setText("INTERNA");
-                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_internal);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#fbbf24"));
+                holder.tvUsbBadge.setTextColor(color);
+                Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
+                if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
             } else {
-                holder.tvUsbBadge.setText("USB 1");
+                int color = Color.parseColor("#38bdf8");
+                holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
+                holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
+                holder.tvUsbBadge.setText("1");
                 holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb1);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#38bdf8"));
+                holder.tvUsbBadge.setTextColor(color);
+                Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
+                if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
             }
 
             holder.tvDuration.setText(track.getFormattedDuration());

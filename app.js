@@ -3,7 +3,7 @@
  * Lógica del reproductor de música para auto (simulación web interactiva)
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
 
   // =================== ESTADO INICIAL Y DATOS ===================
   // Canciones de muestra basadas exactamente en las capturas de Hernan
@@ -111,16 +111,242 @@ document.addEventListener('DOMContentLoaded', () => {
       format: "MP3 320K",
       favorite: false,
       audioUrl: null
+    },
+    {
+      id: 9,
+      title: "Parranda Vallenata (Fiesta en mi Pueblo)",
+      artist: "Silvestre Dangond",
+      album: "Vallenatos de Oro",
+      folder: "Sub subcarpeta 1,1",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
+      duration: "03:50",
+      durationSec: 230,
+      format: "MP3 320K",
+      favorite: true,
+      audioUrl: null
+    },
+    {
+      id: 10,
+      title: "La Rebelión (No Le Pegue a la Negra)",
+      artist: "Joe Arroyo & La Verdad",
+      album: "Salsa Colombiana Inmortal",
+      folder: "Sub subcarpeta 1,1",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
+      duration: "04:12",
+      durationSec: 252,
+      format: "MP3 320K",
+      favorite: false,
+      audioUrl: null
+    },
+    {
+      id: 11,
+      title: "Colegiala (Cumbia Tropical Ecuatoriana)",
+      artist: "Rodolfo Aicardi y su Típica",
+      album: "Cumbias Bailables",
+      folder: "Sub subcarpeta 1,1",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
+      duration: "03:28",
+      durationSec: 208,
+      format: "MP3 320K",
+      favorite: true,
+      audioUrl: null
+    },
+    {
+      id: 12,
+      title: "El Aguacate (Pasillo Tradicional Ecuatoriano)",
+      artist: "Julio Jaramillo",
+      album: "Alma Llanera y Pasillos",
+      folder: "Sub subcarpeta 2",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/",
+      duration: "03:05",
+      durationSec: 185,
+      format: "MP3 320K",
+      favorite: true,
+      audioUrl: null
+    },
+    {
+      id: 13,
+      title: "Guayaquil de mis Amores (Vals Ecuatoriano Clásico)",
+      artist: "Olimpo Cárdenas",
+      album: "Joyas del Pasillo",
+      folder: "Sub subcarpeta 2",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/",
+      duration: "02:58",
+      durationSec: 178,
+      format: "MP3 320K",
+      favorite: false,
+      audioUrl: null
+    },
+    {
+      id: 14,
+      title: "Sendas Distintas (Acoustic Guitar Pasillo)",
+      artist: "Carlota Jaramillo & Dúo Benítez Valencia",
+      album: "Nostalgias de los Andes",
+      folder: "Sub subcarpeta 2",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/",
+      duration: "03:22",
+      durationSec: 202,
+      format: "MP3 320K",
+      favorite: false,
+      audioUrl: null
+    },
+    {
+      id: 15,
+      title: "Mix Chicha Ecuatoriana (En Vivo desde Loja)",
+      artist: "Don Medardo y sus Players",
+      album: "Cumbia y Chicha 2024",
+      folder: "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/",
+      duration: "04:35",
+      durationSec: 275,
+      format: "MP3 320K",
+      favorite: true,
+      audioUrl: null
+    },
+    {
+      id: 16,
+      title: "San Juanito Alegre (Fiesta en Cayambe)",
+      artist: "Los Corazas",
+      album: "Folklore Andino",
+      folder: "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1",
+      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/",
+      duration: "03:10",
+      durationSec: 190,
+      format: "MP3 320K",
+      favorite: false,
+      audioUrl: null
     }
   ];
 
+  // Helper de ordenamiento alfabético natural para títulos de pistas (A-Z)
+  function sortTracksAlphabetically(trackList) {
+    if (!trackList || !Array.isArray(trackList)) return trackList;
+    return trackList.sort((a, b) => {
+      const t1 = (a.title || a.name || '').trim();
+      const t2 = (b.title || b.name || '').trim();
+      return t1.localeCompare(t2, 'es', { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  // Ordenar canciones de muestra alfabéticamente por título
+  sortTracksAlphabetically(sampleTracks);
+
   const foldersList = [
     { name: "JH PENDRIVE", path: "/storage/udisk1/JH PENDRIVE/", count: 12, usbSource: "USB 1" },
-    { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 218, usbSource: "USB 1" },
+    { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 2, usbSource: "USB 1" },
+    { name: "Subcarpeta 1", path: "/storage/udisk1/Descargas/Subcarpeta 1/", count: 0, usbSource: "USB 1" },
+    { name: "Sub subcarpeta 1,1", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/", count: 3, usbSource: "USB 1" },
+    { name: "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/", count: 2, usbSource: "USB 1" },
+    { name: "Sub subcarpeta 2", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/", count: 3, usbSource: "USB 1" },
     { name: "2025-07-18", path: "/storage/udisk1/Descargas/2025-07-18/", count: 29, usbSource: "USB 1" },
     { name: "Música Viaje", path: "/storage/udisk2/Música Viaje/", count: 84, usbSource: "USB 2" },
     { name: "Música Interna", path: "/mnt/sdcard/media/music/", count: 5, usbSource: "INTERNA" }
   ];
+
+  // Estructura de Árbol Jerárquico de Carpetas USB (Maqueta Interactiva de Hernan)
+  const defaultTreeFolders = [
+    {
+      id: "usb1",
+      name: "USB 1 (udisk1)",
+      isUsbRoot: true,
+      usbSource: "USB 1",
+      path: "/storage/udisk1/",
+      count: 247,
+      directCount: 0,
+      children: [
+        {
+          id: "descargas",
+          name: "Descargas",
+          usbSource: "USB 1",
+          path: "/storage/udisk1/Descargas/",
+          count: 218,
+          directCount: 2,
+          children: [
+            {
+              id: "subcarpeta1",
+              name: "Subcarpeta 1",
+              usbSource: "USB 1",
+              path: "/storage/udisk1/Descargas/Subcarpeta 1/",
+              count: 8,
+              directCount: 0,
+              children: [
+                {
+                  id: "subsub1_1",
+                  name: "Sub subcarpeta 1,1",
+                  usbSource: "USB 1",
+                  path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
+                  count: 5,
+                  directCount: 3,
+                  children: [
+                    {
+                      id: "subsub1_1_1_deep",
+                      name: "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1",
+                      usbSource: "USB 1",
+                      path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/",
+                      count: 2,
+                      directCount: 2,
+                      children: []
+                    }
+                  ]
+                },
+                {
+                  id: "subsub2",
+                  name: "Sub subcarpeta 2",
+                  usbSource: "USB 1",
+                  path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/",
+                  count: 3,
+                  directCount: 3,
+                  children: []
+                }
+              ]
+            },
+            {
+              id: "descargas_fecha",
+              name: "2025-07-18",
+              usbSource: "USB 1",
+              path: "/storage/udisk1/Descargas/2025-07-18/",
+              count: 29,
+              directCount: 29,
+              children: []
+            }
+          ]
+        },
+        {
+          id: "jh_pendrive",
+          name: "JH PENDRIVE",
+          usbSource: "USB 1",
+          path: "/storage/udisk1/JH PENDRIVE/",
+          count: 12,
+          directCount: 12,
+          children: []
+        }
+      ]
+    },
+    {
+      id: "usb2",
+      name: "USB 2 (udisk2)",
+      isUsbRoot: true,
+      usbSource: "USB 2",
+      path: "/storage/udisk2/",
+      count: 84,
+      directCount: 0,
+      children: [
+        {
+          id: "musica_viaje",
+          name: "Música Viaje",
+          usbSource: "USB 2",
+          path: "/storage/udisk2/Música Viaje/",
+          count: 84,
+          directCount: 84,
+          children: []
+        }
+      ]
+    }
+  ];
+
+  let currentTreeData = JSON.parse(JSON.stringify(defaultTreeFolders));
+  // Nodos colapsados por defecto para que el usuario los vaya abriendo según su gusto
+  let expandedTreeNodes = new Set();
 
   let masterTracks = [...sampleTracks];
   let currentPlaylist = [...sampleTracks];
@@ -132,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let previousVolume = 75;
   let isMuted = false;
   let activeTab = "folders"; // "folders", "playlist", "favorites"
-  let currentFolder = "JH PENDRIVE";
+  let currentFolder = "Descargas";
   let currentFolderUsbSource = "USB 1";
 
   // Audio HTML5 y Sintetizador Web Audio
@@ -200,9 +426,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchSpinner = document.getElementById('searchSpinner');
   const crumbRoot = document.getElementById('crumbRoot');
   const crumbFolder = document.getElementById('crumbFolder');
-  const btnPlayAll = document.getElementById('btnPlayAll');
   const fileInput = document.getElementById('fileInput');
   const btnToggleFullscreen = document.getElementById('btnToggleFullscreen');
+  const treeActions = document.getElementById('treeActions');
+  const btnCollapseAllTree = document.getElementById('btnCollapseAllTree');
 
   // =================== RELOJ DE AUTO ===================
   function updateClock() {
@@ -317,6 +544,13 @@ document.addEventListener('DOMContentLoaded', () => {
     applyMarquee(prevTrackTitle, prevTrackTitle ? prevTrackTitle.parentElement : null);
     applyMarquee(nextTrackTitle, nextTrackTitle ? nextTrackTitle.parentElement : null);
     
+    // Auto-scroll / marquesina en chip de carpeta activa si su nombre es largo
+    const chipText = document.getElementById('chipFolderText');
+    const chipWrap = chipFilterFolder ? chipFilterFolder.querySelector('.chip-folder-text-wrap') : null;
+    if (chipText && chipWrap) {
+      applyMarquee(chipText, chipWrap);
+    }
+
     // Auto-scroll / marquesina también para la canción que está sonando en la lista de pistas
     if (trackListContainer) {
       const activeItemTitle = trackListContainer.querySelector('.list-item.is-playing .item-title');
@@ -658,47 +892,102 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Gestos táctiles de deslizamiento (Swipe) para ocultar / mostrar explorador
+  // =================== ZONA EXCLUSIVA DE GESTOS TÁCTILES / ARRASTRE ===================
+  // El área de touch y arrastrar para alternar el explorador se restringe ÚNICAMENTE
+  // a la zona delimitada por el botón de explorador y la franja vertical a su lado (área roja)
+  let isDragGestureActive = false;
   let touchStartX = 0;
   let touchStartY = 0;
-  let touchStartTime = 0;
 
+  function isInsideExplorerDragZone(clientX, clientY) {
+    if (!btnToggleExpand || !playerPanel) return false;
+    const btnRect = btnToggleExpand.getBoundingClientRect();
+    const playerRect = playerPanel.getBoundingClientRect();
+    const albumContainer = document.getElementById('albumContainer');
+    const albumRect = albumContainer ? albumContainer.getBoundingClientRect() : null;
+
+    // Área roja delimitada por Hernan:
+    // - Horizontal: Desde el borde izquierdo del panel del reproductor hasta pasar el botón (+20px)
+    // - Vertical: Desde la parte superior del botón (-10px) hasta el fondo de la carátula (+10px)
+    const minX = Math.max(0, Math.min(playerRect.left, btnRect.left - 15));
+    const maxX = btnRect.right + 22;
+    const minY = Math.max(0, btnRect.top - 10);
+    const maxY = albumRect ? (albumRect.bottom + 10) : (btnRect.bottom + 200);
+
+    return clientX >= minX && clientX <= maxX && clientY >= minY && clientY <= maxY;
+  }
+
+  function handleSwipeAction(dx, dy) {
+    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 1.1) return;
+
+    // Con el explorador en la izquierda:
+    // Si el explorador está ABIERTO: arrastrar hacia la izquierda (<-) lo CIERRA (expande reproductor)
+    if (!isPlayerExpanded && dx < -35) {
+      if (dashboardGrid && btnToggleExpand) {
+        isPlayerExpanded = true;
+        dashboardGrid.classList.add('is-expanded');
+        btnToggleExpand.classList.remove('is-active');
+        btnToggleExpand.title = "Abrir buscador de archivos y pistas";
+        setTimeout(refreshAllMarquees, 320);
+      }
+    }
+    // Si el explorador está CERRADO: arrastrar hacia la derecha (->) lo ABRE
+    else if (isPlayerExpanded && dx > 35) {
+      if (dashboardGrid && btnToggleExpand) {
+        isPlayerExpanded = false;
+        dashboardGrid.classList.remove('is-expanded');
+        btnToggleExpand.classList.add('is-active');
+        btnToggleExpand.title = "Ocultar buscador (reproductor a pantalla completa)";
+        setTimeout(refreshAllMarquees, 320);
+      }
+    }
+  }
+
+  // Toques en pantalla táctil (solo inician si el dedo cayó en el área roja)
   window.addEventListener('touchstart', (e) => {
     if (e.touches && e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+      if (isInsideExplorerDragZone(x, y)) {
+        isDragGestureActive = true;
+        touchStartX = x;
+        touchStartY = y;
+      } else {
+        isDragGestureActive = false;
+      }
     }
   }, { passive: true });
 
   window.addEventListener('touchend', (e) => {
-    if (e.changedTouches && e.changedTouches.length === 1) {
+    if (isDragGestureActive && e.changedTouches && e.changedTouches.length === 1) {
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
-      const screenWidth = window.innerWidth;
-
-      // Deslizar hacia la derecha (Swipe Right 👉): Ocultar explorador
-      if (dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && touchStartX > screenWidth * 0.35) {
-        if (!isPlayerExpanded && dashboardGrid && btnToggleExpand) {
-          isPlayerExpanded = true;
-          dashboardGrid.classList.add('is-expanded');
-          btnToggleExpand.classList.remove('is-active');
-          btnToggleExpand.title = "Abrir buscador de archivos y pistas";
-          setTimeout(refreshAllMarquees, 320);
-        }
-      }
-      // Deslizar hacia la izquierda (Swipe Left 👈): Mostrar explorador
-      else if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.2 && touchStartX > screenWidth * 0.55) {
-        if (isPlayerExpanded && dashboardGrid && btnToggleExpand) {
-          isPlayerExpanded = false;
-          dashboardGrid.classList.remove('is-expanded');
-          btnToggleExpand.classList.add('is-active');
-          btnToggleExpand.title = "Ocultar buscador (reproductor a pantalla completa)";
-          setTimeout(refreshAllMarquees, 320);
-        }
-      }
+      isDragGestureActive = false;
+      handleSwipeAction(dx, dy);
     }
   }, { passive: true });
+
+  // Arrastre con ratón en PC (solo en el área roja)
+  let isMouseDraggingZone = false;
+  let mouseStartX = 0;
+  let mouseStartY = 0;
+
+  window.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && isInsideExplorerDragZone(e.clientX, e.clientY)) {
+      isMouseDraggingZone = true;
+      mouseStartX = e.clientX;
+      mouseStartY = e.clientY;
+    }
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (isMouseDraggingZone) {
+      const dx = e.clientX - mouseStartX;
+      const dy = e.clientY - mouseStartY;
+      isMouseDraggingZone = false;
+      handleSwipeAction(dx, dy);
+    }
+  });
 
   window.addEventListener('resize', () => {
     refreshAllMarquees();
@@ -862,14 +1151,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return score;
   }
 
+  // Icono oficial vectorial de USB (tridente universal)
+  const USB_TRIDENT_SVG = `<svg class="usb-icon" viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.2-.99-2.18-2.2-2.18-1.21 0-2.2.98-2.2 2.18 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95a2.2 2.2 0 0 0 4.4 0c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>`;
+
   // Generador de etiquetas para USB 1, USB 2 y Memoria Interna
   function getStorageBadgeHtml(path) {
     if (!path) return '';
     const p = path.toLowerCase();
     if (p.includes('udisk1') || p.includes('usb1')) {
-      return `<span class="badge-storage usb1">USB 1</span>`;
+      return `<span class="badge-storage usb1">${USB_TRIDENT_SVG} 1</span>`;
     } else if (p.includes('udisk2') || p.includes('usb2')) {
-      return `<span class="badge-storage usb2">USB 2</span>`;
+      return `<span class="badge-storage usb2">${USB_TRIDENT_SVG} 2</span>`;
     } else if (p.includes('sdcard') || p.includes('internal') || p.includes('emulated')) {
       return `<span class="badge-storage internal">INTERNA</span>`;
     }
@@ -899,20 +1191,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // =================== FILTROS DE BÚSQUEDA Y USBS ===================
   let currentSearchFilter = 'folder'; // 'folder' | 'all' | 'usb1' | 'usb2'
+  const searchFiltersBar = document.getElementById('searchFiltersBar');
   const filterChips = document.querySelectorAll('.filter-chip');
   const chipFilterFolder = document.getElementById('chipFilterFolder');
   const chipFilterAll = document.getElementById('chipFilterAll');
   const chipFilterUsb1 = document.getElementById('chipFilterUsb1');
   const chipFilterUsb2 = document.getElementById('chipFilterUsb2');
 
+  function updateFolderChipContent() {
+    if (!chipFilterFolder) return;
+
+    let usbBadgeEl = document.getElementById('chipFolderUsbBadge');
+    let textEl = document.getElementById('chipFolderText');
+
+    if (!usbBadgeEl || !textEl) {
+      chipFilterFolder.innerHTML = `
+        <span class="chip-folder-icon">📁</span>
+        <span class="chip-folder-usb-badge hidden" id="chipFolderUsbBadge"></span>
+        <span class="chip-folder-text-wrap">
+          <span class="chip-folder-text" id="chipFolderText"></span>
+        </span>
+      `;
+      usbBadgeEl = document.getElementById('chipFolderUsbBadge');
+      textEl = document.getElementById('chipFolderText');
+    }
+
+    const folderIconEl = chipFilterFolder.querySelector('.chip-folder-icon');
+
+    let usbNum = '';
+    if (currentFolderUsbSource) {
+      const src = currentFolderUsbSource.toLowerCase();
+      if (src.includes('1') || src.includes('udisk1')) usbNum = '1';
+      else if (src.includes('2') || src.includes('udisk2')) usbNum = '2';
+    }
+
+    if (folderIconEl) folderIconEl.classList.remove('hidden');
+
+    if (usbNum) {
+      usbBadgeEl.innerHTML = `${USB_TRIDENT_SVG}<span>${usbNum}</span><span class="chip-folder-sep">|</span>`;
+      usbBadgeEl.classList.remove('hidden');
+    } else {
+      usbBadgeEl.innerHTML = '';
+      usbBadgeEl.classList.add('hidden');
+    }
+
+    textEl.textContent = currentFolder || '';
+    const fullTitle = (usbNum ? `[USB ${usbNum}] ` : '') + (currentFolder || '');
+    chipFilterFolder.setAttribute('title', fullTitle);
+    chipFilterFolder.classList.remove('hidden');
+
+    const wrapEl = chipFilterFolder.querySelector('.chip-folder-text-wrap');
+    if (wrapEl && textEl) {
+      setTimeout(() => applyMarquee(textEl, wrapEl), 80);
+    }
+  }
+
   function updateFilterChipsUI() {
+    // En la pestaña Carpetas USB, se oculta completamente la barra de filtros (TODO, USB 1, USB 2)
+    // porque el árbol jerárquico ya organiza los pendrives como nodos raíz y los botones solo restan espacio
+    if (searchFiltersBar) {
+      searchFiltersBar.classList.toggle('hidden', activeTab === 'folders');
+    }
+
     if (activeTab === 'playlist' && currentFolder) {
-      if (chipFilterFolder) {
-        chipFilterFolder.classList.remove('hidden');
-        const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
-        const name = currentFolder.length > 13 ? currentFolder.slice(0, 11) + '…' : currentFolder;
-        chipFilterFolder.textContent = `📁 ${usbTag}${name}`;
-      }
+      updateFolderChipContent();
     } else {
       if (chipFilterFolder) {
         chipFilterFolder.classList.add('hidden');
@@ -971,16 +1313,75 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =================== PESTAÑAS Y RENDERIZADO ===================
+  // Función para revelar y desplegar automáticamente la carpeta de la canción que está sonando
+  function revealPlayingFolderInTree() {
+    const currentTrack = currentPlaylist[currentTrackIndex];
+    if (!currentTrack) return;
+
+    const targetFolder = currentTrack.folder || currentFolder;
+    const targetPath = currentTrack.path || '';
+    const targetUsb = currentTrack.usbSource || (targetPath.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
+
+    function findNodeChain(nodes, chain = []) {
+      for (const node of nodes) {
+        const nextChain = [...chain, node.id];
+        // Buscar primero recursivamente en los hijos para priorizar el nodo exacto más profundo
+        if (node.children && node.children.length > 0) {
+          const found = findNodeChain(node.children, nextChain);
+          if (found) return found;
+        }
+
+        const isExactMatch = (node.name === targetFolder) ||
+          (targetPath && node.path && !node.isUsbRoot && (targetPath.replace(/\/+$/, '') === node.path.replace(/\/+$/, '')));
+
+        if (isExactMatch) {
+          return nextChain;
+        }
+      }
+      return null;
+    }
+
+    const chain = findNodeChain(currentTreeData);
+    if (chain && chain.length > 0) {
+      chain.forEach(nodeId => expandedTreeNodes.add(nodeId));
+    } else {
+      if (targetUsb === 'USB 2') {
+        expandedTreeNodes.add('usb2');
+      } else {
+        expandedTreeNodes.add('usb1');
+      }
+    }
+
+    // Si la canción es de USB 2 y el filtro estaba en USB 1, poner en TODO para que aparezca
+    if (targetUsb === 'USB 2' && currentSearchFilter === 'usb1') {
+      currentSearchFilter = 'all';
+    } else if (targetUsb === 'USB 1' && currentSearchFilter === 'usb2') {
+      currentSearchFilter = 'all';
+    }
+  }
+
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       searchInput.blur();
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeTab = btn.getAttribute('data-tab');
-      if (activeTab === 'playlist' && currentFolder) {
-        currentSearchFilter = 'folder';
-      } else if (currentSearchFilter === 'folder') {
+      if (activeTab === 'folders') {
+        searchInput.placeholder = "Buscar entre carpetas...";
         currentSearchFilter = 'all';
+        revealPlayingFolderInTree();
+      } else if (activeTab === 'playlist') {
+        searchInput.placeholder = "Buscar canción, artista o álbum...";
+        if (currentFolder) {
+          currentSearchFilter = 'folder';
+        } else {
+          currentSearchFilter = 'all';
+        }
+      } else if (activeTab === 'favorites') {
+        searchInput.placeholder = "Buscar en favoritos...";
+        if (currentSearchFilter === 'folder') {
+          currentSearchFilter = 'all';
+        }
       }
       renderList();
     });
@@ -993,6 +1394,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const rawQuery = searchInput.value;
     const normQuery = normalizeText(rawQuery);
     const tokens = normQuery.split(/\s+/).filter(t => t.length > 0);
+
+    // Mostrar botones de Colapsar/Descolapsar únicamente en la pestaña de Carpetas USB sin búsqueda activa
+    if (treeActions) {
+      treeActions.classList.toggle('hidden', activeTab !== 'folders' || tokens.length > 0);
+    }
 
     // BÚSQUEDA ACTIVA SEGÚN LA PESTAÑA SELECCIONADA
     if (tokens.length > 0) {
@@ -1040,6 +1446,16 @@ document.addEventListener('DOMContentLoaded', () => {
         matchedFolders.forEach(folder => {
           const folderEl = document.createElement('div');
           folderEl.className = 'list-item';
+          const hasFolderMusic = (folder.count || 0) > 0;
+          const playBtnHtml = hasFolderMusic ? `
+            <button class="btn-folder-play" title="Reproducir inmediatamente esta carpeta">
+              <span class="track-count-num">${folder.count}</span>
+              <div class="play-circle">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </button>
+          ` : '';
+
           folderEl.innerHTML = `
             <div class="item-left">
               <div class="item-icon-wrap">
@@ -1053,11 +1469,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
               </div>
             </div>
-            <div class="item-right">
-              <span class="item-duration">${folder.count}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
-            </div>
+            ${playBtnHtml}
           `;
+
+          const playBtn = folderEl.querySelector('.btn-folder-play');
+          if (playBtn) {
+            playBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              playFolderTree(folder);
+            });
+          }
 
           folderEl.addEventListener('click', () => {
             searchInput.blur();
@@ -1180,12 +1601,9 @@ document.addEventListener('DOMContentLoaded', () => {
           // 3. Índice de la pista en esa carpeta
           const realFolderIdx = currentPlaylist.findIndex(t => t.id === track.id);
 
-          // 4. Actualizar el chip de carpeta para que muestre el nuevo nombre con USB
+          // 4. Actualizar el chip de carpeta para que muestre el nuevo nombre con marquesina si es largo
           if (chipFilterFolder) {
-            const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
-            const name = currentFolder.length > 13 ? currentFolder.slice(0, 11) + '…' : currentFolder;
-            chipFilterFolder.textContent = `📁 ${usbTag}${name}`;
-            chipFilterFolder.classList.remove('hidden');
+            updateFolderChipContent();
           }
 
           // 5. Reproducir la canción (actualiza reproductor izquierdo, metadata y previews)
@@ -1257,61 +1675,156 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // MODO NORMAL (SIN BÚSQUEDA)
+    // MODO NORMAL (SIN BÚSQUEDA) - ÁRBOL JERÁRQUICO DE CARPETAS USB
     if (activeTab === 'folders') {
-      let fList = foldersList;
+      let filteredRoots = currentTreeData;
       if (currentSearchFilter === 'usb1') {
-        fList = foldersList.filter(f => f.path.includes('udisk1') || f.path.includes('usb0') || f.badge === 'USB 1');
-        crumbFolder.textContent = `Carpetas USB 1 (${fList.length})`;
+        filteredRoots = currentTreeData.filter(n => n.usbSource === 'USB 1' || n.id === 'usb1');
+        crumbFolder.textContent = "Carpetas USB 1 (Árbol)";
       } else if (currentSearchFilter === 'usb2') {
-        fList = foldersList.filter(f => f.path.includes('udisk2') || f.path.includes('usb1') || f.badge === 'USB 2');
-        crumbFolder.textContent = `Carpetas USB 2 (${fList.length})`;
+        filteredRoots = currentTreeData.filter(n => n.usbSource === 'USB 2' || n.id === 'usb2');
+        crumbFolder.textContent = "Carpetas USB 2 (Árbol)";
       } else {
-        crumbFolder.textContent = `Carpetas USB (${fList.length})`;
+        crumbFolder.textContent = "Carpetas USB (Árbol de Pendrives)";
       }
-      
-      fList.forEach(folder => {
-        const folderEl = document.createElement('div');
-        folderEl.className = 'list-item';
-        folderEl.innerHTML = `
-          <div class="item-left">
-            <div class="item-icon-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <div class="item-info">
-              <span class="item-title">${folder.name}</span>
-              <div class="item-subtitle">
-                ${getStorageBadgeHtml(folder.path)}
-                <span class="path-text">${formatDisplayPath(folder.path)}</span>
+
+      function renderTreeNode(node, level = 0) {
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = expandedTreeNodes.has(node.id);
+        const currentTrack = currentPlaylist[currentTrackIndex];
+        const isPlayingFolder = currentTrack && (
+          (node.name === currentTrack.folder) ||
+          (currentTrack.path && node.path && !node.isUsbRoot && (currentTrack.path.replace(/\/+$/, '') === node.path.replace(/\/+$/, '')))
+        );
+        const isActive = isPlayingFolder || (currentFolder === node.name);
+        const indentPx = 10 + (level * 20);
+
+        // Si la carpeta tiene 0 músicas directas (ej: es solo contenedor de subcarpetas o raíz),
+        // se lista normalmente pero NO debe salir el botón de play.
+        // Solo las carpetas con canciones directas (> 0) muestran el botón de play con su número.
+        const directTracksCount = (typeof node.directCount === 'number')
+          ? node.directCount
+          : (hasChildren ? 0 : (node.count || 0));
+        const hasDirectMusic = directTracksCount > 0;
+
+        const nodeEl = document.createElement('div');
+        nodeEl.className = `tree-node-item ${isPlayingFolder ? 'is-playing-folder' : (isActive ? 'is-active-folder' : '')}`;
+        nodeEl.style.paddingLeft = `${indentPx}px`;
+
+        const isUsbRoot = !!node.isUsbRoot;
+
+        let playBtnHtml = '';
+        if (hasDirectMusic) {
+          playBtnHtml = `
+            <button class="btn-folder-play" title="Reproducir música de ${escapeHtml(node.name)}">
+              <span class="track-count-num">${directTracksCount}</span>
+              <div class="play-circle">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               </div>
+            </button>
+          `;
+        }
+
+        // Límite prudente para evitar scrolls kilométricos si hay carpetas con nombres excesivos
+        const MAX_FOLDER_CHARS = 26;
+        const rawFolderName = node.name || '';
+        const displayFolderName = rawFolderName.length > MAX_FOLDER_CHARS 
+          ? rawFolderName.slice(0, MAX_FOLDER_CHARS) + '…' 
+          : rawFolderName;
+
+        nodeEl.innerHTML = `
+          <div class="tree-node-left">
+            <div class="tree-toggle-arrow ${isExpanded ? 'is-expanded' : ''} ${!hasChildren ? 'no-children' : ''}">
+              ${hasChildren ? `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" style="width:16px;height:16px;">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              ` : `
+                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(148,163,184,0.35);"></span>
+              `}
+            </div>
+            <div class="tree-node-icon ${isUsbRoot ? 'is-usb-root' : ''}">
+              ${isUsbRoot ? `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                  <rect x="6" y="2" width="12" height="20" rx="2"></rect>
+                  <line x1="9" y1="6" x2="9" y2="8"></line>
+                  <line x1="15" y1="6" x2="15" y2="8"></line>
+                  <line x1="9" y1="18" x2="15" y2="18"></line>
+                </svg>
+              ` : `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+              `}
+            </div>
+            <div class="tree-node-info" title="${escapeHtml(rawFolderName)}">
+              <span class="tree-node-title">${escapeHtml(displayFolderName)}</span>
             </div>
           </div>
-          <div class="item-right">
-            <span class="item-duration">${folder.count}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
-          </div>
+          ${playBtnHtml}
         `;
 
-        folderEl.addEventListener('click', () => {
+        // Click en botón Play [ N ▶ ] (Solo si la carpeta tiene canciones directas)
+        const playBtn = nodeEl.querySelector('.btn-folder-play');
+        if (playBtn) {
+          playBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playFolderTree(node);
+          });
+        }
+
+        // Click en la fila: expandir / contraer y preparar pistas
+        nodeEl.addEventListener('click', () => {
           searchInput.blur();
-          currentFolder = folder.name;
-          currentFolderUsbSource = folder.usbSource || folder.badge || (folder.path && folder.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
-          crumbFolder.textContent = `${currentFolderUsbSource ? '[' + currentFolderUsbSource + '] ' : ''}${folder.name}`;
-          currentSearchFilter = 'folder';
-          
-          const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
-          const folderTracks = allPool.filter(t => t.folder === folder.name);
-          if (folderTracks.length > 0) {
-            currentPlaylist = folderTracks;
-          } else {
-            currentPlaylist = [...allPool];
+          if (hasChildren) {
+            if (expandedTreeNodes.has(node.id)) {
+              expandedTreeNodes.delete(node.id);
+            } else {
+              expandedTreeNodes.add(node.id);
+            }
           }
-          // Cambiar a la pestaña de pistas
-          tabButtons[1].click();
+          currentFolder = node.name;
+          currentFolderUsbSource = node.usbSource || (node.path && node.path.includes('udisk2') ? 'USB 2' : 'USB 1');
+          const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+          crumbFolder.textContent = `${usbTag}${node.name}`;
+          
+          // Actualizar playlist para esta carpeta
+          const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+          const folderTracks = allPool.filter(t => {
+            if (t.folder === node.name) return true;
+            if (t.path && node.path && t.path.startsWith(node.path)) return true;
+            return false;
+          });
+          if (folderTracks.length > 0) {
+            sortTracksAlphabetically(folderTracks);
+            currentPlaylist = folderTracks;
+            songCountEl.textContent = currentPlaylist.length;
+          }
+
+          renderList();
         });
 
-        trackListContainer.appendChild(folderEl);
+        trackListContainer.appendChild(nodeEl);
+
+        // Si el nodo está desplegado y tiene subcarpetas, renderizarlas con su nivel de sangría
+        if (hasChildren && isExpanded) {
+          node.children.forEach(child => {
+            renderTreeNode(child, level + 1);
+          });
+        }
+      }
+
+      filteredRoots.forEach(rootNode => {
+        renderTreeNode(rootNode, 0);
       });
+
+      // Auto-scroll a la carpeta que está sonando actualmente
+      setTimeout(() => {
+        const playingFolderEl = trackListContainer.querySelector('.tree-node-item.is-playing-folder');
+        if (playingFolderEl) {
+          playingFolderEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 70);
     } 
     else if (activeTab === 'playlist' || activeTab === 'favorites') {
       let filtered = currentPlaylist;
@@ -1324,6 +1837,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentSearchFilter === 'usb2') {
           favPool = favPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
         }
+        sortTracksAlphabetically(favPool);
         filtered = favPool;
         crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
       } else {
@@ -1334,13 +1848,14 @@ document.addEventListener('DOMContentLoaded', () => {
           filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
           crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
         } else if (currentSearchFilter === 'all') {
-          filtered = allPool;
+          filtered = [...allPool];
           crumbFolder.textContent = `Todas las Pistas (${filtered.length})`;
         } else {
           filtered = currentPlaylist;
           const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
-        crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
+          crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
         }
+        sortTracksAlphabetically(filtered);
       }
 
       songCountEl.textContent = filtered.length;
@@ -1447,6 +1962,57 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(refreshAllMarquees, 70);
   }
 
+  // =================== GESTIÓN Y REPRODUCCIÓN DEL ÁRBOL JERÁRQUICO ===================
+  function playFolderTree(node) {
+    const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+    let folderTracks = allPool.filter(t => {
+      if (t.folder === node.name) return true;
+      if (t.path && node.path) {
+        const normTrack = t.path.replace(/\/+$/, '');
+        const normNode = node.path.replace(/\/+$/, '');
+        if (normTrack === normNode) return true;
+      }
+      return false;
+    });
+
+    if (folderTracks.length === 0) {
+      folderTracks = allPool.filter(t => t.path && node.path && t.path.startsWith(node.path));
+    }
+
+    sortTracksAlphabetically(folderTracks);
+
+    currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+    currentFolder = node.name;
+    currentFolderUsbSource = node.usbSource || (node.path && node.path.includes('udisk2') ? 'USB 2' : 'USB 1');
+    const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+    crumbFolder.textContent = `${usbTag}${node.name}`;
+    songCountEl.textContent = currentPlaylist.length;
+
+    // Abrir lista de pistas y comenzar reproducción inmediata
+    tabButtons[1].click();
+    loadTrack(0, true);
+  }
+
+  function getAllTreeIds(nodes) {
+    let ids = [];
+    nodes.forEach(n => {
+      ids.push(n.id);
+      if (n.children && n.children.length > 0) {
+        ids = ids.concat(getAllTreeIds(n.children));
+      }
+    });
+    return ids;
+  }
+
+  // Botón "Colapsar Todo" (Solo icono, flechas hacia adentro)
+  if (btnCollapseAllTree) {
+    btnCollapseAllTree.addEventListener('click', (e) => {
+      e.stopPropagation();
+      expandedTreeNodes.clear();
+      renderList();
+    });
+  }
+
   // Búsqueda en vivo inteligente
   let searchTimer = null;
   searchInput.addEventListener('input', () => {
@@ -1499,12 +2065,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   crumbRoot.addEventListener('click', () => {
     tabButtons[0].click();
-  });
-
-  btnPlayAll.addEventListener('click', () => {
-    if (currentPlaylist.length > 0) {
-      loadTrack(0, true);
-    }
   });
 
   // =================== BOTÓN RE-ESCANEAR USB (NATIVO / AUTO) ===================
@@ -1562,9 +2122,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =================== PANTALLA COMPLETA AUTO ===================
-  btnToggleFullscreen.addEventListener('click', () => {
-    frameWrapper.classList.toggle('is-fullscreen');
-  });
+  if (btnToggleFullscreen && frameWrapper) {
+    btnToggleFullscreen.addEventListener('click', () => {
+      frameWrapper.classList.toggle('is-fullscreen');
+    });
+  }
 
   // =================== CONTROLES POR TECLADO ===================
   // Simulación de los botones del volante del auto
@@ -1589,6 +2151,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Constructor de árbol dinámico jerárquico a partir de canciones reales leídas por Android
+  function buildTreeFromTracks(tracks) {
+    if (!tracks || tracks.length === 0) return JSON.parse(JSON.stringify(defaultTreeFolders));
+
+    const rootUsbMap = {};
+    tracks.forEach(track => {
+      const usb = track.usbSource || (track.path && track.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
+      const usbId = usb === 'USB 2' ? 'usb2' : 'usb1';
+      const usbName = `${usb} (${usb === 'USB 2' ? 'udisk2' : 'udisk1'})`;
+      const usbPath = usb === 'USB 2' ? '/storage/udisk2/' : '/storage/udisk1/';
+
+      if (!rootUsbMap[usbId]) {
+        rootUsbMap[usbId] = {
+          id: usbId,
+          name: usbName,
+          isUsbRoot: true,
+          usbSource: usb,
+          path: usbPath,
+          count: 0,
+          directCount: 0,
+          folders: {}
+        };
+      }
+      rootUsbMap[usbId].count++;
+
+      let relPath = track.path || '';
+      if (relPath.startsWith(usbPath)) {
+        relPath = relPath.slice(usbPath.length);
+      }
+      const parts = relPath.split('/').filter(p => p.trim().length > 0);
+      if (parts.length > 0) {
+        let curLvl = rootUsbMap[usbId].folders;
+        let accumPath = usbPath;
+        parts.forEach((p, idx) => {
+          accumPath += p + '/';
+          if (!curLvl[p]) {
+            curLvl[p] = {
+              id: `${usbId}_${p.replace(/[^a-zA-Z0-9]/g, '_')}_${idx}`,
+              name: p,
+              usbSource: usb,
+              path: accumPath,
+              count: 0,
+              directCount: 0,
+              childrenMap: {}
+            };
+          }
+          curLvl[p].count++;
+          if (idx === parts.length - 1) {
+            curLvl[p].directCount++;
+          }
+          curLvl = curLvl[p].childrenMap;
+        });
+      } else {
+        rootUsbMap[usbId].directCount++;
+      }
+    });
+
+    function mapChildren(obj) {
+      return Object.values(obj).map(item => ({
+        id: item.id,
+        name: item.name,
+        usbSource: item.usbSource,
+        path: item.path,
+        count: item.count,
+        directCount: item.directCount || 0,
+        children: mapChildren(item.childrenMap)
+      }));
+    }
+
+    return Object.values(rootUsbMap).map(u => ({
+      id: u.id,
+      name: u.name,
+      isUsbRoot: true,
+      usbSource: u.usbSource,
+      path: u.path,
+      count: u.count,
+      directCount: u.directCount || 0,
+      children: mapChildren(u.folders)
+    }));
+  }
+
   // Callback global invocado desde Android cuando se terminan de escanear los pendrives
   window.onUsbMusicLoaded = function(tracks) {
     if (!tracks || tracks.length === 0) {
@@ -1596,6 +2239,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    sortTracksAlphabetically(tracks);
+    masterTracks = [...tracks];
     currentPlaylist = tracks;
 
     // Extraer todas las carpetas únicas de ambos pendrives
@@ -1616,17 +2261,17 @@ document.addEventListener('DOMContentLoaded', () => {
     foldersList.length = 0;
     foldersList.push(...Object.values(foldersMap));
 
+    // Reconstruir árbol jerárquico dinámico (colapsado por defecto)
+    currentTreeData = buildTreeFromTracks(tracks);
+    expandedTreeNodes = new Set();
+
     songCountEl.textContent = currentPlaylist.length;
     currentFolder = currentPlaylist[0].folder || "USB";
     currentFolderUsbSource = currentPlaylist[0].usbSource || (currentPlaylist[0].path && currentPlaylist[0].path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
     const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
     crumbFolder.textContent = `${usbTag}${currentFolder}`;
 
-    // Actualizar texto del almacenamiento en el footer
-    const storageInfo = document.querySelector('.storage-info span');
-    if (storageInfo) {
-      storageInfo.textContent = `Pendrives USB • ${tracks.length} canciones encontradas`;
-    }
+
 
     // Cargar la primera canción real del pendrive
     loadTrack(0, false);
@@ -1675,6 +2320,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Inicialización
   songCountEl.textContent = currentPlaylist.length;
+  if (searchInput) {
+    searchInput.placeholder = (activeTab === 'folders') ? "Buscar entre carpetas..." : "Buscar canción, artista o álbum...";
+  }
   loadTrack(0, false);
   renderList();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

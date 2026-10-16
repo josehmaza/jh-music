@@ -2,6 +2,8 @@ package com.jh.caraudio;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -95,18 +97,24 @@ public class FolderAdapter extends BaseAdapter {
             holder.tvPath.setText(path);
 
             // Estilos del Badge
-            if ("USB 1".equalsIgnoreCase(badgeText) || "udisk1".equalsIgnoreCase(badgeText)) {
-                holder.tvUsbBadge.setText("USB 1");
-                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb1);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#38bdf8"));
-            } else if ("USB 2".equalsIgnoreCase(badgeText) || "udisk2".equalsIgnoreCase(badgeText)) {
-                holder.tvUsbBadge.setText("USB 2");
+            if ("USB 2".equalsIgnoreCase(badgeText) || "udisk2".equalsIgnoreCase(badgeText) || (badgeText != null && badgeText.contains("2"))) {
+                int color = Color.parseColor("#c084fc");
+                holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
+                holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
+                holder.tvUsbBadge.setText("2");
                 holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb2);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#c084fc"));
+                holder.tvUsbBadge.setTextColor(color);
+                Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
+                if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
             } else {
-                holder.tvUsbBadge.setText("INTERNA");
-                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_internal);
-                holder.tvUsbBadge.setTextColor(Color.parseColor("#fbbf24"));
+                int color = Color.parseColor("#38bdf8");
+                holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
+                holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
+                holder.tvUsbBadge.setText("1");
+                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb1);
+                holder.tvUsbBadge.setTextColor(color);
+                Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
+                if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
             }
 
             // Solo número limpio sin la palabra "pistas"

@@ -117,8 +117,8 @@
             <ImageButton
                 android:id="@+id/btnNavHome"
                 android:layout_width="44dp"
-                android:layout_height="42dp"
-                android:layout_marginBottom="4dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_btn_action"
                 android:src="@drawable/ic_nav_home"
                 android:contentDescription="Inicio (Home)" />
@@ -127,7 +127,8 @@
             <ImageButton
                 android:id="@+id/btnVolMute"
                 android:layout_width="44dp"
-                android:layout_height="42dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_btn_action"
                 android:src="@android:drawable/ic_lock_silent_mode"
                 android:contentDescription="Mute" />
@@ -136,8 +137,8 @@
             <Button
                 android:id="@+id/btnVolUp"
                 android:layout_width="44dp"
-                android:layout_height="42dp"
-                android:layout_marginTop="4dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="4dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="+"
                 android:textColor="@color/text_primary"
@@ -150,7 +151,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:layout_marginBottom="2dp"
+                android:layout_marginBottom="4dp"
                 android:text="75%"
                 android:textColor="@color/accent_cyan"
                 android:textSize="14sp"
@@ -160,7 +161,8 @@
             <Button
                 android:id="@+id/btnVolDown"
                 android:layout_width="44dp"
-                android:layout_height="42dp"
+                android:layout_height="40dp"
+                android:layout_marginBottom="14dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="-"
                 android:textColor="@color/text_primary"
@@ -173,12 +175,298 @@
                 android:layout_width="44dp"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:layout_marginTop="16dp"
                 android:layout_marginBottom="2dp" />
         </LinearLayout>
 
         <!-- ======================================================== -->
-        <!-- COLUMNA 2: REPRODUCTOR PRINCIPAL                         -->
+        <!-- COLUMNA 2: EXPLORADOR DE ARCHIVOS Y PISTAS (Izquierda)     -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:id="@+id/layoutExplorerPanel"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.2"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:background="@drawable/bg_panel_card"
+                android:padding="8dp">
+
+                <!-- Pestañas de Navegación Ampliadas para Conducción (16sp y 44dp) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/tabFolders"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_tab_selected"
+                        android:text="📁 Carpetas USB"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/tabTracks"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_tab_unselected"
+                        android:text="🎵 Pistas (0)"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/tabFavorites"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_tab_unselected"
+                        android:text="⭐ Favoritos"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) en 16sp y 34dp -->
+                <HorizontalScrollView
+                    android:id="@+id/scrollSearchFilters"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
+
+                    <LinearLayout
+                        android:id="@+id/layoutSearchFilters"
+                        android:layout_width="wrap_content"
+                        android:layout_height="38dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <!-- Filtro Esta Carpeta (Activo por defecto en pestaña Pistas) -->
+                        <TextView
+                            android:id="@+id/btnFilterFolder"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:gravity="center"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:background="@drawable/bg_chip_selected"
+                            android:text="📁 Esta Carpeta"
+                            android:textColor="#0d0f14"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro Todo -->
+                        <TextView
+                            android:id="@+id/btnFilterAll"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:text="🌐 TODO"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro USB 1 -->
+                        <TextView
+                            android:id="@+id/btnFilterUsb1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="14dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:drawableStart="@drawable/ic_usb_trident"
+                            android:drawablePadding="5dp"
+                            android:text="1"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <!-- Filtro USB 2 -->
+                        <TextView
+                            android:id="@+id/btnFilterUsb2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="6dp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="14dp"
+                            android:background="@drawable/bg_chip_unselected"
+                            android:drawableStart="@drawable/ic_usb_trident"
+                            android:drawablePadding="5dp"
+                            android:text="2"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <!-- Barra de Búsqueda Ergonómica (46dp y texto 17sp negrita) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_search"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔍"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="18sp" />
+
+                    <EditText
+                        android:id="@+id/etSearch"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:background="@null"
+                        android:hint="Buscar canción, carpeta o artista..."
+                        android:textColorHint="@color/text_muted"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:singleLine="true"
+                        android:imeOptions="actionDone" />
+
+                    <!-- Indicador de búsqueda animado estilo web -->
+                    <com.jh.caraudio.SearchSpinnerView
+                        android:id="@+id/pbSearchLoading"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginEnd="6dp"
+                        android:visibility="gone" />
+
+                    <!-- Botón X para borrar búsqueda y cerrar teclado -->
+                    <ImageButton
+                        android:id="@+id/btnSearchClear"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:visibility="gone"
+                        android:tint="@color/text_secondary"
+                        android:contentDescription="Borrar búsqueda" />
+                </LinearLayout>
+
+                <!-- Ruta actual / Migas de pan con Scroll Horizontal y Botón Colapsar Todo el Árbol -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="5dp">
+
+                    <HorizontalScrollView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:scrollbars="none"
+                        android:overScrollMode="never">
+
+                        <TextView
+                            android:id="@+id/tvCurrentPath"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:singleLine="true"
+                            android:text="📂 Carpetas USB"
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </HorizontalScrollView>
+
+                    <!-- Botón Colapsar Todo a nivel de Pendrives (Visible en modo árbol) -->
+                    <ImageButton
+                        android:id="@+id/btnCollapseAllTree"
+                        android:layout_width="36dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@drawable/ic_collapse_all"
+                        android:tint="@color/accent_cyan"
+                        android:padding="6dp"
+                        android:contentDescription="Colapsar todo el árbol" />
+                </LinearLayout>
+
+                <!-- Lista de Elementos (Canciones o Carpetas) -->
+                <ListView
+                    android:id="@+id/listViewContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:divider="@color/border_panel"
+                    android:dividerHeight="1dp"
+                    android:descendantFocusability="blocksDescendants"
+                    android:cacheColorHint="#00000000" />
+
+                <!-- Pie de Estado de Almacenamiento y Botón Reproducir Todo -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/tvStorageStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:singleLine="true"
+                        android:text="Escaneando pendrives USB..."
+                        android:textColor="@color/text_muted"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btnPlayAll"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:text="▶ Reproducir Todo"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ======================================================== -->
+        <!-- COLUMNA 3: REPRODUCTOR PRINCIPAL (Derecha)                         -->
         <!-- ======================================================== -->
         <LinearLayout
             android:id="@+id/layoutPlayerPanel"
@@ -209,7 +497,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
                         android:gravity="center_vertical"
-                        android:layout_alignParentStart="true"
+                        android:layout_alignParentEnd="true"
                         android:layout_alignParentTop="true"
                         android:text="● EN PAUSA"
                         android:textColor="@color/amber_accent"
@@ -285,12 +573,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_alignParentTop="true"
-                        android:layout_alignParentEnd="true"
-                        android:layout_toEndOf="@id/layoutAlbumArtCard"
+                        android:layout_alignParentStart="true"
+                        android:layout_toStartOf="@id/layoutAlbumArtCard"
                         android:layout_alignBottom="@id/layoutAlbumArtCard"
                         android:minWidth="64dp"
                         android:orientation="vertical"
-                        android:gravity="top|end"
+                        android:gravity="top|start"
                         android:clickable="true"
                         android:focusable="true"
                         android:contentDescription="Alternar Explorador de Música">
@@ -351,6 +639,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/tvTrackArtistDot"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text=" • "
@@ -386,14 +675,15 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:orientation="vertical"
-                        android:gravity="center_vertical|start"
+                        android:gravity="center"
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?android:attr/selectableItemBackground">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:gravity="center"
                             android:text="⏮ ANTERIOR"
                             android:textColor="@color/accent_cyan"
                             android:textSize="11sp"
@@ -403,6 +693,7 @@
                             android:id="@+id/tvPrevTrackPreview"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:gravity="center"
                             android:singleLine="true"
                             android:ellipsize="marquee"
                             android:marqueeRepeatLimit="marquee_forever"
@@ -427,14 +718,15 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:orientation="vertical"
-                        android:gravity="center_vertical|end"
+                        android:gravity="center"
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?android:attr/selectableItemBackground">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:gravity="center"
                             android:text="SIGUIENTE ⏭"
                             android:textColor="@color/accent_cyan"
                             android:textSize="11sp"
@@ -444,7 +736,7 @@
                             android:id="@+id/tvNextTrackPreview"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:gravity="end"
+                            android:gravity="center"
                             android:singleLine="true"
                             android:ellipsize="marquee"
                             android:marqueeRepeatLimit="marquee_forever"
@@ -575,264 +867,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ======================================================== -->
-        <!-- COLUMNA 3: EXPLORADOR DE ARCHIVOS Y LISTAS (Derecha)     -->
-        <!-- ======================================================== -->
-        <LinearLayout
-            android:id="@+id/layoutExplorerPanel"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1.2"
-            android:orientation="vertical"
-            android:padding="8dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:background="@drawable/bg_panel_card"
-                android:padding="8dp">
-
-                <!-- Pestañas de Navegación Ampliadas para Conducción (16sp y 44dp) -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/tabFolders"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_tab_selected"
-                        android:text="📁 Carpetas USB"
-                        android:textColor="@color/accent_cyan"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <Button
-                        android:id="@+id/tabTracks"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_tab_unselected"
-                        android:text="🎵 Pistas (0)"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <Button
-                        android:id="@+id/tabFavorites"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_tab_unselected"
-                        android:text="⭐ Favoritos"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Panel de Filtros Rápidos (Esta Carpeta, TODO, USB 1, USB 2) en 16sp y 34dp -->
-                <HorizontalScrollView
-                    android:id="@+id/scrollSearchFilters"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:scrollbars="none"
-                    android:overScrollMode="never">
-
-                    <LinearLayout
-                        android:id="@+id/layoutSearchFilters"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <!-- Filtro Esta Carpeta (Activo por defecto en pestaña Pistas) -->
-                        <TextView
-                            android:id="@+id/btnFilterFolder"
-                            android:layout_width="wrap_content"
-                            android:layout_height="34dp"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:background="@drawable/bg_chip_selected"
-                            android:text="📁 Esta Carpeta"
-                            android:textColor="#0d0f14"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <!-- Filtro Todo -->
-                        <TextView
-                            android:id="@+id/btnFilterAll"
-                            android:layout_width="wrap_content"
-                            android:layout_height="34dp"
-                            android:layout_marginStart="6dp"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:text="🌐 TODO"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <!-- Filtro USB 1 -->
-                        <TextView
-                            android:id="@+id/btnFilterUsb1"
-                            android:layout_width="wrap_content"
-                            android:layout_height="34dp"
-                            android:layout_marginStart="6dp"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:text="💾 USB 1"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:clickable="true"
-                            android:focusable="true" />
-
-                        <!-- Filtro USB 2 -->
-                        <TextView
-                            android:id="@+id/btnFilterUsb2"
-                            android:layout_width="wrap_content"
-                            android:layout_height="34dp"
-                            android:layout_marginStart="6dp"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:background="@drawable/bg_chip_unselected"
-                            android:text="💾 USB 2"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:clickable="true"
-                            android:focusable="true" />
-                    </LinearLayout>
-                </HorizontalScrollView>
-
-                <!-- Barra de Búsqueda Ergonómica (46dp y texto 17sp negrita) -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="6dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/bg_search"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🔍"
-                        android:textColor="@color/accent_cyan"
-                        android:textSize="18sp" />
-
-                    <EditText
-                        android:id="@+id/etSearch"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:background="@null"
-                        android:hint="Buscar canción, carpeta o artista..."
-                        android:textColorHint="@color/text_muted"
-                        android:textColor="@color/text_primary"
-                        android:textSize="17sp"
-                        android:textStyle="bold"
-                        android:singleLine="true"
-                        android:imeOptions="actionDone" />
-
-                    <!-- Indicador de búsqueda en progreso -->
-                    <ProgressBar
-                        android:id="@+id/pbSearchLoading"
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
-                        android:layout_marginEnd="6dp"
-                        android:indeterminate="true"
-                        android:indeterminateTint="@color/accent_cyan"
-                        android:visibility="gone" />
-
-                    <!-- Botón X para borrar búsqueda y cerrar teclado -->
-                    <ImageButton
-                        android:id="@+id/btnSearchClear"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_menu_close_clear_cancel"
-                        android:visibility="gone"
-                        android:tint="@color/text_secondary"
-                        android:contentDescription="Borrar búsqueda" />
-                </LinearLayout>
-
-                <!-- Ruta actual / Migas de pan (16sp negrita) -->
-                <TextView
-                    android:id="@+id/tvCurrentPath"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:singleLine="true"
-                    android:ellipsize="middle"
-                    android:text="📂 Carpetas USB"
-                    android:textColor="@color/accent_cyan"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <!-- Lista de Elementos (Canciones o Carpetas) -->
-                <ListView
-                    android:id="@+id/listViewContent"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:layout_marginTop="4dp"
-                    android:divider="@color/border_panel"
-                    android:dividerHeight="1dp"
-                    android:descendantFocusability="blocksDescendants"
-                    android:cacheColorHint="#00000000" />
-
-                <!-- Pie de Estado de Almacenamiento y Botón Reproducir Todo -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="34dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="4dp">
-
-                    <TextView
-                        android:id="@+id/tvStorageStatus"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:singleLine="true"
-                        android:text="Escaneando pendrives USB..."
-                        android:textColor="@color/text_muted"
-                        android:textSize="13sp" />
-
-                    <Button
-                        android:id="@+id/btnPlayAll"
-                        android:layout_width="wrap_content"
-                        android:layout_height="30dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="10dp"
-                        android:text="▶ Reproducir Todo"
-                        android:textColor="@color/accent_cyan"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </LinearLayout>
+        
 
     </LinearLayout>
 

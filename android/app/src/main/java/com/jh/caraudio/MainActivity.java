@@ -9,8 +9,12 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
@@ -22,7 +26,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
+import android.text.style.ImageSpan;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -49,6 +56,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,7 +89,7 @@ public class MainActivity extends Activity {
     private ImageView ivAlbumArt;
     private SoundWaveBarsView soundWaveBars;
     private TextView tvFormatBadge;
-    private TextView tvTrackTitle, tvTrackArtist, tvTrackAlbum;
+    private TextView tvTrackTitle, tvTrackArtist, tvTrackArtistDot, tvTrackAlbum;
     private View layoutPrevCard, layoutNextCard;
     private TextView tvPrevTrackPreview, tvNextTrackPreview;
 
@@ -90,6 +98,7 @@ public class MainActivity extends Activity {
     private float globalTouchStartY = 0f;
     private long globalTouchStartTime = 0;
     private boolean globalTouchOnSeekbar = false;
+    private boolean globalTouchInToggleZone = false;
     private boolean globalGestureHandled = false;
     private SeekBar seekTrackProgress;
     private TextView tvTimeCurrent, tvTimeTotal;
@@ -100,14 +109,16 @@ public class MainActivity extends Activity {
     private Button tabFolders, tabTracks, tabFavorites;
     private EditText etSearch;
     private ImageButton btnSearchClear;
-    private ProgressBar pbSearchLoading;
+    private View pbSearchLoading;
     private TextView tvCurrentPath, tvStorageStatus;
     private Button btnPlayAll;
     private ListView listViewContent;
+    private ImageButton btnCollapseAllTree;
 
     // Adaptadores
     private TrackAdapter trackAdapter;
     private FolderAdapter folderAdapter;
+    private FolderTreeAdapter folderTreeAdapter;
 
     // Listas de datos
     private List<Track> allTracks = new ArrayList<>();
@@ -115,6 +126,8 @@ public class MainActivity extends Activity {
     private List<Track> displayedTracks = new ArrayList<>();
     private List<FolderItem> folderList = new ArrayList<>();
     private List<FolderItem> displayedFolders = new ArrayList<>();
+    private List<TreeNode> rootTreeNodes = new ArrayList<>();
+    private List<TreeNode> visibleTreeNodes = new ArrayList<>();
 
     // Estado del Reproductor
     private int currentTrackIndex = -1;
@@ -173,6 +186,8 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         initViews();
+        buildTreeFromTracks(allTracks);
+        updateVisibleTreeNodes();
         setupClock();
         setupVolumeControls();
         setupPlayerControls();
@@ -207,6 +222,7 @@ public class MainActivity extends Activity {
         tvFormatBadge = findViewById(R.id.tvFormatBadge);
         tvTrackTitle = findViewById(R.id.tvTrackTitle);
         tvTrackArtist = findViewById(R.id.tvTrackArtist);
+        tvTrackArtistDot = findViewById(R.id.tvTrackArtistDot);
         tvTrackAlbum = findViewById(R.id.tvTrackAlbum);
         layoutPrevCard = findViewById(R.id.layoutPrevCard);
         layoutNextCard = findViewById(R.id.layoutNextCard);
@@ -233,6 +249,10 @@ public class MainActivity extends Activity {
         tvStorageStatus = findViewById(R.id.tvStorageStatus);
         btnPlayAll = findViewById(R.id.btnPlayAll);
         listViewContent = findViewById(R.id.listViewContent);
+        btnCollapseAllTree = findViewById(R.id.btnCollapseAllTree);
+        if (btnCollapseAllTree != null) {
+            btnCollapseAllTree.setOnClickListener(v -> collapseAllTreeNodes());
+        }
 
         // Filtros de búsqueda (Esta Carpeta, TODO, USB 1, USB 2)
         btnFilterFolder = findViewById(R.id.btnFilterFolder);
@@ -259,7 +279,25 @@ public class MainActivity extends Activity {
                 }
         );
 
-        listViewContent.setAdapter(folderAdapter);
+        folderTreeAdapter = new FolderTreeAdapter(this, visibleTreeNodes, new FolderTreeAdapter.OnTreeNodeClickListener() {
+            @Override
+            public void onNodeClick(TreeNode node, int position) {
+                hideKeyboard();
+                if (node.hasChildren()) {
+                    node.setExpanded(!node.isExpanded());
+                    updateVisibleTreeNodes();
+                }
+                selectFolderFromNode(node);
+            }
+
+            @Override
+            public void onNodePlayClick(TreeNode node, int position) {
+                hideKeyboard();
+                playFolderFromNode(node);
+            }
+        });
+
+        listViewContent.setAdapter(folderTreeAdapter);
     }
 
     private void setupClock() {
@@ -327,25 +365,36 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
+
+                // Restringir gesto de arrastrar/swipe ÚNICAMENTE a la zona roja del botón y franja libre
+                globalTouchInToggleZone = false;
+                if (layoutExplorerToggleZone != null) {
+                    Rect toggleRect = new Rect();
+                    if (layoutExplorerToggleZone.getGlobalVisibleRect(toggleRect)) {
+                        toggleRect.inset(-25, -25);
+                        if (toggleRect.contains((int) globalTouchStartX, (int) globalTouchStartY)) {
+                            globalTouchInToggleZone = true;
+                        }
+                    }
+                }
                 break;
             }
 
             case MotionEvent.ACTION_MOVE: {
-                if (!globalGestureHandled && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
+                if (!globalGestureHandled && globalTouchInToggleZone && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
                     float dx = ev.getRawX() - globalTouchStartX;
                     float dy = ev.getRawY() - globalTouchStartY;
-                    int screenWidth = getResources().getDisplayMetrics().widthPixels;
 
-                    // 1. Si el explorador está OCULTO: Jalar de derecha a izquierda (<-) muestra el explorador
+                    // Si el explorador está OCULTO: Jalar hacia la derecha muestra el explorador
                     if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
-                        if (globalTouchStartX > screenWidth * 0.55f && dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                        if (dx > 40 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             layoutExplorerPanel.setVisibility(View.VISIBLE);
                         }
                     }
-                    // 2. Si el explorador está VISIBLE: Deslizar hacia la derecha (->) cierra el explorador
+                    // Si el explorador está VISIBLE: Deslizar hacia la izquierda cierra el explorador
                     else {
-                        if (globalTouchStartX > screenWidth * 0.38f && dx > 80 && Math.abs(dx) > Math.abs(dy) * 1.6f) {
+                        if (dx < -40 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
                             layoutExplorerPanel.setVisibility(View.GONE);
@@ -356,18 +405,17 @@ public class MainActivity extends Activity {
             }
 
             case MotionEvent.ACTION_UP: {
-                if (!globalGestureHandled && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
+                if (!globalGestureHandled && globalTouchInToggleZone && !globalTouchOnSeekbar && layoutExplorerPanel != null) {
                     float dx = ev.getRawX() - globalTouchStartX;
                     float dy = ev.getRawY() - globalTouchStartY;
-                    int screenWidth = getResources().getDisplayMetrics().widthPixels;
 
                     if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
-                        if (globalTouchStartX > screenWidth * 0.55f && dx < -50 && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                        if (dx > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             layoutExplorerPanel.setVisibility(View.VISIBLE);
                         }
                     } else {
-                        if (globalTouchStartX > screenWidth * 0.38f && dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                        if (dx < -35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
                             layoutExplorerPanel.setVisibility(View.GONE);
@@ -732,10 +780,10 @@ public class MainActivity extends Activity {
 
                 if (q.trim().isEmpty()) {
                     if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
-                    if (currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+                    if (currentTab != 0 && currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
                         currentSearchFilter = FILTER_FOLDER;
                         updateFilterChipsVisibility();
-                updateFilterChipsUI();
+                        updateFilterChipsUI();
                     }
                     filterSearch("");
                     return;
@@ -764,7 +812,7 @@ public class MainActivity extends Activity {
             if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
             hideKeyboard();
             // Al limpiar la búsqueda, mostrar las canciones de la carpeta seteada al darle play
-            if (currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
+            if (currentTab != 0 && currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
                 currentSearchFilter = FILTER_FOLDER;
                 updateFilterChipsVisibility();
                 updateFilterChipsUI();
@@ -817,12 +865,15 @@ public class MainActivity extends Activity {
         if (btnFilterFolder != null) {
             boolean sel = (currentSearchFilter == FILTER_FOLDER);
             btnFilterFolder.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterFolder.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
+            btnFilterFolder.setTextColor(color);
             btnFilterFolder.setTypeface(null, Typeface.BOLD);
             if (currentSelectedFolder != null) {
-                String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+                String usbNum = (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("2")) ? "2" : (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("1") ? "1" : "");
                 String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
-                btnFilterFolder.setText("📁 " + usbTag + label);
+                btnFilterFolder.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+                btnFilterFolder.setCompoundDrawablePadding(0);
+                btnFilterFolder.setText(buildFolderFilterText(label, usbNum, color));
             }
         }
 
@@ -836,15 +887,77 @@ public class MainActivity extends Activity {
         if (btnFilterUsb1 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB1);
             btnFilterUsb1.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterUsb1.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
+            btnFilterUsb1.setTextColor(color);
             btnFilterUsb1.setTypeface(null, Typeface.BOLD);
+            Drawable[] drawables = btnFilterUsb1.getCompoundDrawables();
+            if (drawables.length > 0 && drawables[0] != null) {
+                drawables[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
+            }
         }
 
         if (btnFilterUsb2 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB2);
             btnFilterUsb2.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterUsb2.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
+            btnFilterUsb2.setTextColor(color);
             btnFilterUsb2.setTypeface(null, Typeface.BOLD);
+            Drawable[] drawables = btnFilterUsb2.getCompoundDrawables();
+            if (drawables.length > 0 && drawables[0] != null) {
+                drawables[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
+            }
+        }
+    }
+
+    private CharSequence buildFolderFilterText(String label, String usbNum, int textColor) {
+        if (usbNum == null || usbNum.isEmpty()) {
+            return "📁 " + label;
+        }
+        SpannableStringBuilder ssb = new SpannableStringBuilder();
+        ssb.append("📁  ");
+        int start = ssb.length();
+        ssb.append(" ");
+        try {
+            Drawable d = getDrawable(R.drawable.ic_usb_trident);
+            if (d != null) {
+                d = d.mutate();
+                d.setColorFilter(textColor, PorterDuff.Mode.SRC_IN);
+                int size = (int) (14 * getResources().getDisplayMetrics().density);
+                d.setBounds(0, 0, size, size);
+                ssb.setSpan(new CenteredImageSpan(d), start, start + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        } catch (Exception ignored) {}
+        ssb.append(" ").append(usbNum).append(" | ").append(label);
+        return ssb;
+    }
+
+    private static class CenteredImageSpan extends ImageSpan {
+        public CenteredImageSpan(Drawable drawable) {
+            super(drawable);
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint) {
+            Drawable b = getDrawable();
+            canvas.save();
+            int transY = top + (bottom - top) / 2 - b.getBounds().height() / 2;
+            canvas.translate(x, transY);
+            b.draw(canvas);
+            canvas.restore();
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            Drawable d = getDrawable();
+            Rect rect = d.getBounds();
+            if (fm != null) {
+                Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+                fm.ascent = pfm.ascent;
+                fm.descent = pfm.descent;
+                fm.top = pfm.top;
+                fm.bottom = pfm.bottom;
+            }
+            return rect.right;
         }
     }
 
@@ -852,9 +965,13 @@ public class MainActivity extends Activity {
         if (btnFilterFolder != null) {
             if (currentTab == 1 && currentSelectedFolder != null) {
                 btnFilterFolder.setVisibility(View.VISIBLE);
-                String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+                boolean sel = (currentSearchFilter == FILTER_FOLDER);
+                int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
+                String usbNum = (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("2")) ? "2" : (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("1") ? "1" : "");
                 String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
-                btnFilterFolder.setText("📁 " + usbTag + label);
+                btnFilterFolder.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+                btnFilterFolder.setCompoundDrawablePadding(0);
+                btnFilterFolder.setText(buildFolderFilterText(label, usbNum, color));
             } else {
                 btnFilterFolder.setVisibility(View.GONE);
             }
@@ -890,12 +1007,19 @@ public class MainActivity extends Activity {
         tabFavorites.setTypeface(null, Typeface.BOLD);
 
         if (tabIndex == 0) {
-            listViewContent.setAdapter(folderAdapter);
-            tvCurrentPath.setText("📂 Carpetas USB");
+            if (etSearch.getText().toString().trim().isEmpty()) {
+                listViewContent.setAdapter(folderTreeAdapter);
+                if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.VISIBLE);
+                updateVisibleTreeNodes();
+            } else {
+                listViewContent.setAdapter(folderAdapter);
+                if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+            }
             if (currentSearchFilter == FILTER_FOLDER) {
                 currentSearchFilter = FILTER_ALL;
             }
         } else if (tabIndex == 1) {
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             listViewContent.setAdapter(trackAdapter);
             String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
             tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder : "🎵 Todas las Pistas");
@@ -905,6 +1029,7 @@ public class MainActivity extends Activity {
                 currentSearchFilter = FILTER_ALL;
             }
         } else {
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             listViewContent.setAdapter(trackAdapter);
             tvCurrentPath.setText("⭐ Mis Favoritos");
             if (currentSearchFilter == FILTER_FOLDER) {
@@ -943,6 +1068,322 @@ public class MainActivity extends Activity {
 
     private void openFolder(String folderName) {
         openFolder(folderName, null);
+    }
+
+    // ========================================================
+    // ÁRBOL JERÁRQUICO DE CARPETAS USB (Estilo Web Maqueta Hernan)
+    // ========================================================
+    private void buildTreeFromTracks(List<Track> tracks) {
+        rootTreeNodes.clear();
+
+        if (tracks == null || tracks.isEmpty()) {
+            buildDefaultTreeDemo();
+            return;
+        }
+
+        Map<String, TreeNode> rootUsbMap = new LinkedHashMap<>();
+
+        for (Track track : tracks) {
+            String path = track.getFilePath() != null ? track.getFilePath() : track.getPath();
+            String usb = track.getUsbSource();
+            if (usb == null || usb.isEmpty()) {
+                usb = (path != null && path.toLowerCase().contains("udisk2")) ? "USB 2" : "USB 1";
+            }
+            boolean isUsb2 = "USB 2".equalsIgnoreCase(usb) || (path != null && path.toLowerCase().contains("udisk2"));
+            String usbId = isUsb2 ? "usb2" : "usb1";
+            String usbName = isUsb2 ? "USB 2 (udisk2)" : "USB 1 (udisk1)";
+            String usbPath = isUsb2 ? "/storage/udisk2/" : "/storage/udisk1/";
+
+            TreeNode rootNode = rootUsbMap.get(usbId);
+            if (rootNode == null) {
+                rootNode = new TreeNode(usbId, usbName, usbPath, isUsb2 ? "USB 2" : "USB 1", true, 0);
+                rootUsbMap.put(usbId, rootNode);
+            }
+            rootNode.incrementTotalCount();
+
+            // Extraer ruta relativa de directorios (sin el nombre del archivo mp3)
+            String relDir = "";
+            if (path != null && path.startsWith(usbPath)) {
+                relDir = path.substring(usbPath.length());
+            } else if (path != null) {
+                int udiskIdx = path.indexOf("udisk");
+                if (udiskIdx != -1) {
+                    int slashAfter = path.indexOf('/', udiskIdx);
+                    if (slashAfter != -1 && slashAfter < path.length() - 1) {
+                        relDir = path.substring(slashAfter + 1);
+                    }
+                }
+            }
+
+            int lastSlash = relDir.lastIndexOf('/');
+            if (lastSlash != -1) {
+                relDir = relDir.substring(0, lastSlash);
+            } else {
+                relDir = "";
+            }
+
+            if (!relDir.trim().isEmpty()) {
+                String[] parts = relDir.split("/+");
+                TreeNode currentNode = rootNode;
+                String accumPath = usbPath;
+
+                for (int i = 0; i < parts.length; i++) {
+                    String p = parts[i].trim();
+                    if (p.isEmpty()) continue;
+                    accumPath += p + "/";
+
+                    TreeNode child = currentNode.findChildByName(p);
+                    if (child == null) {
+                        String childId = usbId + "_" + p.replaceAll("[^a-zA-Z0-9]", "_") + "_" + i;
+                        child = new TreeNode(childId, p, accumPath, currentNode.getUsbSource(), false, 0);
+                        currentNode.addChild(child);
+                    }
+                    child.incrementTotalCount();
+                    if (i == parts.length - 1) {
+                        child.incrementDirectCount();
+                    }
+                    currentNode = child;
+                }
+            } else {
+                rootNode.incrementDirectCount();
+            }
+        }
+
+        for (TreeNode root : rootUsbMap.values()) {
+            sortNodeChildren(root);
+            rootTreeNodes.add(root);
+        }
+    }
+
+    private void sortNodeChildren(TreeNode node) {
+        if (node == null || !node.hasChildren()) return;
+        Collections.sort(node.getChildren(), (c1, c2) -> {
+            String n1 = c1.getName() != null ? c1.getName() : "";
+            String n2 = c2.getName() != null ? c2.getName() : "";
+            return n1.compareToIgnoreCase(n2);
+        });
+        for (TreeNode child : node.getChildren()) {
+            sortNodeChildren(child);
+        }
+    }
+
+    private void buildDefaultTreeDemo() {
+        rootTreeNodes.clear();
+
+        // USB 1 (udisk1)
+        TreeNode usb1 = new TreeNode("usb1", "USB 1 (udisk1)", "/storage/udisk1/", "USB 1", true, 0);
+        usb1.setTotalTrackCount(247);
+
+        TreeNode descargas = new TreeNode("descargas", "Descargas", "/storage/udisk1/Descargas/", "USB 1", false, 2);
+        descargas.setTotalTrackCount(218);
+
+        TreeNode sub1 = new TreeNode("subcarpeta1", "Subcarpeta 1", "/storage/udisk1/Descargas/Subcarpeta 1/", "USB 1", false, 0);
+        sub1.setTotalTrackCount(8);
+
+        TreeNode subsub1_1 = new TreeNode("subsub1_1", "Sub subcarpeta 1,1", "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/", "USB 1", false, 3);
+        subsub1_1.setTotalTrackCount(5);
+
+        TreeNode subsubDeep = new TreeNode("subsub1_1_1_deep", "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1", "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/", "USB 1", false, 2);
+        subsubDeep.setTotalTrackCount(2);
+        subsub1_1.addChild(subsubDeep);
+
+        TreeNode subsub2 = new TreeNode("subsub2", "Sub subcarpeta 2", "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/", "USB 1", false, 3);
+        subsub2.setTotalTrackCount(3);
+
+        sub1.addChild(subsub1_1);
+        sub1.addChild(subsub2);
+
+        TreeNode descargasFecha = new TreeNode("descargas_fecha", "2025-07-18", "/storage/udisk1/Descargas/2025-07-18/", "USB 1", false, 29);
+        descargasFecha.setTotalTrackCount(29);
+
+        descargas.addChild(sub1);
+        descargas.addChild(descargasFecha);
+
+        TreeNode jhPendrive = new TreeNode("jh_pendrive", "JH PENDRIVE", "/storage/udisk1/JH PENDRIVE/", "USB 1", false, 12);
+        jhPendrive.setTotalTrackCount(12);
+
+        usb1.addChild(descargas);
+        usb1.addChild(jhPendrive);
+
+        // USB 2 (udisk2)
+        TreeNode usb2 = new TreeNode("usb2", "USB 2 (udisk2)", "/storage/udisk2/", "USB 2", true, 0);
+        usb2.setTotalTrackCount(84);
+
+        TreeNode musicaViaje = new TreeNode("musica_viaje", "Música Viaje", "/storage/udisk2/Música Viaje/", "USB 2", false, 84);
+        musicaViaje.setTotalTrackCount(84);
+        usb2.addChild(musicaViaje);
+
+        rootTreeNodes.add(usb1);
+        rootTreeNodes.add(usb2);
+    }
+
+    private void updateVisibleTreeNodes() {
+        visibleTreeNodes.clear();
+
+        List<TreeNode> rootsToDisplay = new ArrayList<>();
+        if (currentSearchFilter == FILTER_USB1) {
+            for (TreeNode r : rootTreeNodes) {
+                if ("USB 1".equalsIgnoreCase(r.getUsbSource()) || "usb1".equalsIgnoreCase(r.getId())) {
+                    rootsToDisplay.add(r);
+                }
+            }
+        } else if (currentSearchFilter == FILTER_USB2) {
+            for (TreeNode r : rootTreeNodes) {
+                if ("USB 2".equalsIgnoreCase(r.getUsbSource()) || "usb2".equalsIgnoreCase(r.getId())) {
+                    rootsToDisplay.add(r);
+                }
+            }
+        } else {
+            rootsToDisplay.addAll(rootTreeNodes);
+        }
+
+        for (TreeNode root : rootsToDisplay) {
+            addVisibleNodeRecursive(root, 0, visibleTreeNodes);
+        }
+
+        if (folderTreeAdapter != null) {
+            folderTreeAdapter.setVisibleNodes(visibleTreeNodes);
+            Track currentTrack = getCurrentTrack();
+            folderTreeAdapter.setCurrentPlayingTrack(currentTrack);
+            folderTreeAdapter.setSelectedFolder(currentSelectedFolder);
+        }
+    }
+
+    private void addVisibleNodeRecursive(TreeNode node, int level, List<TreeNode> output) {
+        node.setLevel(level);
+        output.add(node);
+        if (node.isExpanded() && node.hasChildren()) {
+            for (TreeNode child : node.getChildren()) {
+                addVisibleNodeRecursive(child, level + 1, output);
+            }
+        }
+    }
+
+    private void collapseAllTreeNodes() {
+        for (TreeNode root : rootTreeNodes) {
+            setNodeExpandedRecursive(root, false);
+        }
+        updateVisibleTreeNodes();
+    }
+
+    private void setNodeExpandedRecursive(TreeNode node, boolean expanded) {
+        if (node == null) return;
+        node.setExpanded(expanded);
+        if (node.hasChildren()) {
+            for (TreeNode child : node.getChildren()) {
+                setNodeExpandedRecursive(child, expanded);
+            }
+        }
+    }
+
+    private void selectFolderFromNode(TreeNode node) {
+        if (node == null) return;
+        currentSelectedFolder = node.getName();
+        currentSelectedFolderUsbSource = node.getUsbSource();
+        String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+        tvCurrentPath.setText("📁 " + usbTag + node.getName());
+
+        List<Track> folderTracks = getTracksForNode(node);
+        if (!folderTracks.isEmpty()) {
+            currentPlaylist.clear();
+            currentPlaylist.addAll(folderTracks);
+            tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
+        }
+        if (folderTreeAdapter != null) {
+            folderTreeAdapter.setSelectedFolder(node.getName());
+        }
+    }
+
+    private void playFolderFromNode(TreeNode node) {
+        if (node == null) return;
+        openFolderFromNode(node, true);
+    }
+
+    private void openFolderFromNode(TreeNode node, boolean autoPlay) {
+        if (node == null) return;
+        currentSelectedFolder = node.getName();
+        currentSelectedFolderUsbSource = node.getUsbSource();
+
+        List<Track> folderTracks = getTracksForNode(node);
+        if (!folderTracks.isEmpty()) {
+            currentPlaylist.clear();
+            currentPlaylist.addAll(folderTracks);
+        }
+
+        currentSearchFilter = FILTER_FOLDER;
+        selectTab(1);
+        String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
+        tvCurrentPath.setText("📁 " + usbTag + node.getName() + " (" + currentPlaylist.size() + ")");
+
+        if (autoPlay && !displayedTracks.isEmpty()) {
+            playTrack(0);
+        }
+    }
+
+    private List<Track> getTracksForNode(TreeNode node) {
+        List<Track> list = new ArrayList<>();
+        if (node == null) return list;
+        String nodePath = node.getPath();
+        String nodeName = node.getName();
+
+        for (Track t : allTracks) {
+            boolean match = false;
+            if (nodeName != null && nodeName.equalsIgnoreCase(t.getFolder())) {
+                match = true;
+            } else if (nodePath != null && t.getFilePath() != null && t.getFilePath().startsWith(nodePath)) {
+                match = true;
+            }
+            if (match) {
+                list.add(t);
+            }
+        }
+        return list;
+    }
+
+    private void revealPlayingFolderInTree(Track track) {
+        if (track == null || rootTreeNodes.isEmpty()) return;
+        String folder = track.getFolder();
+        String path = track.getFilePath();
+
+        for (TreeNode root : rootTreeNodes) {
+            if (expandPathToNode(root, folder, path)) {
+                root.setExpanded(true);
+            }
+        }
+        updateVisibleTreeNodes();
+    }
+
+    private boolean expandPathToNode(TreeNode current, String targetFolder, String targetPath) {
+        if (current == null) return false;
+        boolean matchesThis = (!current.isUsbRoot() && (
+                (targetFolder != null && targetFolder.equalsIgnoreCase(current.getName())) ||
+                (targetPath != null && current.getPath() != null && targetPath.startsWith(current.getPath()))
+        ));
+
+        boolean childMatched = false;
+        if (current.hasChildren()) {
+            for (TreeNode child : current.getChildren()) {
+                if (expandPathToNode(child, targetFolder, targetPath)) {
+                    childMatched = true;
+                }
+            }
+        }
+
+        if (childMatched || matchesThis) {
+            current.setExpanded(true);
+            return true;
+        }
+        return false;
+    }
+
+    private Track getCurrentTrack() {
+        if (!currentPlaylist.isEmpty() && currentTrackIndex >= 0 && currentTrackIndex < currentPlaylist.size()) {
+            return currentPlaylist.get(currentTrackIndex);
+        }
+        if (!allTracks.isEmpty() && currentTrackIndex >= 0 && currentTrackIndex < allTracks.size()) {
+            return allTracks.get(currentTrackIndex);
+        }
+        return null;
     }
 
     private void filterByTab() {
@@ -1158,6 +1599,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     if (targetVersion != searchVersion) return;
                     if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
+                    if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
                     displayedFolders.clear();
                     displayedFolders.addAll(matchedFolders);
                     if (listViewContent.getAdapter() != folderAdapter) {
@@ -1284,32 +1726,22 @@ public class MainActivity extends Activity {
 
         // Modo Normal por pestaña y filtro seleccionado
         if (currentTab == 0) {
-            displayedFolders.clear();
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.VISIBLE);
             if (currentSearchFilter == FILTER_USB1) {
-                for (FolderItem f : folderList) {
-                    if ("USB 1".equalsIgnoreCase(f.getUsbSource()) || (f.getPath() != null && (f.getPath().contains("udisk1") || f.getPath().contains("usb0")))) {
-                        displayedFolders.add(f);
-                    }
-                }
-                tvCurrentPath.setText("📂 Carpetas USB 1 (" + displayedFolders.size() + ")");
+                tvCurrentPath.setText("Carpetas USB 1 (Árbol)");
             } else if (currentSearchFilter == FILTER_USB2) {
-                for (FolderItem f : folderList) {
-                    if ("USB 2".equalsIgnoreCase(f.getUsbSource()) || (f.getPath() != null && (f.getPath().contains("udisk2") || f.getPath().contains("usb1")))) {
-                        displayedFolders.add(f);
-                    }
-                }
-                tvCurrentPath.setText("📂 Carpetas USB 2 (" + displayedFolders.size() + ")");
+                tvCurrentPath.setText("Carpetas USB 2 (Árbol)");
             } else {
-                displayedFolders.addAll(folderList);
-                tvCurrentPath.setText("📂 Carpetas USB (" + displayedFolders.size() + ")");
+                tvCurrentPath.setText("Carpetas USB (Árbol de Pendrives)");
             }
 
-            folderAdapter.setFolders(displayedFolders);
-            if (listViewContent.getAdapter() != folderAdapter) {
-                listViewContent.setAdapter(folderAdapter);
+            updateVisibleTreeNodes();
+            if (listViewContent.getAdapter() != folderTreeAdapter) {
+                listViewContent.setAdapter(folderTreeAdapter);
             }
 
         } else if (currentTab == 1) {
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
             if (currentSearchFilter == FILTER_FOLDER && currentSelectedFolder != null && !currentPlaylist.isEmpty()) {
                 displayedTracks.addAll(currentPlaylist);
@@ -1346,6 +1778,7 @@ public class MainActivity extends Activity {
             }
 
         } else if (currentTab == 2) {
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
             for (Track t : allTracks) {
                 if (!t.isFavorite()) continue;
@@ -1431,11 +1864,7 @@ public class MainActivity extends Activity {
             updatePlaybackStateUI();
 
             // Actualizar información en pantalla con tipografía grande y clara
-            tvTrackTitle.setText(track.getTitle());
-            tvTrackArtist.setText(track.getArtist());
-            tvTrackAlbum.setText(track.getAlbum());
-            tvFormatBadge.setText(track.getFormat());
-            tvHeaderPath.setText("Q hubo jefe 😉");
+            updateNowPlayingInfo(track);
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));
@@ -1494,11 +1923,7 @@ public class MainActivity extends Activity {
             trackAdapter.setCurrentPlayingIndex(dispIdx);
             updatePlaybackStateUI();
 
-            tvTrackTitle.setText(track.getTitle());
-            tvTrackArtist.setText(track.getArtist());
-            tvTrackAlbum.setText(track.getAlbum());
-            tvFormatBadge.setText(track.getFormat());
-            tvHeaderPath.setText("Q hubo jefe 😉");
+            updateNowPlayingInfo(track);
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));
@@ -1567,6 +1992,7 @@ public class MainActivity extends Activity {
         scanExecutor.execute(() -> {
             Bitmap art = null;
             String exactFormat = null;
+            String embeddedArtist = null;
             try {
                 MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                 mmr.setDataSource(filePath);
@@ -1587,11 +2013,16 @@ public class MainActivity extends Activity {
                         }
                     } catch (Exception ignored) {}
                 }
+                embeddedArtist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                if (embeddedArtist == null || embeddedArtist.trim().isEmpty()) {
+                    embeddedArtist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST);
+                }
                 mmr.release();
             } catch (Exception ignored) {}
 
             final Bitmap finalArt = art;
             final String finalFormat = exactFormat;
+            final String finalArtist = (embeddedArtist != null && !embeddedArtist.trim().isEmpty()) ? embeddedArtist.trim() : null;
             handler.post(() -> {
                 if (finalArt != null) {
                     ivAlbumArt.setVisibility(View.VISIBLE);
@@ -1608,8 +2039,41 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
+                if (finalArtist != null) {
+                    if (track.getArtist() == null || track.getArtist().trim().isEmpty() || "Pendrive".equalsIgnoreCase(track.getArtist())) {
+                        track.setArtist(finalArtist);
+                        List<Track> queue = getQueue();
+                        if (currentTrackIndex >= 0 && currentTrackIndex < queue.size()) {
+                            if (filePath.equals(queue.get(currentTrackIndex).getFilePath())) {
+                                updateNowPlayingInfo(track);
+                            }
+                        }
+                    }
+                }
             });
         });
+    }
+
+    private void updateNowPlayingInfo(Track track) {
+        if (track == null) return;
+        tvTrackTitle.setText(track.getTitle());
+        String art = track.getArtist();
+        if (art != null && !art.trim().isEmpty() && !"Pendrive".equalsIgnoreCase(art.trim())) {
+            tvTrackArtist.setVisibility(View.VISIBLE);
+            tvTrackArtist.setText(art);
+            if (tvTrackArtistDot != null) tvTrackArtistDot.setVisibility(View.VISIBLE);
+        } else {
+            tvTrackArtist.setVisibility(View.GONE);
+            if (tvTrackArtistDot != null) tvTrackArtistDot.setVisibility(View.GONE);
+        }
+        tvTrackAlbum.setText(track.getAlbum());
+        tvFormatBadge.setText(track.getFormat());
+        tvHeaderPath.setText("Q hubo jefe 😉");
+
+        if (folderTreeAdapter != null) {
+            folderTreeAdapter.setCurrentPlayingTrack(track);
+            revealPlayingFolderInTree(track);
+        }
     }
 
     private void loadAlbumArt(String filePath) {
@@ -1678,7 +2142,7 @@ public class MainActivity extends Activity {
             List<Track> foundTracks = new ArrayList<>();
             Set<String> seenPaths = new HashSet<>();
 
-            // Montajes de Pendrives en plataforma de auto AC8227L y genéricos
+            // Montajes de Pendrives USB en plataformas de auto (AC8227L, Allwinner, Rockchip, MTK, etc.)
             String[] targetUsbRoots = {
                     "/storage/udisk1",
                     "/storage/udisk2",
@@ -1688,23 +2152,18 @@ public class MainActivity extends Activity {
                     "/mnt/media_rw/udisk1",
                     "/mnt/media_rw/udisk2",
                     "/mnt/udisk1",
-                    "/mnt/udisk2",
-                    "/mnt/sdcard/media/music",
-                    "/sdcard/Music",
-                    "/sdcard/Download",
-                    Environment.getExternalStorageDirectory().getAbsolutePath()
+                    "/mnt/udisk2"
             };
 
             for (String rootPath : targetUsbRoots) {
                 File dir = new File(rootPath);
                 if (dir.exists() && dir.isDirectory()) {
-                    String usbTag = rootPath.contains("udisk1") || rootPath.contains("usb0") ? "USB 1" :
-                            (rootPath.contains("udisk2") || rootPath.contains("usb1") ? "USB 2" : "INTERNA");
+                    String usbTag = (rootPath.contains("udisk2") || rootPath.contains("usb1")) ? "USB 2" : "USB 1";
                     scanDirectory(dir, foundTracks, seenPaths, usbTag, 0);
                 }
             }
 
-            // Escaneo complementario mediante MediaStore
+            // Escaneo complementario mediante MediaStore (SOLO pistas ubicadas en USB 1 o USB 2)
             try {
                 Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
                 String[] projection = {
@@ -1727,7 +2186,8 @@ public class MainActivity extends Activity {
 
                     while (cursor.moveToNext()) {
                         String path = cursor.getString(dataCol);
-                        if (path != null && !seenPaths.contains(path)) {
+                        // Filtro estricto: solo incluir canciones que provengan de pendrives USB
+                        if (path != null && (path.contains("udisk") || path.contains("usb")) && !seenPaths.contains(path)) {
                             File f = new File(path);
                             if (f.exists()) {
                                 seenPaths.add(path);
@@ -1743,8 +2203,7 @@ public class MainActivity extends Activity {
                                     artist = "Artista";
                                 }
                                 String folder = f.getParentFile() != null ? f.getParentFile().getName() : "USB";
-                                String usbTag = path.contains("udisk2") ? "USB 2" :
-                                        (path.contains("udisk1") ? "USB 1" : "INTERNA");
+                                String usbTag = (path.contains("udisk2") || path.contains("usb1")) ? "USB 2" : "USB 1";
 
                                 String format = buildFormatBadge(f.getName(), f.length(), durSec);
                                 foundTracks.add(new Track(path, title, artist, album, folder, f.getParent(), format, durSec, usbTag));
@@ -1797,11 +2256,28 @@ public class MainActivity extends Activity {
                 hasUsb2 = u2;
                 updateFilterChipsVisibility();
 
+                // Ordenar pistas alfabéticamente por título (A-Z)
+                Collections.sort(foundTracks, (t1, t2) -> {
+                    String s1 = t1.getTitle() != null ? t1.getTitle().trim() : "";
+                    String s2 = t2.getTitle() != null ? t2.getTitle().trim() : "";
+                    return s1.compareToIgnoreCase(s2);
+                });
+
+                // Ordenar carpetas alfabéticamente por nombre (A-Z)
+                Collections.sort(generatedFolders, (f1, f2) -> {
+                    String n1 = f1.getName() != null ? f1.getName().trim() : "";
+                    String n2 = f2.getName() != null ? f2.getName().trim() : "";
+                    return n1.compareToIgnoreCase(n2);
+                });
+
                 allTracks.clear();
                 allTracks.addAll(foundTracks);
 
                 folderList.clear();
                 folderList.addAll(generatedFolders);
+
+                buildTreeFromTracks(allTracks);
+                updateVisibleTreeNodes();
 
                 tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
                 tabTracks.setText("🎵 Pistas (" + allTracks.size() + ")");
@@ -1844,7 +2320,7 @@ public class MainActivity extends Activity {
 
                         String cleanName = file.getName().replaceFirst("[.][^.]+$", "");
                         String title = cleanName;
-                        String artist = "Pendrive";
+                        String artist = "";
                         if (cleanName.contains("-")) {
                             String[] parts = cleanName.split("-", 2);
                             artist = parts[0].trim();
