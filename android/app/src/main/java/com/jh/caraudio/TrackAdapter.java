@@ -29,7 +29,9 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
     private Context context;
     private List<Track> tracks;
-    private int currentPlayingIndex = -1;
+    // Canción que suena, identificada por su archivo (no por posición): así no queda marcada
+    // otra fila al mostrar otra carpeta, una búsqueda o Favoritos
+    private String currentPlayingPath = null;
     private int selectedMarqueeIndex = -1;
     private final Handler clickHandler = new Handler(Looper.getMainLooper());
     private Runnable singleClickRunnable = null;
@@ -52,6 +54,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
     public void setTracks(List<Track> tracks) {
         this.tracks = tracks != null ? tracks : new ArrayList<>();
+        this.selectedMarqueeIndex = -1; // la posición expandida era de la lista anterior
         buildSections();
         notifyDataSetChanged();
     }
@@ -111,9 +114,9 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         return 0;
     }
 
-    public void setCurrentPlayingIndex(int index) {
-        this.currentPlayingIndex = index;
-        this.selectedMarqueeIndex = index;
+    public void setCurrentPlayingTrack(Track track) {
+        this.currentPlayingPath = track != null ? track.getFilePath() : null;
+        this.selectedMarqueeIndex = -1;
         notifyDataSetChanged();
     }
 
@@ -168,7 +171,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
         Track track = getItem(position);
         if (track != null) {
-            boolean isPlaying = (position == currentPlayingIndex);
+            boolean isPlaying = currentPlayingPath != null && currentPlayingPath.equals(track.getFilePath());
             boolean isSelectedForMarquee = (position == selectedMarqueeIndex) || isPlaying;
 
             if (isPlaying) {

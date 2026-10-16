@@ -2,8 +2,10 @@ package com.jh.caraudio;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -141,7 +143,8 @@ public class MainActivity extends Activity {
     private List<TreeNode> visibleTreeNodes = new ArrayList<>();
 
     // Estado del Reproductor
-    private int currentTrackIndex = -1;
+    private int currentTrackIndex = -1; // posición dentro de playQueue
+    private final List<Track> playQueue = new ArrayList<>();
     private boolean isPlaying = false;
     private boolean isShuffle = false;
     private boolean isRepeat = false;
@@ -162,6 +165,19 @@ public class MainActivity extends Activity {
     private int currentSearchFilter = FILTER_FOLDER;
     private boolean hasUsb1 = false;
     private boolean hasUsb2 = false;
+
+    private static final String[] USB1_MOUNT_PATHS = {"/storage/udisk1", "/mnt/media_rw/udisk1", "/mnt/udisk1", "/storage/usb0"};
+    private static final String[] USB2_MOUNT_PATHS = {"/storage/udisk2", "/mnt/media_rw/udisk2", "/mnt/udisk2", "/storage/usb1"};
+
+    // Re-escaneo automático al conectar/quitar un pendrive (con espera para agrupar los eventos seguidos)
+    private final Runnable usbRescanRunnable = this::startUsbScan;
+    private final BroadcastReceiver usbMountReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            handler.removeCallbacks(usbRescanRunnable);
+            handler.postDelayed(usbRescanRunnable, 1500);
+        }
+    };
 
     private TextView btnFilterFolder;
     private TextView btnFilterAll;
@@ -210,6 +226,16 @@ public class MainActivity extends Activity {
         setupProgressUpdater();
 
         checkAndRequestStoragePermissions();
+
+        // Detectar cuando se conecta o se quita un pendrive para actualizar Carpetas, Pistas y filtros
+        IntentFilter usbFilter = new IntentFilter();
+        usbFilter.addAction(Intent.ACTION_MEDIA_MOUNTED);
+        usbFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+        usbFilter.addAction(Intent.ACTION_MEDIA_REMOVED);
+        usbFilter.addAction(Intent.ACTION_MEDIA_BAD_REMOVAL);
+        usbFilter.addAction(Intent.ACTION_MEDIA_EJECT);
+        usbFilter.addDataScheme("file");
+        registerReceiver(usbMountReceiver, usbFilter);
 
         // Ocultar teclado por defecto y remover foco del buscador al abrir la app
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
@@ -1080,15 +1106,21 @@ public class MainActivity extends Activity {
         });
     }
 
+    /**
+     * En el radio la carpeta de montaje (/storage/udisk2...) sigue existiendo vacía aunque se quite
+     * el pendrive: solo se considera conectado si está montado y tiene contenido.
+     */
+    private static boolean isUsbMounted(String[] mountPaths) {
+        for (String p : mountPaths) {
+            File[] entries = new File(p).listFiles();
+            if (entries != null && entries.length > 0) return true;
+        }
+        return false;
+    }
+
     private void checkUsbPresence() {
-        String[] u1Paths = {"/storage/udisk1", "/mnt/media_rw/udisk1", "/mnt/udisk1", "/storage/usb0"};
-        String[] u2Paths = {"/storage/udisk2", "/mnt/media_rw/udisk2", "/mnt/udisk2", "/storage/usb1"};
-        for (String p : u1Paths) {
-            if (new File(p).exists()) { hasUsb1 = true; break; }
-        }
-        for (String p : u2Paths) {
-            if (new File(p).exists()) { hasUsb2 = true; break; }
-        }
+        hasUsb1 = isUsbMounted(USB1_MOUNT_PATHS);
+        hasUsb2 = isUsbMounted(USB2_MOUNT_PATHS);
         for (Track t : allTracks) {
             if ("USB 1".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk1") || t.getFilePath().contains("usb0")))) {
                 hasUsb1 = true;
@@ -1725,11 +1757,9 @@ public class MainActivity extends Activity {
     }
 
     private Track getCurrentTrack() {
-        if (!currentPlaylist.isEmpty() && currentTrackIndex >= 0 && currentTrackIndex < currentPlaylist.size()) {
-            return currentPlaylist.get(currentTrackIndex);
-        }
-        if (!allTracks.isEmpty() && currentTrackIndex >= 0 && currentTrackIndex < allTracks.size()) {
-            return allTracks.get(currentTrackIndex);
+        List<Track> queue = getQueue();
+        if (currentTrackIndex >= 0 && currentTrackIndex < queue.size()) {
+            return queue.get(currentTrackIndex);
         }
         return null;
     }
@@ -2153,9 +2183,7 @@ public class MainActivity extends Activity {
                 listViewContent.setAdapter(trackAdapter);
             }
             updateTracksTabCount();
-            if (currentTrackIndex >= 0 && currentTrackIndex < displayedTracks.size()) {
-                trackAdapter.setCurrentPlayingIndex(currentTrackIndex);
-            }
+            trackAdapter.setCurrentPlayingTrack(getCurrentTrack());
 
         } else if (currentTab == 2) {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
@@ -2183,8 +2211,14 @@ public class MainActivity extends Activity {
         Track track = displayedTracks.get(index);
 
         int indexInPlaylist = currentPlaylist.indexOf(track);
-        if (indexInPlaylist >= 0) {
+        if (currentTab == 2) {
+            // Desde Favoritos: la cola es la lista de favoritos mostrada; la carpeta activa de Pistas no cambia
+            playQueue.clear();
+            playQueue.addAll(displayedTracks);
+            currentTrackIndex = index;
+        } else if (indexInPlaylist >= 0) {
             // La canción ya es de la carpeta activa: conservar esa lista tal cual (la del botón [N ▶])
+            setPlayQueueFromFolder();
             currentTrackIndex = indexInPlaylist;
         } else if (track.getFolder() != null && !track.getFolder().isEmpty()) {
             // Canción de otra carpeta (p. ej. desde una búsqueda): su carpeta pasa a ser la activa
@@ -2214,12 +2248,15 @@ public class MainActivity extends Activity {
                     break;
                 }
             }
+            setPlayQueueFromFolder();
             currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
             updateTracksTabCount();
             if (folderTreeAdapter != null) {
                 folderTreeAdapter.setSelectedFolder(currentSelectedFolder);
             }
         } else {
+            playQueue.clear();
+            playQueue.addAll(displayedTracks);
             currentTrackIndex = index;
         }
 
@@ -2243,7 +2280,7 @@ public class MainActivity extends Activity {
             mediaPlayer.start();
             isPlaying = true;
 
-            trackAdapter.setCurrentPlayingIndex(index);
+            trackAdapter.setCurrentPlayingTrack(track);
             updatePlaybackStateUI();
 
             // Actualizar información en pantalla con tipografía grande y clara
@@ -2266,8 +2303,61 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Cola de lo que suena (anterior/siguiente). Es una copia: abrir otra carpeta en Pistas o
+     * cambiar de pestaña no altera la cola hasta que se reproduzca algo de la nueva lista.
+     */
     private List<Track> getQueue() {
+        if (!playQueue.isEmpty()) return playQueue;
         return !currentPlaylist.isEmpty() ? currentPlaylist : displayedTracks;
+    }
+
+    private void setPlayQueueFromFolder() {
+        playQueue.clear();
+        playQueue.addAll(currentPlaylist);
+    }
+
+    /**
+     * Tras re-escanear (p. ej. al quitar un pendrive): pasar la carpeta activa y la cola a las pistas
+     * nuevas, quitar las que ya no existen y detener la reproducción si su pendrive se quitó.
+     */
+    private void reconcileListsAfterRescan(Map<String, Track> tracksByPath) {
+        Track playing = getCurrentTrack();
+
+        remapTracks(currentPlaylist, tracksByPath);
+        if (currentPlaylist.isEmpty()) {
+            currentSelectedFolder = null;
+            currentSelectedFolderUsbSource = null;
+        }
+        remapTracks(playQueue, tracksByPath);
+
+        Track stillPlaying = playing != null ? tracksByPath.get(playing.getFilePath()) : null;
+        if (stillPlaying != null) {
+            currentTrackIndex = getQueue().indexOf(stillPlaying);
+        } else if (playing != null) {
+            // La canción que sonaba estaba en el pendrive que se quitó
+            if (mediaPlayer != null) {
+                try {
+                    mediaPlayer.release();
+                } catch (Exception ignored) {}
+                mediaPlayer = null;
+            }
+            isPlaying = false;
+            playQueue.clear();
+            currentTrackIndex = -1;
+            trackAdapter.setCurrentPlayingTrack(null);
+            updatePlaybackStateUI();
+        }
+    }
+
+    private static void remapTracks(List<Track> list, Map<String, Track> tracksByPath) {
+        List<Track> remapped = new ArrayList<>(list.size());
+        for (Track t : list) {
+            Track fresh = tracksByPath.get(t.getFilePath());
+            if (fresh != null) remapped.add(fresh);
+        }
+        list.clear();
+        list.addAll(remapped);
     }
 
     private void playTrackFromQueue(List<Track> queue, int index) {
@@ -2295,15 +2385,8 @@ public class MainActivity extends Activity {
             mediaPlayer.start();
             isPlaying = true;
 
-            // Si la canción está visible en la lista mostrada, actualizar índice
-            int dispIdx = -1;
-            for (int i = 0; i < displayedTracks.size(); i++) {
-                if (displayedTracks.get(i).getFilePath().equals(track.getFilePath())) {
-                    dispIdx = i;
-                    break;
-                }
-            }
-            trackAdapter.setCurrentPlayingIndex(dispIdx);
+            // Marcar la canción en la lista mostrada (si está en ella)
+            trackAdapter.setCurrentPlayingTrack(track);
             updatePlaybackStateUI();
 
             updateNowPlayingInfo(track);
@@ -2627,14 +2710,8 @@ public class MainActivity extends Activity {
                 }
                 if (fUsb1 && fUsb2) break;
             }
-            if (!fUsb1) {
-                String[] u1Paths = {"/storage/udisk1", "/mnt/media_rw/udisk1", "/mnt/udisk1", "/storage/usb0"};
-                for (String p : u1Paths) { if (new File(p).exists()) { fUsb1 = true; break; } }
-            }
-            if (!fUsb2) {
-                String[] u2Paths = {"/storage/udisk2", "/mnt/media_rw/udisk2", "/mnt/udisk2", "/storage/usb1"};
-                for (String p : u2Paths) { if (new File(p).exists()) { fUsb2 = true; break; } }
-            }
+            if (!fUsb1) fUsb1 = isUsbMounted(USB1_MOUNT_PATHS);
+            if (!fUsb2) fUsb2 = isUsbMounted(USB2_MOUNT_PATHS);
             final boolean u1 = fUsb1;
             final boolean u2 = fUsb2;
 
@@ -2657,11 +2734,24 @@ public class MainActivity extends Activity {
                     return n1.compareToIgnoreCase(n2);
                 });
 
+                // Conservar los favoritos (solo viven en memoria) en las pistas recién escaneadas
+                Set<String> favoritePaths = new HashSet<>();
+                for (Track t : allTracks) {
+                    if (t.isFavorite()) favoritePaths.add(t.getFilePath());
+                }
+                Map<String, Track> tracksByPath = new HashMap<>();
+                for (Track t : foundTracks) {
+                    if (favoritePaths.contains(t.getFilePath())) t.setFavorite(true);
+                    tracksByPath.put(t.getFilePath(), t);
+                }
+
                 allTracks.clear();
                 allTracks.addAll(foundTracks);
 
                 folderList.clear();
                 folderList.addAll(generatedFolders);
+
+                reconcileListsAfterRescan(tracksByPath);
 
                 buildTreeFromTracks(allTracks);
                 updateVisibleTreeNodes();
@@ -2842,6 +2932,10 @@ public class MainActivity extends Activity {
         if (searchRunnable != null) {
             searchDebounceHandler.removeCallbacks(searchRunnable);
         }
+        handler.removeCallbacks(usbRescanRunnable);
+        try {
+            unregisterReceiver(usbMountReceiver);
+        } catch (Exception ignored) {}
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();
