@@ -19,6 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
+        <span class="version-badge" id="appVersionBadge">v1.9.6</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -115,6 +116,7 @@
 
           <!-- Panel de Filtros Rápidos (Oculto en pestaña Carpetas para dar máximo espacio vertical) -->
           <div class="search-filters-bar hidden" id="searchFiltersBar">
+            <span class="filters-label">Filtros:</span>
             <button class="filter-chip active chip-folder-marquee" id="chipFilterFolder" data-filter="folder">
               <span class="chip-folder-icon">📁</span>
               <span class="chip-folder-usb-badge hidden" id="chipFolderUsbBadge"></span>
@@ -157,6 +159,12 @@
         <div class="track-list-wrapper">
           <div class="scroll-track-list" id="trackListContainer">
             <!-- Se llena dinámicamente -->
+          </div>
+
+          <!-- Overlay de Búsqueda Activa (Efecto cargando ergonómico para conductor) -->
+          <div class="search-overlay-loading hidden" id="searchOverlayLoading">
+            <div class="search-overlay-spinner"></div>
+            <span class="search-overlay-text">Buscando pistas...</span>
           </div>
 
           <!-- FastScroller Lateral Ergonómico -->

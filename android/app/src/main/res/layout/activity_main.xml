@@ -40,6 +40,22 @@
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
+            <!-- Indicador de versión instalada -->
+            <TextView
+                android:id="@+id/tvAppVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="v1.9.6"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/tvHeaderPath"
                 android:layout_width="wrap_content"
@@ -270,6 +286,17 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
 
+                        <!-- Etiqueta identificadora "Filtros:" -->
+                        <TextView
+                            android:id="@+id/tvFiltersLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="Filtros:"
+                            android:textColor="@color/text_muted"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
                         <!-- Filtro Esta Carpeta (Activo por defecto en pestaña Pistas) -->
                         <TextView
                             android:id="@+id/btnFilterFolder"
@@ -410,40 +437,79 @@
                     android:layout_weight="1"
                     android:layout_marginTop="4dp">
 
-                    <ListView
-                        android:id="@+id/listViewContent"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:divider="@color/border_panel"
-                        android:dividerHeight="1dp"
-                        android:descendantFocusability="blocksDescendants"
-                        android:cacheColorHint="#00000000"
-                        android:fastScrollEnabled="true"
-                        android:fastScrollAlwaysVisible="false"
-                        android:scrollbars="vertical" />
+                        android:orientation="horizontal">
 
-                    <!-- Deslizador Rápido Táctil Ergonómico Lateral para Conducción (38dp de ancho táctil) -->
+                        <ListView
+                            android:id="@+id/listViewContent"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:divider="@color/border_panel"
+                            android:dividerHeight="1dp"
+                            android:descendantFocusability="blocksDescendants"
+                            android:cacheColorHint="#00000000"
+                            android:fastScrollEnabled="false"
+                            android:fastScrollAlwaysVisible="false"
+                            android:scrollbars="none"
+                            android:scrollbarSize="0dp"
+                            android:overScrollMode="never" />
+
+                        <!-- Deslizador Rápido Táctil Ergonómico Lateral Separado (26dp de ancho, nunca superpuesto) -->
+                        <LinearLayout
+                            android:id="@+id/layoutFastScrollerTrack"
+                            android:layout_width="26dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="4dp"
+                            android:orientation="vertical"
+                            android:background="@drawable/bg_fastscroll_track"
+                            android:visibility="gone"
+                            android:clickable="true"
+                            android:focusable="false"
+                            android:paddingStart="3dp"
+                            android:paddingEnd="3dp"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp">
+
+                            <!-- Deslizador / Thumb táctil que se arrastra verticalmente -->
+                            <View
+                                android:id="@+id/viewFastScrollThumb"
+                                android:layout_width="match_parent"
+                                android:layout_height="46dp"
+                                android:background="@drawable/bg_fastscroll_thumb" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Overlay de Búsqueda Activa (Efecto cargando y lista atenuada mientras busca) -->
                     <LinearLayout
-                        android:id="@+id/layoutFastScrollerTrack"
-                        android:layout_width="38dp"
-                        android:layout_height="match_parent"
-                        android:layout_gravity="end"
+                        android:id="@+id/layoutSearchLoading"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
                         android:orientation="vertical"
-                        android:background="@drawable/bg_fastscroll_track"
-                        android:visibility="gone"
-                        android:clickable="true"
-                        android:focusable="false"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:paddingTop="2dp"
-                        android:paddingBottom="2dp">
+                        android:gravity="center"
+                        android:background="@drawable/bg_bubble_floating"
+                        android:paddingStart="26dp"
+                        android:paddingEnd="26dp"
+                        android:paddingTop="18dp"
+                        android:paddingBottom="18dp"
+                        android:elevation="14dp"
+                        android:visibility="gone">
 
-                        <!-- Deslizador / Thumb táctil que se arrastra verticalmente -->
-                        <View
-                            android:id="@+id/viewFastScrollThumb"
-                            android:layout_width="match_parent"
-                            android:layout_height="46dp"
-                            android:background="@drawable/bg_fastscroll_thumb" />
+                        <com.jh.caraudio.SearchSpinnerView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Buscando pistas..."
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Burbuja Flotante de Previsualización Prominente (Letra A-Z y Número de Pista) -->

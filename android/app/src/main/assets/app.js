@@ -424,6 +424,7 @@ function initApp() {
   const searchInput = document.getElementById('searchInput');
   const clearSearch = document.getElementById('clearSearch');
   const searchSpinner = document.getElementById('searchSpinner');
+  const searchOverlayLoading = document.getElementById('searchOverlayLoading');
   const crumbRoot = document.getElementById('crumbRoot');
   const crumbFolder = document.getElementById('crumbFolder');
   const fileInput = document.getElementById('fileInput');
@@ -1145,6 +1146,18 @@ function initApp() {
   // Icono oficial vectorial de USB (tridente universal)
   const USB_TRIDENT_SVG = `<svg class="usb-icon" viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.2-.99-2.18-2.2-2.18-1.21 0-2.2.98-2.2 2.18 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95a2.2 2.2 0 0 0 4.4 0c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>`;
 
+  function isSameUsb(track, targetUsbSource) {
+    if (!targetUsbSource || !track) return true;
+    const want2 = targetUsbSource.includes('2') || targetUsbSource.toLowerCase().includes('udisk2');
+    const want1 = targetUsbSource.includes('1') || targetUsbSource.toLowerCase().includes('udisk1');
+    const tUsb = track.usbSource || '';
+    const tPath = (track.path || '').toLowerCase();
+    const isTrack2 = tUsb === 'USB 2' || tPath.includes('udisk2') || tPath.includes('usb1');
+    if (want2) return isTrack2;
+    if (want1) return !isTrack2;
+    return true;
+  }
+
   // Generador de etiquetas para USB 1, USB 2 y Memoria Interna
   function getStorageBadgeHtml(path) {
     if (!path) return '';
@@ -1238,10 +1251,10 @@ function initApp() {
   }
 
   function updateFilterChipsUI() {
-    // En la pestaña Carpetas USB, se oculta completamente la barra de filtros (TODO, USB 1, USB 2)
-    // porque el árbol jerárquico ya organiza los pendrives como nodos raíz y los botones solo restan espacio
+    // La barra de filtros solo tiene utilidad en la pestaña Pistas (activeTab === 'playlist').
+    // En Carpetas USB el árbol organiza los pendrives, y en Favoritos se muestra la lista VIP completa.
     if (searchFiltersBar) {
-      searchFiltersBar.classList.toggle('hidden', activeTab === 'folders');
+      searchFiltersBar.classList.toggle('hidden', activeTab !== 'playlist');
     }
 
     if (activeTab === 'playlist' && currentFolder) {
@@ -1258,9 +1271,16 @@ function initApp() {
     const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
     const hasUsb1 = allPool.some(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
     const hasUsb2 = allPool.some(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+    const multipleUsb = hasUsb1 && hasUsb2;
 
-    if (chipFilterUsb1) chipFilterUsb1.classList.toggle('hidden', !hasUsb1);
-    if (chipFilterUsb2) chipFilterUsb2.classList.toggle('hidden', !hasUsb2);
+    // Si solo hay un pendrive conectado, TODO ya hace referencia a ese único USB,
+    // por lo que los chips USB 1 y USB 2 solo se muestran si ambos están presentes
+    if (chipFilterUsb1) chipFilterUsb1.classList.toggle('hidden', !multipleUsb);
+    if (chipFilterUsb2) chipFilterUsb2.classList.toggle('hidden', !multipleUsb);
+
+    if (!multipleUsb && (currentSearchFilter === 'usb1' || currentSearchFilter === 'usb2')) {
+      currentSearchFilter = 'all';
+    }
 
     filterChips.forEach(chip => {
       const f = chip.getAttribute('data-filter');
@@ -1356,6 +1376,14 @@ function initApp() {
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       searchInput.blur();
+      // Limpiar búsqueda y loaders al cambiar de pestaña
+      if (searchTimer) clearTimeout(searchTimer);
+      searchInput.value = '';
+      clearSearch.classList.add('hidden');
+      if (searchSpinner) searchSpinner.classList.add('hidden');
+      if (searchOverlayLoading) searchOverlayLoading.classList.add('hidden');
+      trackListContainer.classList.remove('is-searching');
+
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeTab = btn.getAttribute('data-tab');
@@ -1499,7 +1527,7 @@ function initApp() {
         searchPool = allPool.filter(t => t.favorite);
       } else {
         if (currentSearchFilter === 'folder' && currentFolder) {
-          searchPool = currentPlaylist.length > 0 ? currentPlaylist : allPool.filter(t => t.folder === currentFolder);
+          searchPool = allPool.filter(t => t.folder === currentFolder && isSameUsb(t, currentFolderUsbSource));
         }
       }
 
@@ -1524,7 +1552,7 @@ function initApp() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <div class="empty-title">Sin resultados en ${filterLabel} para "<strong>${escapeHtml(rawQuery)}</strong>"</div>
             <div class="empty-desc">No se encontraron canciones en este origen. Cambia el filtro o prueba otro término.</div>
-            <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar búsqueda y ver todo</button>
+            <button class="btn-clear-search-action" id="btnClearSearchAction">Borrar término de búsqueda</button>
           </div>
         `;
         const btnReset = document.getElementById('btnClearSearchAction');
@@ -1533,7 +1561,6 @@ function initApp() {
             searchInput.value = '';
             clearSearch.classList.add('hidden');
             searchInput.blur();
-            currentSearchFilter = 'all';
             renderList();
           });
         }
@@ -1784,6 +1811,7 @@ function initApp() {
           // Actualizar playlist para esta carpeta
           const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
           const folderTracks = allPool.filter(t => {
+            if (!isSameUsb(t, currentFolderUsbSource)) return false;
             if (t.folder === node.name) return true;
             if (t.path && node.path && t.path.startsWith(node.path)) return true;
             return false;
@@ -1825,18 +1853,24 @@ function initApp() {
 
       if (activeTab === 'favorites') {
         let favPool = allPool.filter(t => t.favorite);
-        if (currentSearchFilter === 'usb1') {
-          favPool = favPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
-        } else if (currentSearchFilter === 'usb2') {
-          favPool = favPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
-        }
         sortTracksAlphabetically(favPool);
         filtered = favPool;
         crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
       } else {
-        filtered = currentPlaylist;
-        const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
-        crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
+        if (currentSearchFilter === 'usb1') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
+          crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
+        } else if (currentSearchFilter === 'usb2') {
+          filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
+          crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
+        } else if (currentSearchFilter === 'all') {
+          filtered = [...allPool];
+          crumbFolder.textContent = `Todas las pistas (${filtered.length})`;
+        } else {
+          filtered = currentPlaylist;
+          const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
+          crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
+        }
         sortTracksAlphabetically(filtered);
       }
 
@@ -2074,7 +2108,9 @@ function initApp() {
   // =================== GESTIÓN Y REPRODUCCIÓN DEL ÁRBOL JERÁRQUICO ===================
   function playFolderTree(node) {
     const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+    const nodeUsb = node.usbSource || (node.path && node.path.includes('udisk2') ? 'USB 2' : 'USB 1');
     let folderTracks = allPool.filter(t => {
+      if (!isSameUsb(t, nodeUsb)) return false;
       if (t.folder === node.name) return true;
       if (t.path && node.path) {
         const normTrack = t.path.replace(/\/+$/, '');
@@ -2130,12 +2166,17 @@ function initApp() {
       clearSearch.classList.remove('hidden');
       if (searchSpinner) searchSpinner.classList.remove('hidden');
       crumbFolder.innerHTML = `⏳ Buscando: "<strong>${escapeHtml(val)}</strong>"...`;
+
+      // EFECTO VISUAL INMEDIATO: Listado actual borroso y overlay flotante de carga
+      trackListContainer.classList.add('is-searching');
+      if (searchOverlayLoading) searchOverlayLoading.classList.remove('hidden');
+      if (webFastScroller) webFastScroller.style.display = 'none';
     } else {
       clearSearch.classList.add('hidden');
       if (searchSpinner) searchSpinner.classList.add('hidden');
-      if (currentFolder) {
-        currentSearchFilter = 'folder';
-      }
+      trackListContainer.classList.remove('is-searching');
+      if (searchOverlayLoading) searchOverlayLoading.classList.add('hidden');
+      // Preservar el filtro que el usuario tiene activo (USB 1, USB 2, TODO, Carpeta)
       updateFilterChipsUI();
       renderList();
       return;
@@ -2144,8 +2185,10 @@ function initApp() {
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       renderList();
+      trackListContainer.classList.remove('is-searching');
+      if (searchOverlayLoading) searchOverlayLoading.classList.add('hidden');
       if (searchSpinner) searchSpinner.classList.add('hidden');
-    }, 120);
+    }, 180);
   });
 
   // Botón X para borrar búsqueda y ocultar teclado
@@ -2154,13 +2197,10 @@ function initApp() {
     searchInput.value = '';
     clearSearch.classList.add('hidden');
     if (searchSpinner) searchSpinner.classList.add('hidden');
+    trackListContainer.classList.remove('is-searching');
+    if (searchOverlayLoading) searchOverlayLoading.classList.add('hidden');
     searchInput.blur();
-    // Al limpiar la búsqueda, mostrar las canciones de la carpeta que fue seteada al darle play
-    if (currentFolder) {
-      currentSearchFilter = 'folder';
-    } else {
-      currentSearchFilter = 'all';
-    }
+    // Preservar el filtro que el usuario tiene activo (USB 1, USB 2, TODO, Carpeta)
     updateFilterChipsUI();
     renderList();
   });

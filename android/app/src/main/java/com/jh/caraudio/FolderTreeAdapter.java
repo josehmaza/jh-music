@@ -133,8 +133,9 @@ public class FolderTreeAdapter extends BaseAdapter {
                 holder.ivTreeIcon.setColorFilter(Color.parseColor("#38bdf8"), PorterDuff.Mode.SRC_IN);
             }
 
-            // Título
+            // Título con auto-scroll horizontal si es largo
             holder.tvTreeTitle.setText(node.getName());
+            holder.tvTreeTitle.setSelected(true);
 
             // Botón Reproducir [ N ▶ ] (Solo si tiene canciones directas > 0)
             if (node.getDirectTrackCount() > 0) {
