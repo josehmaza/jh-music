@@ -46,7 +46,11 @@ public class Track {
     public boolean isFavorite() { return isFavorite; }
     public void setFavorite(boolean favorite) { isFavorite = favorite; }
 
+    /** 0 = duración aún desconocida (se completa en segundo plano tras el escaneo). */
+    public boolean hasDuration() { return durationSec > 0; }
+
     public String getFormattedDuration() {
+        if (durationSec <= 0) return "--:--";
         int m = durationSec / 60;
         int s = durationSec % 60;
         return String.format("%02d:%02d", m, s);

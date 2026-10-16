@@ -44,7 +44,7 @@ Muestra las canciones de la **carpeta activa**.
 
 Lista las canciones marcadas con la estrella ★. Al reproducir desde aquí, Anterior y Siguiente recorren los favoritos (no la carpeta de la canción).
 
-> Los favoritos se mantienen mientras la app está abierta (incluso al re-escanear), pero **se pierden al cerrar la app**.
+Los favoritos **se guardan en el radio**: se conservan al cerrar la app, al re-escanear y aunque el pendrive se conecte en otro puerto USB (se reconocen por su ruta dentro del pendrive). Si quitas el pendrive, sus favoritos no aparecen, pero vuelven al conectarlo de nuevo.
 
 ## 3. Buscador
 
@@ -149,8 +149,15 @@ Abrir otra carpeta mientras suena música **no** cambia lo que viene después, h
 - Se recorren hasta 6 niveles de subcarpetas. Se ignoran carpetas ocultas, `Android`, `LOST.DIR` y `System Volume Information`.
 - Si el archivo se llama `Artista - Título.mp3`, la app separa artista y título por el guion.
 
-## 10. Limitaciones conocidas
+## 10. Duración de las canciones
 
-- **Favoritos** no se guardan al cerrar la app.
-- **Duración en la lista:** las canciones encontradas recorriendo carpetas muestran `03:30` como duración aproximada. La duración real aparece en el reproductor al sonar.
-- **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema.
+Tras escanear, la lista muestra la duración real de cada canción:
+
+- Si Android ya conoce la canción, la duración aparece de inmediato.
+- Si no, la app la lee del archivo en segundo plano, empezando por las canciones de la lista que estás viendo. Mientras tanto se muestra `--:--`.
+- Con muchas canciones, completar todas puede tardar un poco. Puedes usar la app con normalidad mientras tanto.
+
+## 11. Limitaciones conocidas
+
+- **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema. Si no lo hace, usa **Re-escanear USB**.
+- **Favoritos con la misma ruta:** dos pendrives con un archivo en la misma ruta interna (por ejemplo `Musica/tema.mp3` en ambos) comparten la marca de favorito.

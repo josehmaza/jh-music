@@ -53,6 +53,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -188,6 +189,11 @@ public class MainActivity extends Activity {
     private final Handler searchDebounceHandler = new Handler(Looper.getMainLooper());
     private Runnable searchRunnable = null;
     private final ExecutorService searchExecutor = Executors.newSingleThreadExecutor();
+    // Lectura de duraciones en segundo plano (hilo propio para no retrasar carátulas ni escaneos)
+    private final ExecutorService durationExecutor = Executors.newSingleThreadExecutor();
+    private final ArrayDeque<Track> pendingDurations = new ArrayDeque<>(); // protegido por sí mismo
+    private final Set<Track> visibleDurationTracks = new HashSet<>();      // protegido por pendingDurations
+    private volatile int durationGeneration = 0;
     private volatile int searchVersion = 0;
 
     // Servicios del Sistema
@@ -335,6 +341,7 @@ public class MainActivity extends Activity {
                 },
                 (track, position) -> {
                     track.setFavorite(!track.isFavorite());
+                    saveFavorite(track);
                 }
         );
 
@@ -1014,7 +1021,7 @@ public class MainActivity extends Activity {
             } else if (!currentPlaylist.isEmpty()) {
                 displayedTracks.clear();
                 displayedTracks.addAll(currentPlaylist);
-                trackAdapter.setTracks(displayedTracks);
+                showDisplayedTracks();
                 playTrack(0);
             }
         });
@@ -2082,7 +2089,7 @@ public class MainActivity extends Activity {
                             (filter == FILTER_USB1 ? " [USB 1]" : (filter == FILTER_USB2 ? " [USB 2]" : " [Todo]"));
                     // La cantidad de resultados va en la ruta; el número de la pestaña sigue siendo el de la carpeta
                     tvCurrentPath.setText("🔍 Pistas" + filterLabel + ": \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
-                    trackAdapter.setTracks(displayedTracks);
+                    showDisplayedTracks();
                     updateFastScrollerVisibility();
                 });
 
@@ -2115,7 +2122,7 @@ public class MainActivity extends Activity {
                         listViewContent.setAdapter(trackAdapter);
                     }
                     tvCurrentPath.setText("⭐ Favoritos: \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
-                    trackAdapter.setTracks(displayedTracks);
+                    showDisplayedTracks();
                     updateFastScrollerVisibility();
                 });
             }
@@ -2178,7 +2185,7 @@ public class MainActivity extends Activity {
             String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
             tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder + " (" + displayedTracks.size() + ")" : "🔍 Elige una carpeta o escribe para buscar");
 
-            trackAdapter.setTracks(displayedTracks);
+            showDisplayedTracks();
             if (listViewContent.getAdapter() != trackAdapter) {
                 listViewContent.setAdapter(trackAdapter);
             }
@@ -2193,7 +2200,7 @@ public class MainActivity extends Activity {
                     displayedTracks.add(t);
                 }
             }
-            trackAdapter.setTracks(displayedTracks);
+            showDisplayedTracks();
             if (listViewContent.getAdapter() != trackAdapter) {
                 listViewContent.setAdapter(trackAdapter);
             }
@@ -2288,6 +2295,7 @@ public class MainActivity extends Activity {
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));
+            if (durationMs > 0) track.setDurationSec(durationMs / 1000);
             tvTimeCurrent.setText("00:00");
             seekTrackProgress.setProgress(0);
 
@@ -2350,6 +2358,118 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ==========================================
+    // FAVORITOS PERSISTENTES
+    // ==========================================
+    private static final String PREFS_NAME = "jh_music";
+    private static final String PREF_FAVORITES = "favorite_paths";
+
+    /** Clave del favorito: ruta relativa al pendrive, para que se conserve aunque el USB cambie de puerto. */
+    private static String favoriteKey(Track t) {
+        return SearchText.relativeUsbPath(t.getFilePath());
+    }
+
+    private Set<String> loadFavoriteKeys() {
+        return new HashSet<>(getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getStringSet(PREF_FAVORITES, new HashSet<>()));
+    }
+
+    private void saveFavorite(Track t) {
+        Set<String> keys = loadFavoriteKeys();
+        if (t.isFavorite()) {
+            keys.add(favoriteKey(t));
+        } else {
+            keys.remove(favoriteKey(t));
+        }
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putStringSet(PREF_FAVORITES, keys).apply();
+    }
+
+    // ==========================================
+    // DURACIÓN REAL DE LAS PISTAS EN SEGUNDO PLANO
+    // Las que MediaStore no conoce se leen del archivo, primero las de la lista visible
+    // ==========================================
+    private void showDisplayedTracks() {
+        trackAdapter.setTracks(displayedTracks);
+        prioritizeDurations(displayedTracks);
+    }
+
+    private void startDurationFill(List<Track> tracks) {
+        final int generation = ++durationGeneration;
+        synchronized (pendingDurations) {
+            pendingDurations.clear();
+            visibleDurationTracks.clear();
+            for (Track t : tracks) {
+                if (!t.hasDuration()) pendingDurations.add(t);
+            }
+            if (pendingDurations.isEmpty()) return;
+        }
+        durationExecutor.execute(() -> fillDurations(generation));
+    }
+
+    /** Pasa al frente de la cola las pistas de la lista que se está mostrando. */
+    private void prioritizeDurations(List<Track> visible) {
+        synchronized (pendingDurations) {
+            visibleDurationTracks.clear();
+            for (int i = visible.size() - 1; i >= 0; i--) {
+                Track t = visible.get(i);
+                if (t.hasDuration()) continue;
+                visibleDurationTracks.add(t);
+                if (pendingDurations.remove(t)) pendingDurations.addFirst(t);
+            }
+        }
+    }
+
+    private void fillDurations(int generation) {
+        long lastRefresh = System.currentTimeMillis();
+        boolean visibleChanged = false;
+        while (generation == durationGeneration) {
+            Track t;
+            boolean isVisible;
+            synchronized (pendingDurations) {
+                t = pendingDurations.pollFirst();
+                isVisible = t != null && visibleDurationTracks.contains(t);
+            }
+            if (t == null) break;
+            if (t.hasDuration()) continue;
+            readDurationFromFile(t);
+            visibleChanged |= isVisible;
+
+            long now = System.currentTimeMillis();
+            if (visibleChanged && now - lastRefresh > 500) {
+                lastRefresh = now;
+                visibleChanged = false;
+                // handler.post publica en el hilo de UI los valores escritos aquí
+                handler.post(() -> trackAdapter.notifyDataSetChanged());
+            }
+        }
+        if (visibleChanged && generation == durationGeneration) {
+            handler.post(() -> trackAdapter.notifyDataSetChanged());
+        }
+    }
+
+    private void readDurationFromFile(Track t) {
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            mmr.setDataSource(t.getFilePath());
+            String durMs = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (durMs != null) {
+                int sec = (int) (Long.parseLong(durMs) / 1000);
+                if (sec > 0) t.setDurationSec(sec);
+            }
+            String bitrate = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+            if (bitrate != null) {
+                int kbps = Math.round(Integer.parseInt(bitrate) / 1000f);
+                if (kbps > 0) t.setFormat(getExtension(t.getFilePath()) + " " + kbps + "K");
+            }
+        } catch (Exception ignored) {
+            // Archivo dañado o pendrive retirado: queda como "--:--"
+        } finally {
+            try {
+                mmr.release();
+            } catch (Exception ignored) {}
+        }
+    }
+
     private static void remapTracks(List<Track> list, Map<String, Track> tracksByPath) {
         List<Track> remapped = new ArrayList<>(list.size());
         for (Track t : list) {
@@ -2393,6 +2513,7 @@ public class MainActivity extends Activity {
 
             int durationMs = mediaPlayer.getDuration();
             tvTimeTotal.setText(formatMs(durationMs));
+            if (durationMs > 0) track.setDurationSec(durationMs / 1000);
             tvTimeCurrent.setText("00:00");
             seekTrackProgress.setProgress(0);
 
@@ -2630,6 +2751,7 @@ public class MainActivity extends Activity {
             }
 
             // Escaneo complementario mediante MediaStore (SOLO pistas ubicadas en USB 1 o USB 2)
+            Map<String, Integer> mediaStoreDurations = new HashMap<>();
             try {
                 Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
                 String[] projection = {
@@ -2652,6 +2774,12 @@ public class MainActivity extends Activity {
 
                     while (cursor.moveToNext()) {
                         String path = cursor.getString(dataCol);
+                        // Pista ya encontrada recorriendo carpetas: solo aprovechar su duración real
+                        if (path != null && seenPaths.contains(path)) {
+                            long durMs = cursor.getLong(durCol);
+                            if (durMs > 0) mediaStoreDurations.put(path, (int) (durMs / 1000));
+                            continue;
+                        }
                         // Filtro estricto: solo incluir canciones que provengan de pendrives USB
                         if (path != null && (path.contains("udisk") || path.contains("usb")) && !seenPaths.contains(path)) {
                             File f = new File(path);
@@ -2680,6 +2808,16 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+
+            // Duración real (y bitrate estimado con ella) para las pistas que MediaStore ya conoce
+            for (Track t : foundTracks) {
+                Integer durSec = t.hasDuration() ? null : mediaStoreDurations.get(t.getFilePath());
+                if (durSec != null) {
+                    t.setDurationSec(durSec);
+                    File f = new File(t.getFilePath());
+                    t.setFormat(buildFormatBadge(f.getName(), f.length(), durSec));
+                }
             }
 
             // Agrupar carpetas
@@ -2734,14 +2872,11 @@ public class MainActivity extends Activity {
                     return n1.compareToIgnoreCase(n2);
                 });
 
-                // Conservar los favoritos (solo viven en memoria) en las pistas recién escaneadas
-                Set<String> favoritePaths = new HashSet<>();
-                for (Track t : allTracks) {
-                    if (t.isFavorite()) favoritePaths.add(t.getFilePath());
-                }
+                // Marcar los favoritos guardados en el radio
+                Set<String> favoriteKeys = loadFavoriteKeys();
                 Map<String, Track> tracksByPath = new HashMap<>();
                 for (Track t : foundTracks) {
-                    if (favoritePaths.contains(t.getFilePath())) t.setFavorite(true);
+                    if (favoriteKeys.contains(favoriteKey(t))) t.setFavorite(true);
                     tracksByPath.put(t.getFilePath(), t);
                 }
 
@@ -2752,6 +2887,7 @@ public class MainActivity extends Activity {
                 folderList.addAll(generatedFolders);
 
                 reconcileListsAfterRescan(tracksByPath);
+                startDurationFill(allTracks);
 
                 buildTreeFromTracks(allTracks);
                 updateVisibleTreeNodes();
@@ -2806,8 +2942,9 @@ public class MainActivity extends Activity {
                         }
 
                         String folder = file.getParentFile() != null ? file.getParentFile().getName() : "USB";
-                        String format = buildFormatBadge(file.getName(), file.length(), 210);
-                        tracks.add(new Track(path, title, artist, folder, folder, file.getParent(), format, 210, usbTag));
+                        // Duración 0 = desconocida: se toma de MediaStore o se lee del archivo en segundo plano
+                        String format = buildFormatBadge(file.getName(), file.length(), 0);
+                        tracks.add(new Track(path, title, artist, folder, folder, file.getParent(), format, 0, usbTag));
                     }
                 }
             }
@@ -2936,6 +3073,8 @@ public class MainActivity extends Activity {
         try {
             unregisterReceiver(usbMountReceiver);
         } catch (Exception ignored) {}
+        durationGeneration++;
+        durationExecutor.shutdownNow();
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();

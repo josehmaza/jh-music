@@ -16,7 +16,7 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | Clase | Responsabilidad |
 |---|---|
 | `MainActivity` | Toda la lógica: escaneo USB, árbol de carpetas, pestañas, buscador, cola y reproducción, volumen, gestos y mandos del volante |
-| `Track` | Una canción: ruta, título, artista, álbum, carpeta, pendrive, formato, favorito. Guarda su `SearchKey` |
+| `Track` | Una canción: ruta, título, artista, álbum, carpeta, pendrive, formato, duración (0 = desconocida), favorito. Guarda su `SearchKey` |
 | `FolderItem` | Carpeta agrupada por nombre (resultados de búsqueda en la pestaña Carpetas). Guarda su `SearchKey` |
 | `TreeNode` | Nodo del árbol de Carpetas: hijos, contador y lista de canciones directas |
 | `SearchText` | Utilidades del buscador con regex precompilados: normalizar, colapsar letras repetidas, rutas relativas |
@@ -61,11 +61,26 @@ Se ejecuta en `scanExecutor` (hilo de fondo) al abrir la app, con **Re-escanear 
 2. **Complemento con MediaStore:** consulta la biblioteca de música del sistema y agrega solo las pistas de rutas con `udisk`/`usb` que aún no estén y cuyo archivo exista.
 3. **Agrupado y precálculo:** arma `FolderItem` por nombre de carpeta y calcula el `SearchKey` de cada pista y carpeta (en el hilo de fondo).
 4. **Detección de pendrives:** un USB cuenta como conectado si tiene pistas o si su punto de montaje tiene contenido (`isUsbMounted`). La carpeta `/storage/udiskN` existe vacía aunque el pendrive no esté, por eso no basta con `File.exists()`.
-5. **En el hilo de UI:** ordena, conserva los favoritos por ruta, reemplaza `allTracks`, llama a `reconcileListsAfterRescan()` y reconstruye el árbol.
+5. **En el hilo de UI:** ordena, marca los favoritos guardados, reemplaza `allTracks`, llama a `reconcileListsAfterRescan()`, arranca la lectura de duraciones y reconstruye el árbol.
 
 ### Re-escaneo automático
 
 `usbMountReceiver` escucha `ACTION_MEDIA_MOUNTED`, `UNMOUNTED`, `REMOVED`, `BAD_REMOVAL` y `EJECT`. Cada aviso reinicia una espera de 1,5 s (`usbRescanRunnable`), de modo que la ráfaga de avisos de un solo cambio genera **un único** escaneo. No hay sondeo periódico. Se registra en `onCreate` y se libera en `onDestroy`.
+
+### Duración de las pistas
+
+`scanDirectory()` crea las pistas con duración 0, que significa desconocida (`Track.hasDuration()`, y la lista muestra `--:--`). Luego:
+
+1. **MediaStore:** si el sistema ya indexó el archivo, se toma su `DURATION` durante el mismo escaneo.
+2. **Lectura en segundo plano:** `startDurationFill()` pone en `pendingDurations` las pistas que siguen sin duración. Un hilo propio (`durationExecutor`) las lee con `MediaMetadataRetriever` y obtiene duración y bitrate real.
+3. **Prioridad a lo visible:** cada vez que se muestra una lista (`showDisplayedTracks()`), `prioritizeDurations()` pasa sus pistas al frente de la cola. La lista se refresca como máximo cada 500 ms, y solo si cambió alguna pista visible.
+4. **Al reproducir:** la duración del `MediaPlayer` también se guarda en la pista.
+
+`durationGeneration` invalida el trabajo pendiente cuando hay un re-escaneo o se cierra la app.
+
+### Favoritos persistentes
+
+Se guardan en `SharedPreferences` (`jh_music` → `favorite_paths`) como un conjunto de rutas **relativas al pendrive** (`favoriteKey()`). Así sobreviven a cerrar la app y a que el pendrive cambie de `udisk1` a `udisk2`. Se escriben al tocar la estrella (`saveFavorite()`) y se aplican a las pistas nuevas en cada escaneo.
 
 ### `reconcileListsAfterRescan()`
 
