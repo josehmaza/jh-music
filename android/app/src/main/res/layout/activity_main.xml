@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- El fondo de la raíz lo pone el código con el color de la carátula (igual que la web) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -17,7 +19,7 @@
         android:gravity="center_vertical"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:background="#0d0f14">
+        android:background="#6106080b">
 
         <!-- Lado Izquierdo: Marca y Ruta Activa -->
         <LinearLayout
@@ -51,7 +53,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.5.0"
+                android:text="v2.6.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -104,7 +106,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/border_panel" />
+        android:background="#0fffffff" />
 
     <!-- ======================================================== -->
     <!-- CUERPO PRINCIPAL ERGONÓMICO DE 3 COLUMNAS                -->
@@ -145,8 +147,10 @@
                 android:layout_width="44dp"
                 android:layout_height="40dp"
                 android:layout_marginBottom="12dp"
-                android:background="@drawable/bg_btn_action"
-                android:src="@android:drawable/ic_lock_silent_mode"
+                android:background="@drawable/bg_btn_mute"
+                android:src="@drawable/ic_vol_on"
+                android:scaleType="fitCenter"
+                android:padding="11dp"
                 android:contentDescription="Mute" />
 
             <!-- Botón Subir (+) -->
@@ -227,7 +231,7 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:background="@drawable/bg_tab_selected"
-                        android:text="📁 Carpetas USB"
+                        android:text="Carpetas USB"
                         android:textColor="@color/accent_cyan"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -239,7 +243,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="🎵 Pistas (0)"
+                        android:text="Pistas (0)"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -251,7 +255,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="🎧 Mi Mix (0)"
+                        android:text="Mi Mix (0)"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -381,12 +385,11 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="10dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🔍"
-                        android:textColor="@color/accent_cyan"
-                        android:textSize="18sp" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_search"
+                        android:importantForAccessibility="no" />
 
                     <EditText
                         android:id="@+id/etSearch"
@@ -414,12 +417,13 @@
                     <!-- Botón X para borrar búsqueda y cerrar teclado -->
                     <ImageButton
                         android:id="@+id/btnSearchClear"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:background="@drawable/bg_search_clear"
+                        android:src="@drawable/ic_close"
+                        android:scaleType="fitCenter"
+                        android:padding="8dp"
                         android:visibility="gone"
-                        android:tint="@color/text_secondary"
                         android:contentDescription="Borrar búsqueda" />
                 </LinearLayout>
 
@@ -703,6 +707,8 @@
             android:layout_height="match_parent"
             android:layout_weight="1.15"
             android:orientation="vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:padding="8dp"
             android:gravity="center_horizontal">
 
@@ -712,7 +718,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:background="@drawable/bg_panel_card"
+                android:background="@android:color/transparent"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:padding="10dp"
                 android:gravity="center_horizontal">
 
@@ -720,7 +728,9 @@
                 <!-- Barra superior y Carátula con Zona Táctil Ampliada para el Conductor -->
                 <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
 
                     <!-- Estado Dinámico: EN PAUSA / REPRODUCIENDO. Oculto: el estado ya lo muestran la cápsula
                          PLAYING / MIXING de la carátula y el botón Automix; su esquina la ocupa Automix -->
@@ -737,18 +747,60 @@
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Botón Automix: arriba a la derecha, en la esquina opuesta a la lupa -->
-                    <ImageButton
+                    <!-- Botón Automix (opción A de la web): ON = cuadro cian lleno con brillo; OFF = oscuro.
+                         Mide 64x60dp: el cuadro visible es de 56x52dp y los 4dp de cada lado son el brillo -->
+                    <LinearLayout
                         android:id="@+id/btnAutoMix"
-                        android:layout_width="54dp"
-                        android:layout_height="48dp"
+                        android:layout_width="64dp"
+                        android:layout_height="60dp"
                         android:layout_alignParentTop="true"
                         android:layout_alignParentEnd="true"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@drawable/ic_automix"
-                        android:padding="11dp"
-                        android:scaleType="fitCenter"
-                        android:contentDescription="Activar o desactivar Automix" />
+                        android:layout_marginTop="-4dp"
+                        android:layout_marginEnd="-4dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/bg_automix_off"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:contentDescription="Activar o desactivar Automix">
+
+                        <ImageView
+                            android:id="@+id/ivAutoMixIcon"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_automix"
+                            android:importantForAccessibility="no" />
+
+                        <TextView
+                            android:id="@+id/tvAutoMixState"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="1dp"
+                            android:fontFamily="monospace"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="0.08"
+                            android:text="OFF"
+                            android:textColor="#64748b"
+                            android:textSize="12.5sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Resplandor alrededor de la carátula con el color de la canción (box-shadow de la web) -->
+                    <com.jh.caraudio.AlbumGlowView
+                        android:id="@+id/albumGlow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignTop="@+id/layoutAlbumArtCard"
+                        android:layout_alignBottom="@+id/layoutAlbumArtCard"
+                        android:layout_alignStart="@+id/layoutAlbumArtCard"
+                        android:layout_alignEnd="@+id/layoutAlbumArtCard"
+                        android:layout_marginTop="-48dp"
+                        android:layout_marginBottom="-48dp"
+                        android:layout_marginStart="-48dp"
+                        android:layout_marginEnd="-48dp"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
 
                     <!-- Carátula (igual que la web): cuadro con relleno de 2,5dp donde gira el borde láser,
                          carátula o disco, cápsula de estado con ecualizador y badge de formato -->
@@ -862,9 +914,9 @@
                             android:layout_width="54dp"
                             android:layout_height="48dp"
                             android:background="@drawable/bg_btn_action"
-                            android:src="@android:drawable/ic_menu_search"
-                            android:tint="@color/accent_cyan"
-                            android:padding="8dp"
+                            android:src="@drawable/ic_music_search"
+                            android:scaleType="fitCenter"
+                            android:padding="12dp"
                             android:contentDescription="Mostrar u Ocultar Explorador" />
 
                         <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
@@ -901,6 +953,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:singleLine="true"
+                        android:ellipsize="end"
                         android:text="Artista"
                         android:textColor="@color/accent_cyan"
                         android:textSize="18sp"
@@ -919,6 +972,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:singleLine="true"
+                        android:ellipsize="end"
                         android:text="Álbum"
                         android:textColor="@color/text_muted"
                         android:textSize="15sp" />
@@ -931,7 +985,7 @@
                     android:layout_height="46dp"
                     android:layout_marginTop="4dp"
                     android:orientation="horizontal"
-                    android:background="@drawable/bg_search"
+                    android:background="@drawable/bg_adjacent_cards"
                     android:gravity="center_vertical"
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp">
@@ -951,8 +1005,7 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:src="@android:drawable/ic_media_previous"
-                            android:tint="@color/accent_cyan"
+                            android:src="@drawable/ic_adj_prev"
                             android:contentDescription="Anterior" />
 
                         <com.jh.caraudio.CarMarqueeTextView
@@ -1005,14 +1058,14 @@
                         <ImageView
                             android:layout_width="26dp"
                             android:layout_height="26dp"
-                            android:src="@android:drawable/ic_media_next"
-                            android:tint="@color/accent_cyan"
+                            android:src="@drawable/ic_adj_next"
                             android:contentDescription="Siguiente" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <!-- Barra de Progreso y Tiempos: Con 12dp de separación de las tarjetas de anterior/siguiente -->
                 <LinearLayout
+                    android:id="@+id/layoutProgressBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -1033,7 +1086,9 @@
                         android:paddingEnd="16dp"
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp"
-                        android:thumbOffset="9dp"
+                        android:minHeight="5dp"
+                        android:maxHeight="5dp"
+                        android:thumbOffset="8dp"
                         android:max="100"
                         android:progress="0"
                         android:progressDrawable="@drawable/seekbar_progress"
@@ -1053,7 +1108,7 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentStart="true"
                             android:text="00:00"
-                            android:textColor="@color/text_primary"
+                            android:textColor="#c7ffffff"
                             android:fontFamily="monospace"
                             android:textSize="20sp"
                             android:textStyle="bold" />
@@ -1064,7 +1119,7 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:text="00:00"
-                            android:textColor="@color/text_primary"
+                            android:textColor="#c7ffffff"
                             android:fontFamily="monospace"
                             android:textSize="20sp"
                             android:textStyle="bold" />
@@ -1081,53 +1136,68 @@
                     android:gravity="center"
                     android:layout_marginTop="4dp">
 
-                    <!-- Aleatorio -->
+                    <!-- Estilo YouTube Music (igual que la web): íconos blancos sin caja y play/pausa en un
+                         círculo blanco grande. Tamaños con el explorador abierto; con el explorador oculto
+                         el código los agranda (88 / 66 / 58dp, como la web) -->
+
+                    <!-- Aleatorio: activo en cian con un puntito debajo (el fondo lo pone el código) -->
                     <ImageButton
                         android:id="@+id/btnShuffle"
-                        android:layout_width="50dp"
-                        android:layout_height="50dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_menu_rotate"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_ctrl_shuffle"
+                        android:scaleType="fitCenter"
+                        android:padding="13dp"
                         android:contentDescription="Aleatorio" />
 
                     <!-- Pista Anterior -->
                     <ImageButton
                         android:id="@+id/btnPrev"
-                        android:layout_width="62dp"
-                        android:layout_height="62dp"
-                        android:layout_marginStart="14dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_media_previous"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:layout_marginStart="12dp"
+                        android:background="@drawable/bg_ctrl_flat"
+                        android:src="@drawable/ic_ctrl_prev"
+                        android:scaleType="fitCenter"
+                        android:padding="11dp"
                         android:contentDescription="Anterior" />
 
-                    <!-- Play / Pause Central Grande (78dp) -->
+                    <!-- Play / Pausa: círculo blanco de 76dp con el ícono oscuro -->
                     <ImageButton
                         android:id="@+id/btnPlayPause"
-                        android:layout_width="78dp"
-                        android:layout_height="78dp"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="@drawable/bg_btn_circle"
-                        android:src="@android:drawable/ic_media_play"
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/bg_ctrl_play"
+                        android:elevation="6dp"
+                        android:src="@drawable/ic_ctrl_play"
+                        android:scaleType="fitCenter"
+                        android:padding="21dp"
                         android:contentDescription="Play/Pause" />
 
                     <!-- Siguiente Pista -->
                     <ImageButton
                         android:id="@+id/btnNext"
-                        android:layout_width="62dp"
-                        android:layout_height="62dp"
-                        android:layout_marginEnd="14dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_media_next"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/bg_ctrl_flat"
+                        android:src="@drawable/ic_ctrl_next"
+                        android:scaleType="fitCenter"
+                        android:padding="11dp"
                         android:contentDescription="Siguiente" />
 
-                    <!-- Repetir -->
+                    <!-- Repetir: activo en cian con un puntito debajo -->
                     <ImageButton
                         android:id="@+id/btnRepeat"
-                        android:layout_width="50dp"
-                        android:layout_height="50dp"
-                        android:background="@drawable/bg_btn_action"
-                        android:src="@android:drawable/ic_menu_revert"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_ctrl_repeat"
+                        android:scaleType="fitCenter"
+                        android:padding="13dp"
                         android:contentDescription="Repetir" />
                 </LinearLayout>
 

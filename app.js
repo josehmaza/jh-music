@@ -480,6 +480,8 @@ function initApp() {
     }
     if (!btnAutoMix) return;
     btnAutoMix.classList.toggle('is-active', isAutoMix);
+    const automixState = document.getElementById('automixState');
+    if (automixState) automixState.textContent = isAutoMix ? 'ON' : 'OFF';
     btnAutoMix.title = isAutoMix ? "Automix activado: toca para desactivar" : "Automix: mezcla automática e igualar volumen entre canciones";
   }
 
@@ -521,12 +523,22 @@ function initApp() {
     }
   }
 
+  /** El fondo pasa al color de la canción nueva durante toda la mezcla (o vuelve a 1,2 s). */
+  function setThemeFadeSeconds(sec) {
+    if (!frameWrapper) return;
+    if (sec) frameWrapper.style.setProperty('--th-dur', sec + 's');
+    else frameWrapper.style.removeProperty('--th-dur');
+  }
+
   function startAutoMix(nextIndex, mixSec) {
     // Activa la mezcla visual en la carátula (Doble Láser Magenta + Cápsula MIXING ⇄)
     isMixing = true;
+    // El color del fondo acompaña la mezcla: pasa de una canción a la otra en lo que dura
+    setThemeFadeSeconds(mixSec);
     clearTimeout(mixEndTimer);
     mixEndTimer = setTimeout(() => {
       isMixing = false;
+      setThemeFadeSeconds(0);
       updateAutoMixButton();
       updatePlayStateUI();
     }, mixSec * 1000);
@@ -545,6 +557,7 @@ function initApp() {
     if (!isMixing) return;
     clearTimeout(mixEndTimer);
     isMixing = false;
+    setThemeFadeSeconds(0);
     updateAutoMixButton();
     updatePlayStateUI();
   }
@@ -591,6 +604,112 @@ function initApp() {
   const btnToggleFullscreen = document.getElementById('btnToggleFullscreen');
   const treeActions = document.getElementById('treeActions');
   const btnCollapseAllTree = document.getElementById('btnCollapseAllTree');
+
+  // =================== FONDO CON EL COLOR DE LA CARÁTULA ===================
+  // Como YouTube Music: el fondo de toda la app (también el explorador) toma el color de la carátula
+  // y cambia con un fundido suave. El color se oscurece y se limita para que el texto blanco
+  // siempre se lea bien manejando.
+  const THEME_DEFAULT = [23, 60, 92]; // sin carátula: azul petróleo de la app
+  const GLOW_DEFAULT = [56, 189, 248]; // sin carátula: el resplandor cian de siempre
+  let themeToken = 0;
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return [h / 6, s, l];
+  }
+
+  function hslToRgb(h, s, l) {
+    if (s === 0) return [l * 255, l * 255, l * 255];
+    const hue = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return [hue(p, q, h + 1 / 3) * 255, hue(p, q, h) * 255, hue(p, q, h - 1 / 3) * 255];
+  }
+
+  /** Color representativo de la carátula: promedio dando más peso a los colores vivos. */
+  function extractCoverColor(src, callback) {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 24; // muy pocos píxeles: rápido y ya da el color general
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        let r = 0, g = 0, b = 0, total = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const R = data[i], G = data[i + 1], B = data[i + 2];
+          const max = Math.max(R, G, B), min = Math.min(R, G, B);
+          const sat = max === 0 ? 0 : (max - min) / max;
+          const weight = 0.08 + sat * sat * (max / 255);
+          r += R * weight; g += G * weight; b += B * weight; total += weight;
+        }
+        callback(total > 0 ? [r / total, g / total, b / total] : null);
+      } catch (e) {
+        callback(null);
+      }
+    };
+    img.onerror = () => callback(null);
+    img.src = src;
+  }
+
+  /** Oscurece y limita el color para que el texto blanco tenga buen contraste. */
+  function toThemeColor(rgb) {
+    const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+    const sat = s < 0.08 ? s : Math.max(0.35, Math.min(0.75, s)); // grises quedan grises
+    const light = Math.max(0.22, Math.min(0.36, l));
+    return hslToRgb(h, sat, light);
+  }
+
+  /** Resplandor de la carátula: el color de la canción, más claro y vivo. */
+  function toGlowColor(rgb) {
+    const [h, s] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+    return s < 0.08 ? [200, 210, 225] : hslToRgb(h, Math.max(0.6, s), 0.58);
+  }
+
+  function applyTheme(rgb, glow) {
+    if (!frameWrapper) return;
+    frameWrapper.style.setProperty('--th-r', Math.round(rgb[0]));
+    frameWrapper.style.setProperty('--th-g', Math.round(rgb[1]));
+    frameWrapper.style.setProperty('--th-b', Math.round(rgb[2]));
+    frameWrapper.style.setProperty('--gl-r', Math.round(glow[0]));
+    frameWrapper.style.setProperty('--gl-g', Math.round(glow[1]));
+    frameWrapper.style.setProperty('--gl-b', Math.round(glow[2]));
+  }
+
+  function updateDynamicTheme(track) {
+    const token = ++themeToken;
+    if (!track || !track.coverUrl) {
+      applyTheme(THEME_DEFAULT, GLOW_DEFAULT);
+      return;
+    }
+    extractCoverColor(track.coverUrl, (rgb) => {
+      if (token !== themeToken) return; // ya cambió de canción
+      if (rgb) {
+        applyTheme(toThemeColor(rgb), toGlowColor(rgb));
+      } else {
+        applyTheme(THEME_DEFAULT, GLOW_DEFAULT);
+      }
+    });
+  }
 
   // =================== MI MIX: LISTA Y COLA ===================
   function allTracksPool() {
@@ -812,6 +931,7 @@ function initApp() {
       albumArt.classList.add('hidden');
       albumContainer.classList.remove('has-cover');
     }
+    updateDynamicTheme(track);
 
     // Mensaje de saludo en cabecera
     currentPathLabel.textContent = "Q hubo jefe 😉";

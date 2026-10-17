@@ -2495,3 +2495,346 @@ body {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* ======================================================== */
+/* DISEÑO 2.6: CONTROLES MODERNOS Y FONDO CON EL COLOR DE LA CARÁTULA */
+/* ======================================================== */
+
+/* Color de la carátula (r g b). Registrado para que el cambio entre canciones sea un fundido suave */
+@property --th-r { syntax: '<number>'; inherits: true; initial-value: 23; }
+@property --th-g { syntax: '<number>'; inherits: true; initial-value: 60; }
+@property --th-b { syntax: '<number>'; inherits: true; initial-value: 92; }
+/* Resplandor alrededor de la carátula: el mismo color, más claro. Es lo único resaltado que toma el color de la canción */
+@property --gl-r { syntax: '<number>'; inherits: true; initial-value: 56; }
+@property --gl-g { syntax: '<number>'; inherits: true; initial-value: 189; }
+@property --gl-b { syntax: '<number>'; inherits: true; initial-value: 248; }
+
+.screen-frame-wrapper {
+  --th-r: 23;
+  --th-g: 60;
+  --th-b: 92;
+  /* Más intenso arriba a la derecha (detrás de la carátula), más suave sobre el explorador y hacia abajo */
+  background:
+    radial-gradient(120% 95% at 78% 4%, rgb(var(--th-r) var(--th-g) var(--th-b) / 0.80) 0%, rgb(var(--th-r) var(--th-g) var(--th-b) / 0) 62%),
+    linear-gradient(172deg, rgb(var(--th-r) var(--th-g) var(--th-b) / 0.50) 0%, rgb(var(--th-r) var(--th-g) var(--th-b) / 0.18) 48%, #07090c 100%),
+    #07090c;
+  /* --th-dur: 1,2 s al cambiar de canción; en una mezcla de Automix dura lo mismo que la mezcla */
+  transition: --th-r var(--th-dur, 1.2s) ease, --th-g var(--th-dur, 1.2s) ease, --th-b var(--th-dur, 1.2s) ease,
+    --gl-r var(--th-dur, 1.2s) ease, --gl-g var(--th-dur, 1.2s) ease, --gl-b var(--th-dur, 1.2s) ease,
+    width 0.3s, height 0.3s;
+}
+
+/* Paneles translúcidos: el color se ve a través de toda la app */
+.car-status-bar {
+  background: rgba(6, 8, 11, 0.38);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.driver-volume-strip {
+  background: rgba(6, 8, 11, 0.45);
+  border-right-color: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.explorer-panel {
+  background-color: rgba(6, 8, 11, 0.42);
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+.browser-header {
+  background: rgba(6, 8, 11, 0.22);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.browser-footer {
+  background: rgba(6, 8, 11, 0.3);
+}
+
+.player-panel {
+  background: transparent;
+  border-left-color: rgba(255, 255, 255, 0.06);
+}
+
+.search-box {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.list-item,
+.tree-node-item {
+  background: rgba(10, 12, 17, 0.5);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.list-item:hover,
+.tree-node-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.list-item.is-playing {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.adjacent-tracks-preview {
+  background: rgba(0, 0, 0, 0.26);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tab-btn:not(.active),
+.filter-chip:not(.active) {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* --- Barra de progreso fina con punto blanco (estilo YouTube Music) --- */
+.progress-bar-container {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.22);
+  border: none;
+  border-radius: 3px;
+  overflow: visible;
+  margin: 9px 0; /* zona táctil más alta que la línea */
+}
+
+.progress-bar-container::before {
+  /* Área táctil invisible de 28px para acertar manejando */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  bottom: -12px;
+}
+
+.progress-buffered {
+  display: none;
+}
+
+.progress-current {
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+.progress-current::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.progress-scrubber {
+  display: none;
+}
+
+.time-row {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* --- Controles: íconos blancos sin caja; play/pausa en círculo blanco grande --- */
+.playback-controls {
+  gap: 18px;
+  margin-top: 2px;
+}
+
+.btn-ctrl,
+.btn-secondary,
+.btn-nav {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #ffffff;
+}
+
+.btn-nav {
+  width: 64px;
+  height: 64px;
+}
+
+.btn-nav svg {
+  width: 40px;
+  height: 40px;
+}
+
+.btn-secondary {
+  width: 56px;
+  height: 56px;
+  color: rgba(255, 255, 255, 0.85);
+  position: relative;
+}
+
+.btn-secondary svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Aleatorio / Repetir activos: cian y un punto debajo (se distingue de un vistazo) */
+.btn-secondary.active {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #38bdf8;
+}
+
+.btn-secondary.active::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #38bdf8;
+}
+
+.btn-play-main {
+  width: 84px;
+  height: 84px;
+  background: #ffffff;
+  border: none;
+  color: #0c0e12;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+}
+
+.btn-play-main:hover {
+  border: none;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+.btn-play-main svg {
+  width: 38px;
+  height: 38px;
+}
+
+.btn-ctrl:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-play-main:hover {
+  background: #ffffff;
+}
+
+/* Reproductor a pantalla completa: misma escala, un poco más grande */
+.dashboard-grid.is-expanded .btn-play-main {
+  width: 88px;
+  height: 88px;
+}
+
+.dashboard-grid.is-expanded .btn-nav {
+  width: 66px;
+  height: 66px;
+}
+
+.dashboard-grid.is-expanded .btn-ctrl.btn-secondary {
+  width: 58px;
+  height: 58px;
+}
+
+/* Artista y álbum en una sola línea: un artista largo ya no empuja los controles fuera de la pantalla */
+.track-details {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.track-artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.track-album {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* Con el explorador abierto el reproductor es más angosto: controles un poco más chicos */
+.dashboard-grid:not(.is-expanded) .playback-controls {
+  gap: 12px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-play-main {
+  width: 76px;
+  height: 76px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-play-main svg {
+  width: 34px;
+  height: 34px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-nav {
+  width: 58px;
+  height: 58px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-nav svg {
+  width: 36px;
+  height: 36px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-secondary {
+  width: 52px;
+  height: 52px;
+}
+
+.dashboard-grid:not(.is-expanded) .btn-secondary svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Resplandor de la carátula con el color de la canción (decorativo: no afecta la lectura) */
+.album-art-container {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle),
+    0 0 30px 2px rgb(var(--gl-r) var(--gl-g) var(--gl-b) / 0.55),
+    0 0 70px 14px rgb(var(--gl-r) var(--gl-g) var(--gl-b) / 0.30);
+}
+
+/* Botón Automix como interruptor: ON = cian lleno con brillo; OFF = oscuro y apagado. Con la palabra escrita */
+.btn-toggle-expand.btn-automix {
+  width: 56px;
+  height: 52px;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #64748b;
+  box-shadow: none;
+}
+
+.btn-toggle-expand.btn-automix svg {
+  width: 24px;
+  height: 24px;
+}
+
+.automix-state {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.btn-toggle-expand.btn-automix.is-active {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #0c0e12;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+}
+
+.btn-toggle-expand.btn-automix:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+}

@@ -2,6 +2,18 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.6.0 — 2026-10-17 (pendiente de commit)
+
+Solo diseño, sin cambios de funcionamiento. La app queda igual que la maqueta web:
+
+- **Controles estilo YouTube Music:** play/pausa en un círculo blanco grande (76dp; 88dp con el explorador oculto), anterior/siguiente y aleatorio/repetir como íconos blancos sin caja. Aleatorio y Repetir activos se ven en cian con un puntito debajo.
+- **Barra de progreso fina** blanca con un punto blanco; tiempos en blanco suave.
+- **Fondo con el color de la carátula** en toda la app (también el explorador), con los paneles translúcidos. Cambia con un fundido de 1,2 s; en una mezcla de Automix, en lo que dura la mezcla.
+- **Resplandor de la carátula** con el color de la canción (cian sin carátula). El resto de lo resaltado sigue en cian.
+- **Botón Automix ON/OFF:** cian lleno con brillo y la palabra ON; apagado, oscuro con OFF.
+- **Íconos propios iguales a los de la web** en lugar de los del sistema Android: controles, tarjetas Anterior/Siguiente, lupa, pestañas (carpeta, lista, lista con +), silencio (rojo cuando está activo), buscador y su ×, y carpetas en la búsqueda.
+- **Pestaña elegida en cian lleno** con texto oscuro, como la web.
+
 ## 2.5.0 — 2026-10-17 (pendiente de commit)
 
 - **Mi Mix reemplaza a Favoritos:** una lista que armas con **+** (en cada canción o en una carpeta entera) y que suena seguida, en su orden, con Automix, como la lista de Automix de Virtual DJ.

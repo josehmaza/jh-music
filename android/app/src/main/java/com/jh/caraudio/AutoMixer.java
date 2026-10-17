@@ -409,6 +409,13 @@ final class AutoMixer {
         handler.post(fadeRunnable);
     }
 
+    /** Lo que falta de la mezcla automática en curso (0 si no hay): el fondo cambia de color en ese tiempo. */
+    int visibleMixRemainingMs() {
+        if (!visibleMix || outgoing == null) return 0;
+        long left = fadeDurationMs - (SystemClock.uptimeMillis() - fadeStartMs);
+        return (int) Math.max(0, left);
+    }
+
     private void setVisibleMix(boolean visible) {
         if (visibleMix == visible) return;
         visibleMix = visible;

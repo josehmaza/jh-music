@@ -205,7 +205,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvIndex.setText("▶");
                 holder.tvIndex.setTextColor(Color.parseColor("#38bdf8"));
                 holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
-                convertView.setBackgroundColor(Color.parseColor("#172030"));
+                convertView.setBackgroundColor(Color.parseColor("#2438bdf8"));
             } else if (wasPlayed) {
                 holder.tvIndex.setText("✓");
                 holder.tvIndex.setTextColor(Color.parseColor("#22c55e"));
@@ -218,7 +218,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvIndex.setText(String.format("%02d", number));
                 holder.tvIndex.setTextColor(Color.parseColor("#94a3b8"));
                 holder.tvTitle.setTextColor(isSelectedForMarquee ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
-                convertView.setBackgroundColor(isSelectedForMarquee ? Color.parseColor("#131a26") : Color.TRANSPARENT);
+                convertView.setBackgroundColor(isSelectedForMarquee ? Color.parseColor("#0fffffff") : Color.TRANSPARENT);
             }
 
             holder.tvTitle.setText(track.getTitle());
@@ -229,7 +229,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvTitle.setCarMarqueeEnabled(false);
                 holder.tvTitle.setEllipsize(null);
                 holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
-                convertView.setBackgroundColor(Color.parseColor("#1c2536"));
+                convertView.setBackgroundColor(Color.parseColor("#14ffffff"));
             } else {
                 // Modo normal de 1 línea: la canción que suena se desplaza como en la web; el resto se corta con "…"
                 holder.tvTitle.setSingleLine(true);
@@ -237,7 +237,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvTitle.setCarMarqueeEnabled(isPlaying);
                 holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8")
                         : (wasPlayed ? Color.parseColor("#94a3b8") : Color.parseColor("#f1f5f9")));
-                convertView.setBackgroundColor(isPlaying ? Color.parseColor("#172030") : Color.TRANSPARENT);
+                convertView.setBackgroundColor(isPlaying ? Color.parseColor("#2438bdf8") : Color.TRANSPARENT);
             }
 
             String artist = track.getArtist();

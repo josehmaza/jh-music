@@ -31,6 +31,8 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | `LaserRingView` | Haz láser que gira por el borde de la carátula: cian al sonar, más uno magenta al mezclar |
 | `NowPlayingPillView` | Cápsula `PAUSED / PLAYING / MIXING ⇄` con 5 barras de ecualizador, al pie de la carátula |
 | `CarMarqueeTextView` | Texto de una línea que se desplaza como la marquesina de la web (título, tarjetas y fila que suena) |
+| `AmbientTheme` | Fondo de toda la app con el color de la carátula (degradados sobre la raíz) y fundido entre canciones; también da el color al resplandor |
+| `AlbumGlowView` | Sombra y resplandor detrás de la carátula (el box-shadow de la web), con BlurMaskFilter en software |
 | `SoundWaveBarsView` | Barras de ecualizador antiguas. **Sin uso desde 2.3.0** (las reemplazó `NowPlayingPillView`); se puede borrar |
 
 ## 2. Estado principal en `MainActivity`

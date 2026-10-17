@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Muestrario del botón Automix - JH MUSIC</title>
+  <style>
+    :root {
+      --cyan: #38bdf8;
+      --bg: #07090c;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --mono: 'JetBrains Mono', Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 28px 16px 60px;
+    }
+
+    header { max-width: 1000px; margin: 0 auto 26px; }
+    h1 { font-size: 1.6rem; font-weight: 800; }
+    header p { color: var(--muted); margin-top: 6px; font-size: 0.98rem; }
+
+    .options { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+    .option {
+      background: #10141b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px 20px 20px;
+    }
+
+    .option-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .option-letter {
+      font-family: var(--mono);
+      font-weight: 800;
+      color: #0c0e12;
+      background: var(--cyan);
+      border-radius: 8px;
+      padding: 2px 10px;
+      font-size: 1rem;
+    }
+    .option-title { font-size: 1.2rem; font-weight: 800; }
+    .option-current { font-size: 0.8rem; color: var(--cyan); font-weight: 700; }
+    .option-desc { color: #cbd5e1; margin: 8px 0 14px; font-size: 0.95rem; line-height: 1.45; }
+
+    .states { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 760px) { .states { grid-template-columns: 1fr; } }
+
+    .state-label {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    /* Réplica de la parte de arriba del reproductor (con el fondo del color de la carátula) */
+    .mock {
+      position: relative;
+      height: 170px;
+      border-radius: 14px;
+      overflow: hidden;
+      background:
+        radial-gradient(120% 95% at 50% 0%, rgb(23 79 161 / 0.85) 0%, rgb(23 79 161 / 0) 65%),
+        linear-gradient(180deg, rgb(23 79 161 / 0.4), #07090c 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .mock.red {
+      background:
+        radial-gradient(120% 95% at 50% 0%, rgb(155 43 28 / 0.85) 0%, rgb(155 43 28 / 0) 65%),
+        linear-gradient(180deg, rgb(155 43 28 / 0.4), #07090c 100%);
+    }
+
+    .mock-lupa {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 48px;
+      height: 42px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+    }
+
+    .mock-lupa svg { width: 22px; height: 22px; }
+
+    .mock-cover {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      width: 142px;
+      height: 142px;
+      margin-left: -71px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #22d3ee, #6366f1 60%, #a855f7);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6), 0 0 34px rgba(64, 133, 232, 0.45);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 14px;
+      font-weight: 900;
+      font-family: Arial, sans-serif;
+    }
+
+    .mock.red .mock-cover {
+      background: linear-gradient(135deg, #f97316, #e11d48);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6), 0 0 34px rgba(232, 90, 64, 0.45);
+    }
+
+    .mock-cover b { font-size: 1.15rem; }
+    .mock-cover small { font-size: 0.7rem; opacity: 0.85; font-weight: 700; }
+
+    .mock-right {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+    }
+
+    .hint { color: var(--muted); font-size: 0.8rem; margin-top: 8px; }
+
+    /* Base común del botón */
+    .am {
+      border: none;
+      cursor: pointer;
+      font-family: var(--mono);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.25s ease;
+    }
+
+    .am svg { display: block; }
+
+    /* ================= A. Cian lleno + ON/OFF (el actual) ================= */
+    .am-a {
+      width: 56px;
+      height: 52px;
+      border-radius: 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #64748b;
+    }
+
+    .am-a svg { width: 24px; height: 24px; }
+    .am-a .lbl { font-size: 0.78rem; font-weight: 800; letter-spacing: 1px; line-height: 1; }
+
+    .am-a.on {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #0c0e12;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+
+    /* ================= B. Interruptor (switch) ================= */
+    .am-b {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 7px 10px 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: #94a3b8;
+    }
+
+    .am-b .lbl { font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; }
+
+    .am-b .track {
+      width: 64px;
+      height: 30px;
+      border-radius: 15px;
+      background: #2a3140;
+      position: relative;
+      transition: background 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .am-b .knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #94a3b8;
+      transition: left 0.25s ease, background 0.25s ease;
+    }
+
+    .am-b.on { color: var(--cyan); border-color: rgba(56, 189, 248, 0.45); }
+    .am-b.on .track { background: var(--cyan); box-shadow: 0 0 14px rgba(56, 189, 248, 0.55); }
+    .am-b.on .knob { left: 37px; background: #ffffff; }
+
+    /* ================= C. Estilo controlador DJ (LED) ================= */
+    .am-c {
+      width: 56px;
+      height: 56px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: #64748b;
+    }
+
+    .am-c svg { width: 26px; height: 26px; }
+
+    .am-c .led {
+      width: 32px;
+      height: 5px;
+      border-radius: 3px;
+      background: #2a3140;
+      transition: all 0.25s ease;
+    }
+
+    .am-c.on { color: var(--cyan); }
+    .am-c.on .led {
+      background: var(--cyan);
+      box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.75);
+    }
+
+    /* ================= D. Cian lleno + animado ================= */
+    .am-d {
+      width: 56px;
+      height: 52px;
+      border-radius: 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #64748b;
+    }
+
+    .am-d svg { width: 26px; height: 24px; overflow: visible; }
+    .am-d .lbl { font-size: 0.78rem; font-weight: 800; letter-spacing: 1px; line-height: 1; }
+
+    .am-d.on {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #0c0e12;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+
+    /* Prendido: las curvas "fluyen" (trazo punteado que avanza) */
+    .am-d.on path {
+      stroke-dasharray: 5 3;
+      animation: flow 0.9s linear infinite;
+    }
+
+    @keyframes flow {
+      to { stroke-dashoffset: -16; }
+    }
+
+    /* ================= E. Píldora con texto ================= */
+    .am-e {
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1.5px solid rgba(255, 255, 255, 0.16);
+      color: #94a3b8;
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .am-e svg { width: 20px; height: 20px; }
+
+    .am-e.on {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #0c0e12;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+
+    .mock-right.wide { right: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Botón Automix: opciones</h1>
+    <p>Cada opción, apagada a la izquierda y encendida a la derecha, en la parte de arriba del reproductor. Toca cualquier botón para prenderlo o apagarlo.</p>
+  </header>
+
+  <div class="options" id="options"></div>
+
+  <script>
+    const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6C9 6 15 18 21 18"/><path d="M3 18C9 18 15 6 21 6"/></svg>';
+    const LUPA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="11" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/><circle cx="16.5" cy="15.5" r="4.5"/><line x1="19.8" y1="18.8" x2="22.5" y2="21.5"/></svg>';
+
+    const OPTIONS = [
+      {
+        letter: 'A',
+        title: 'Cian lleno + ON / OFF',
+        current: true,
+        desc: 'Mismo tamaño que la lupa. Prendido se ve como una luz encendida, con la palabra ON; apagado queda oscuro y dice OFF. Igual que el ✓ de Mi Mix (cian lleno = activo).',
+        html: on => `<button class="am am-a ${on ? 'on' : ''}">${ICON}<span class="lbl">${on ? 'ON' : 'OFF'}</span></button>`
+      },
+      {
+        letter: 'B',
+        title: 'Interruptor (switch)',
+        desc: 'Como los ajustes del celular: la bolita a la derecha y el fondo cian es prendido. Es lo que todo el mundo entiende al instante. Ocupa un poco más de ancho.',
+        wide: true,
+        html: on => `<button class="am am-b ${on ? 'on' : ''}"><span class="lbl">AUTOMIX</span><span class="track"><span class="knob"></span></span></button>`
+      },
+      {
+        letter: 'C',
+        title: 'Estilo controlador DJ (LED)',
+        desc: 'Como el botón AUTO MIX de las consolas Pioneer: el botón casi no cambia, pero una barrita de luz debajo se enciende en cian con brillo. Muy de DJ y elegante; un poco menos llamativo.',
+        html: on => `<button class="am am-c ${on ? 'on' : ''}">${ICON}<span class="led"></span></button>`
+      },
+      {
+        letter: 'D',
+        title: 'Cian lleno + animado',
+        desc: 'Igual que la A, pero prendido las curvas "fluyen" (se mueven suave), como si la música pasara de una canción a otra. Se nota que está trabajando; apagado queda quieto.',
+        html: on => `<button class="am am-d ${on ? 'on' : ''}">${ICON}<span class="lbl">${on ? 'ON' : 'OFF'}</span></button>`
+      },
+      {
+        letter: 'E',
+        title: 'Píldora con texto',
+        desc: 'Una cápsula con el ícono y la palabra AUTOMIX: cian llena prendida, solo contorno apagada. La más fácil de leer, pero la más ancha (puede quedar justa al lado de la carátula).',
+        wide: true,
+        html: on => `<button class="am am-e ${on ? 'on' : ''}">${ICON}<span>AUTOMIX</span></button>`
+      }
+    ];
+
+    function mock(option, on, red) {
+      return `
+        <div class="mock ${red ? 'red' : ''}">
+          <div class="mock-lupa">${LUPA}</div>
+          <div class="mock-cover"><b>${red ? 'COLEGIALA' : 'GUARACHA'}</b><small>${red ? 'Cumbia Tropical' : 'Ultra Bass 2024'}</small></div>
+          <div class="mock-right ${option.wide ? 'wide' : ''}" data-letter="${option.letter}">${option.html(on)}</div>
+        </div>`;
+    }
+
+    const container = document.getElementById('options');
+    OPTIONS.forEach((option, i) => {
+      const red = i % 2 === 1;
+      const el = document.createElement('section');
+      el.className = 'option';
+      el.innerHTML = `
+        <div class="option-head">
+          <span class="option-letter">${option.letter}</span>
+          <span class="option-title">${option.title}</span>
+          ${option.current ? '<span class="option-current">● la que está ahora en la maqueta</span>' : ''}
+        </div>
+        <p class="option-desc">${option.desc}</p>
+        <div class="states">
+          <div><div class="state-label">APAGADO</div>${mock(option, false, red)}</div>
+          <div><div class="state-label">ENCENDIDO</div>${mock(option, true, red)}</div>
+        </div>
+        <p class="hint">Toca el botón para probarlo.</p>`;
+      container.appendChild(el);
+    });
+
+    // Tocar un botón lo prende / apaga
+    container.addEventListener('click', (e) => {
+      const slot = e.target.closest('.mock-right');
+      if (!slot) return;
+      const option = OPTIONS.find(o => o.letter === slot.dataset.letter);
+      const isOn = !!slot.querySelector('.am.on');
+      slot.innerHTML = option.html(!isOn);
+    });
+  </script>
+</body>
+</html>

@@ -100,7 +100,11 @@ public class MainActivity extends Activity {
     // Reproductor Central
     private TextView tvPlaybackStatus;
     private ImageButton btnToggleExplorer;
-    private ImageButton btnAutoMix;
+    private View btnAutoMix;              // interruptor Automix: cuadro + ícono + ON / OFF
+    private ImageView ivAutoMixIcon;
+    private TextView tvAutoMixState;
+    private AmbientTheme ambientTheme;    // fondo de toda la app con el color de la carátula
+    private AlbumGlowView albumGlow;      // resplandor de la carátula con el color de la canción
     private AutoMixer autoMixer;
     private AudioAnalyzer audioAnalyzer;
     private View layoutExplorerToggleZone;
@@ -315,6 +319,11 @@ public class MainActivity extends Activity {
         tvPlaybackStatus = findViewById(R.id.tvPlaybackStatus);
         btnToggleExplorer = findViewById(R.id.btnToggleExplorer);
         btnAutoMix = findViewById(R.id.btnAutoMix);
+        ivAutoMixIcon = findViewById(R.id.ivAutoMixIcon);
+        tvAutoMixState = findViewById(R.id.tvAutoMixState);
+        albumGlow = findViewById(R.id.albumGlow);
+        View root = findViewById(R.id.layoutRoot);
+        if (root != null) ambientTheme = new AmbientTheme(root, albumGlow, handler);
         layoutExplorerToggleZone = findViewById(R.id.layoutExplorerToggleZone);
         layoutAlbumArtCard = findViewById(R.id.layoutAlbumArtCard);
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
@@ -793,6 +802,7 @@ public class MainActivity extends Activity {
             isMuted = audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
         }
         btnVolMute.setSelected(isMuted);
+        btnVolMute.setImageResource(isMuted ? R.drawable.ic_vol_muted : R.drawable.ic_vol_on);
         if (isMuted) {
             // En mute getStreamVolume devuelve 0: se conserva el último porcentaje real para restaurarlo al desmutear
             tvVolPercent.setText("MUTE");
@@ -866,6 +876,7 @@ public class MainActivity extends Activity {
         btnShuffle.setOnClickListener(v -> {
             isShuffle = !isShuffle;
             btnShuffle.setSelected(isShuffle);
+            updateSecondaryButton(btnShuffle, isShuffle);
             autoMixer.invalidateNext();
             Toast.makeText(this, isShuffle ? "Aleatorio activado" : "Modo secuencial", Toast.LENGTH_SHORT).show();
         });
@@ -873,6 +884,7 @@ public class MainActivity extends Activity {
         btnRepeat.setOnClickListener(v -> {
             isRepeat = !isRepeat;
             btnRepeat.setSelected(isRepeat);
+            updateSecondaryButton(btnRepeat, isRepeat);
             autoMixer.invalidateNext();
             Toast.makeText(this, isRepeat ? "Repetir canción actual" : "Repetir carpeta", Toast.LENGTH_SHORT).show();
         });
@@ -909,15 +921,93 @@ public class MainActivity extends Activity {
         });
     }
 
+    // ==========================================
+    // CONTROLES ESTILO YOUTUBE MUSIC (iguales a la web)
+    // ==========================================
+
+    /**
+     * Tamaños de los controles como la web: con el explorador abierto play 76 / anterior-siguiente 58 /
+     * aleatorio-repetir 52dp; con el explorador oculto 88 / 66 / 58dp. Íconos: 34-38 / 36-40 / 26-28dp.
+     */
+    private void applyPlayerControlSizes(boolean expanded) {
+        sizeControl(btnPlayPause, expanded ? 88 : 76, expanded ? 38 : 34);
+        sizeControl(btnPrev, expanded ? 66 : 58, expanded ? 40 : 36);
+        sizeControl(btnNext, expanded ? 66 : 58, expanded ? 40 : 36);
+        sizeControl(btnShuffle, expanded ? 58 : 52, expanded ? 28 : 26);
+        sizeControl(btnRepeat, expanded ? 58 : 52, expanded ? 28 : 26);
+        updateSecondaryButton(btnShuffle, isShuffle);
+        updateSecondaryButton(btnRepeat, isRepeat);
+
+        // Con el explorador oculto, tarjetas, barra y controles no pasan de 540dp (centrados), como la web
+        int maxWidth = expanded ? dp(540) : ViewGroup.LayoutParams.MATCH_PARENT;
+        for (int id : new int[]{R.id.layoutAdjacentPreviews, R.id.layoutProgressBlock, R.id.layoutTransportControls}) {
+            View v = findViewById(id);
+            if (v == null) continue;
+            ViewGroup.LayoutParams lp = v.getLayoutParams();
+            int width = maxWidth;
+            if (expanded && v.getParent() instanceof View) {
+                View parent = (View) v.getParent();
+                int available = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
+                if (available > 0) width = Math.min(maxWidth, available);
+            }
+            if (lp.width != width) {
+                lp.width = width;
+                v.setLayoutParams(lp);
+            }
+        }
+    }
+
+    private void sizeControl(View button, int sizeDp, int iconDp) {
+        if (button == null) return;
+        ViewGroup.LayoutParams lp = button.getLayoutParams();
+        int size = dp(sizeDp);
+        if (lp.width != size || lp.height != size) {
+            lp.width = size;
+            lp.height = size;
+            button.setLayoutParams(lp);
+        }
+        int pad = (size - dp(iconDp)) / 2;
+        button.setPadding(pad, pad, pad, pad);
+    }
+
+    /**
+     * Aleatorio / Repetir: ícono blanco (85 %) apagado; cian con un puntito de 6dp debajo encendido,
+     * igual que la web. El puntito es el fondo del botón (se rearma con su tamaño).
+     */
+    private void updateSecondaryButton(ImageButton button, boolean active) {
+        if (button == null) return;
+        button.setSelected(active);
+        button.setColorFilter(active ? Color.parseColor("#38bdf8") : Color.argb(217, 255, 255, 255), PorterDuff.Mode.SRC_IN);
+        int size = button.getLayoutParams() != null && button.getLayoutParams().width > 0
+                ? button.getLayoutParams().width : dp(52);
+        if (!active) {
+            button.setBackgroundResource(R.drawable.bg_ctrl_flat);
+            return;
+        }
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(Color.parseColor("#38bdf8"));
+        int dotSize = dp(6);
+        int side = (size - dotSize) / 2;
+        int bottom = dp(4);
+        LayerDrawable bg = new LayerDrawable(new Drawable[]{dot});
+        bg.setLayerInset(0, side, size - bottom - dotSize, side, bottom);
+        button.setBackground(bg);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private void updatePlaybackStateUI() {
         if (isPlaying) {
-            btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            btnPlayPause.setImageResource(R.drawable.ic_ctrl_pause);
             tvPlaybackStatus.setText(autoMixer.isEnabled() ? "● REPRODUCIENDO · AUTOMIX" : "● REPRODUCIENDO");
             tvPlaybackStatus.setTextColor(Color.parseColor("#38bdf8"));
             if (nowPlayingPill != null) nowPlayingPill.setPlaying(true);
             if (laserRing != null) laserRing.setPlaying(true);
         } else {
-            btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            btnPlayPause.setImageResource(R.drawable.ic_ctrl_play);
             tvPlaybackStatus.setText("● EN PAUSA");
             tvPlaybackStatus.setTextColor(Color.parseColor("#f59e0b"));
             if (nowPlayingPill != null) nowPlayingPill.setPlaying(false);
@@ -943,6 +1033,7 @@ public class MainActivity extends Activity {
             btnAutoMix.setOnClickListener(v -> toggleAutoMix());
         }
         setupAlbumArtAutoSize();
+        applyPlayerControlSizes(false);
 
         if (layoutExplorerToggleZone != null) {
             // NUNCA asignar setOnClickListener a layoutExplorerToggleZone para evitar alternar con un simple toque accidental
@@ -1072,6 +1163,9 @@ public class MainActivity extends Activity {
         if (layoutExplorerPanel == null) return;
         layoutExplorerPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (btnToggleExplorer != null) btnToggleExplorer.setSelected(!visible);
+        // Controles más grandes con el explorador oculto (como la web); después del nuevo layout
+        applyPlayerControlSizes(!visible);
+        if (layoutPlayerPanel != null) layoutPlayerPanel.post(() -> applyPlayerControlSizes(!visible));
     }
 
     // ==========================================
@@ -1327,6 +1421,37 @@ public class MainActivity extends Activity {
         return ssb;
     }
 
+    /**
+     * Pestañas como la web: elegida en cian lleno con texto e ícono oscuros; las demás translúcidas con
+     * texto e ícono gris claro. Íconos: carpeta, lista y lista con + (los mismos dibujos que la web).
+     */
+    private void refreshTabLabels() {
+        if (tabFolders == null) return;
+        setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Carpetas USB", currentTab == 0);
+        setTabLabel(tabTracks, R.drawable.ic_tab_list, "Pistas (" + currentPlaylist.size() + ")", currentTab == 1);
+        setTabLabel(tabMyMix, R.drawable.ic_tab_mymix, "Mi Mix (" + (myMixLoaded ? mixTracks().size() : 0) + ")", currentTab == 2);
+    }
+
+    private void setTabLabel(Button tab, int iconRes, String text, boolean selected) {
+        if (tab == null) return;
+        int color = selected ? Color.parseColor("#0c0e12") : Color.parseColor("#cbd5e1");
+        SpannableStringBuilder ssb = new SpannableStringBuilder(" ");
+        try {
+            Drawable icon = getDrawable(iconRes);
+            if (icon != null) {
+                icon = icon.mutate();
+                icon.setColorFilter(color, PorterDuff.Mode.SRC_IN);
+                icon.setBounds(0, 0, dp(18), dp(18));
+                ssb.setSpan(new CenteredImageSpan(icon), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        } catch (Exception ignored) {}
+        ssb.append("  ").append(text);
+        tab.setText(ssb);
+        tab.setTextColor(color);
+        tab.setTypeface(null, Typeface.BOLD);
+        tab.setBackgroundResource(selected ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
+    }
+
     private static class CenteredImageSpan extends ImageSpan {
         public CenteredImageSpan(Drawable drawable) {
             super(drawable);
@@ -1446,17 +1571,7 @@ public class MainActivity extends Activity {
             etSearch.setHint(tabIndex == 0 ? "Buscar carpeta..." :
                     (tabIndex == 1 ? "Buscar canción o artista..." : "Buscar en Mi Mix..."));
         }
-        tabFolders.setBackgroundResource(tabIndex == 0 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabFolders.setTextColor(tabIndex == 0 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
-        tabFolders.setTypeface(null, Typeface.BOLD);
-
-        tabTracks.setBackgroundResource(tabIndex == 1 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabTracks.setTextColor(tabIndex == 1 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
-        tabTracks.setTypeface(null, Typeface.BOLD);
-
-        tabMyMix.setBackgroundResource(tabIndex == 2 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabMyMix.setTextColor(tabIndex == 2 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
-        tabMyMix.setTypeface(null, Typeface.BOLD);
+        refreshTabLabels();
 
         // Mi Mix: cabecera propia (Reproducir / Vaciar), filas numeradas por la lista y botón ✕
         mixConfirmClear = false;
@@ -1786,7 +1901,7 @@ public class MainActivity extends Activity {
 
     /** El número de la pestaña Pistas es siempre el de la carpeta activa, nunca el de una búsqueda. */
     private void updateTracksTabCount() {
-        tabTracks.setText("🎵 Pistas (" + currentPlaylist.size() + ")");
+        refreshTabLabels();
     }
 
     private void playFolderFromNode(TreeNode node) {
@@ -2562,6 +2677,12 @@ public class MainActivity extends Activity {
 
     private void showAlbumArt(Bitmap art, boolean smooth) {
         albumArtFadeToken++;
+        // Fondo de toda la app y resplandor con el color de la carátula. En una mezcla de Automix el
+        // color pasa de una canción a la otra en lo que queda de la mezcla (como la web)
+        if (ambientTheme != null) {
+            int mixLeft = smooth ? autoMixer.visibleMixRemainingMs() : 0;
+            ambientTheme.applyCover(art, Math.max(AmbientTheme.DEFAULT_FADE_MS, mixLeft));
+        }
         Drawable previous = ivAlbumArt.getVisibility() == View.VISIBLE ? ivAlbumArt.getDrawable() : null;
         setCoverMode(art != null);
         if (!smooth) {
@@ -2698,11 +2819,18 @@ public class MainActivity extends Activity {
                 : "Automix desactivado", Toast.LENGTH_SHORT).show();
     }
 
+    /** Igual que la web (opción A): ON = cuadro cian lleno con brillo y el ícono oscuro; OFF = oscuro y gris. */
     private void updateAutoMixButton() {
         if (btnAutoMix == null) return;
         boolean on = autoMixer.isEnabled();
         btnAutoMix.setSelected(on);
-        btnAutoMix.setColorFilter(Color.parseColor(on ? "#38bdf8" : "#64748b"), PorterDuff.Mode.SRC_IN);
+        btnAutoMix.setBackgroundResource(on ? R.drawable.bg_automix_on : R.drawable.bg_automix_off);
+        int color = Color.parseColor(on ? "#0c0e12" : "#64748b");
+        if (ivAutoMixIcon != null) ivAutoMixIcon.setColorFilter(color, PorterDuff.Mode.SRC_IN);
+        if (tvAutoMixState != null) {
+            tvAutoMixState.setText(on ? "ON" : "OFF");
+            tvAutoMixState.setTextColor(color);
+        }
     }
 
     /**
@@ -2861,7 +2989,7 @@ public class MainActivity extends Activity {
     };
 
     private void updateMixTabCount() {
-        if (tabMyMix != null) tabMyMix.setText("🎧 Mi Mix (" + mixTracks().size() + ")");
+        refreshTabLabels();
     }
 
     /** Agrega canciones al final de Mi Mix (sin repetir). Devuelve cuántas se agregaron. */
