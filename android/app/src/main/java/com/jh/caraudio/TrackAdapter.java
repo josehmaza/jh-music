@@ -145,7 +145,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
     private static class ViewHolder {
         TextView tvIndex;
-        TextView tvTitle;
+        CarMarqueeTextView tvTitle;
         TextView tvArtist;
         TextView tvUsbBadge;
         TextView tvDuration;
@@ -191,16 +191,15 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 // Modo expandido: texto completo sin recortar
                 holder.tvTitle.setSingleLine(false);
                 holder.tvTitle.setMaxLines(4);
+                holder.tvTitle.setCarMarqueeEnabled(false);
                 holder.tvTitle.setEllipsize(null);
-                holder.tvTitle.setSelected(false);
                 holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
                 convertView.setBackgroundColor(Color.parseColor("#1c2536"));
             } else {
-                // Modo normal de 1 línea con marquesina si está reproduciéndose
+                // Modo normal de 1 línea: la canción que suena se desplaza como en la web; el resto se corta con "…"
                 holder.tvTitle.setSingleLine(true);
                 holder.tvTitle.setMaxLines(1);
-                holder.tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
-                holder.tvTitle.setSelected(isPlaying);
+                holder.tvTitle.setCarMarqueeEnabled(isPlaying);
                 holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
                 convertView.setBackgroundColor(isPlaying ? Color.parseColor("#172030") : Color.TRANSPARENT);
             }

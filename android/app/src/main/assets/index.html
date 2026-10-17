@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.3.0</span>
+        <span class="version-badge" id="appVersionBadge">v2.3.1</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -196,20 +196,21 @@
                 <line x1="19.8" y1="18.8" x2="22.5" y2="21.5"/>
               </svg>
             </button>
-
-            <!-- Botón Automix: mezcla automática entre canciones (dos curvas cruzadas) -->
-            <button class="btn-toggle-expand btn-automix" id="btnAutoMix" title="Automix: mezcla automática entre canciones">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-                <path d="M3 6C9 6 15 18 21 18"/>
-                <path d="M3 18C9 18 15 6 21 6"/>
-              </svg>
-            </button>
           </div>
 
-          <div class="driver-mode-badge" id="driverModeBadge">
+          <!-- Estado oculto (igual que la app): ya lo muestran la cápsula PLAYING / MIXING y el botón Automix -->
+          <div class="driver-mode-badge hidden" id="driverModeBadge">
             <span class="live-dot" id="liveDot"></span>
             <span id="playbackStatusText">EN PAUSA</span>
           </div>
+
+          <!-- Botón Automix: arriba a la derecha, en la esquina opuesta a la lupa (dos curvas cruzadas) -->
+          <button class="btn-toggle-expand btn-automix" id="btnAutoMix" title="Automix: mezcla automática entre canciones">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+              <path d="M3 6C9 6 15 18 21 18"/>
+              <path d="M3 18C9 18 15 6 21 6"/>
+            </svg>
+          </button>
         </div>
 
         <div class="now-playing-card">

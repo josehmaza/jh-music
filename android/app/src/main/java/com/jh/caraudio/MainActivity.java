@@ -42,6 +42,8 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -909,16 +911,17 @@ public class MainActivity extends Activity {
     // Botón de lupa (click conmuta) y zona libre roja lateral (jalar a la izq oculta, a la der muestra; toques ignorados)
     // ==========================================
     private void setupExplorerToggleGestures() {
-        // Lupa y Automix están dentro de la zona de gestos: no son clicables por sí mismos para que
-        // el gesto de jalar funcione aunque empiece sobre ellos; el toque se detecta en la zona.
+        // La lupa está dentro de la zona de gestos: no es clicable por sí misma para que el gesto
+        // de jalar funcione aunque empiece sobre ella; el toque se detecta en la zona.
         if (btnToggleExplorer != null) {
             btnToggleExplorer.setClickable(false);
             btnToggleExplorer.setFocusable(false);
         }
+        // Automix está arriba a la derecha, fuera de la zona de gestos: botón normal
         if (btnAutoMix != null) {
-            btnAutoMix.setClickable(false);
-            btnAutoMix.setFocusable(false);
+            btnAutoMix.setOnClickListener(v -> toggleAutoMix());
         }
+        setupAlbumArtAutoSize();
 
         if (layoutExplorerToggleZone != null) {
             // NUNCA asignar setOnClickListener a layoutExplorerToggleZone para evitar alternar con un simple toque accidental
@@ -935,8 +938,6 @@ public class MainActivity extends Activity {
                             gestureHandled = false;
                             if (btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
                                 btnToggleExplorer.setPressed(true);
-                            } else if (btnAutoMix != null && isTouchOnView(btnAutoMix, downX, downY)) {
-                                btnAutoMix.setPressed(true);
                             }
                             return true;
 
@@ -964,7 +965,6 @@ public class MainActivity extends Activity {
 
                         case MotionEvent.ACTION_UP:
                             if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
-                            if (btnAutoMix != null) btnAutoMix.setPressed(false);
                             if (!gestureHandled && layoutExplorerPanel != null) {
                                 float totalDx = event.getRawX() - downX;
                                 float totalDy = event.getRawY() - downY;
@@ -979,10 +979,6 @@ public class MainActivity extends Activity {
                                         && btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
                                     // Toque simple sobre la lupa: alterna el explorador
                                     toggleExplorerVisibility();
-                                } else if (Math.abs(totalDx) <= 35 && Math.abs(totalDy) <= 35
-                                        && btnAutoMix != null && isTouchOnView(btnAutoMix, downX, downY)) {
-                                    // Toque simple sobre Automix: activa / desactiva la mezcla entre canciones
-                                    toggleAutoMix();
                                 }
                                 // Un toque simple en el resto de la zona libre NO hace nada (evita toques accidentales).
                             }
@@ -990,7 +986,6 @@ public class MainActivity extends Activity {
 
                         case MotionEvent.ACTION_CANCEL:
                             if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
-                            if (btnAutoMix != null) btnAutoMix.setPressed(false);
                             gestureHandled = false;
                             break;
                     }
@@ -998,6 +993,43 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    /**
+     * Agranda el cuadro de la carátula para ocupar el espacio libre que queda sobre los botones
+     * (sin esto, el espacio sobrante quedaba entre la barra de progreso y los botones).
+     * Se calcula una vez, ya con la pantalla real del radio dibujada.
+     */
+    private void setupAlbumArtAutoSize() {
+        final View controls = findViewById(R.id.layoutTransportControls);
+        if (controls == null || layoutAlbumArtCard == null) return;
+        controls.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                if (!(controls instanceof ViewGroup) || controls.getHeight() == 0) return;
+                int rowHeight = 0;
+                ViewGroup row = (ViewGroup) controls;
+                for (int i = 0; i < row.getChildCount(); i++) {
+                    rowHeight = Math.max(rowHeight, row.getChildAt(i).getHeight());
+                }
+                if (rowHeight == 0) return;
+                controls.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+
+                float density = getResources().getDisplayMetrics().density;
+                // Dejar una separación cómoda (8 dp arriba y abajo de los botones)
+                int spare = controls.getHeight() - rowHeight - Math.round(16 * density);
+                ViewGroup.LayoutParams lp = layoutAlbumArtCard.getLayoutParams();
+                View parent = (View) layoutAlbumArtCard.getParent();
+                // Que no choque con la lupa (izquierda) ni con Automix (derecha), ni pase de 260 dp
+                int maxByWidth = parent.getWidth() - 2 * Math.round(66 * density);
+                int size = Math.min(lp.height + Math.max(0, spare), Math.min(maxByWidth, Math.round(260 * density)));
+                if (size > lp.height) {
+                    lp.width = size;
+                    lp.height = size;
+                    layoutAlbumArtCard.setLayoutParams(lp);
+                }
+            }
+        });
     }
 
     private boolean isTouchOnView(View view, float rawX, float rawY) {

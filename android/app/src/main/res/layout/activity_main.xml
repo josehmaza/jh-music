@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.3.0"
+                android:text="v2.3.1"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -608,7 +608,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <!-- Estado Dinámico: EN PAUSA / REPRODUCIENDO -->
+                    <!-- Estado Dinámico: EN PAUSA / REPRODUCIENDO. Oculto: el estado ya lo muestran la cápsula
+                         PLAYING / MIXING de la carátula y el botón Automix; su esquina la ocupa Automix -->
                     <TextView
                         android:id="@+id/tvPlaybackStatus"
                         android:layout_width="wrap_content"
@@ -616,10 +617,24 @@
                         android:gravity="center_vertical"
                         android:layout_alignParentEnd="true"
                         android:layout_alignParentTop="true"
+                        android:visibility="gone"
                         android:text="● EN PAUSA"
                         android:textColor="@color/amber_accent"
                         android:textSize="13sp"
                         android:textStyle="bold" />
+
+                    <!-- Botón Automix: arriba a la derecha, en la esquina opuesta a la lupa -->
+                    <ImageButton
+                        android:id="@+id/btnAutoMix"
+                        android:layout_width="54dp"
+                        android:layout_height="48dp"
+                        android:layout_alignParentTop="true"
+                        android:layout_alignParentEnd="true"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@drawable/ic_automix"
+                        android:padding="11dp"
+                        android:scaleType="fitCenter"
+                        android:contentDescription="Activar o desactivar Automix" />
 
                     <!-- Carátula (igual que la web): cuadro con relleno de 2,5dp donde gira el borde láser,
                          carátula o disco, cápsula de estado con ecualizador y badge de formato -->
@@ -627,7 +642,7 @@
                         android:id="@+id/layoutAlbumArtCard"
                         android:layout_width="150dp"
                         android:layout_height="150dp"
-                        android:layout_below="@id/tvPlaybackStatus"
+                        android:layout_alignParentTop="true"
                         android:layout_centerHorizontal="true"
                         android:layout_marginTop="2dp"
                         android:padding="2.5dp"
@@ -699,10 +714,12 @@
                          Encima del cuadro y del mismo tamaño; no recibe toques -->
                     <com.jh.caraudio.LaserRingView
                         android:id="@+id/laserRing"
-                        android:layout_width="150dp"
-                        android:layout_height="150dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:layout_alignTop="@id/layoutAlbumArtCard"
+                        android:layout_alignBottom="@id/layoutAlbumArtCard"
                         android:layout_alignStart="@id/layoutAlbumArtCard"
+                        android:layout_alignEnd="@id/layoutAlbumArtCard"
                         android:clickable="false"
                         android:focusable="false"
                         android:importantForAccessibility="no" />
@@ -725,35 +742,16 @@
                         android:focusable="false"
                         android:contentDescription="Área de gesto para alternar explorador">
 
-                        <!-- Lupa y Automix lado a lado (igual que la web) -->
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal">
-
-                            <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
-                            <ImageButton
-                                android:id="@+id/btnToggleExplorer"
-                                android:layout_width="54dp"
-                                android:layout_height="48dp"
-                                android:background="@drawable/bg_btn_action"
-                                android:src="@android:drawable/ic_menu_search"
-                                android:tint="@color/accent_cyan"
-                                android:padding="8dp"
-                                android:contentDescription="Mostrar u Ocultar Explorador" />
-
-                            <!-- Botón Automix: mezcla automática entre canciones (mismo tamaño que la lupa) -->
-                            <ImageButton
-                                android:id="@+id/btnAutoMix"
-                                android:layout_width="54dp"
-                                android:layout_height="48dp"
-                                android:layout_marginStart="12dp"
-                                android:background="@drawable/bg_btn_action"
-                                android:src="@drawable/ic_automix"
-                                android:padding="11dp"
-                                android:scaleType="fitCenter"
-                                android:contentDescription="Activar o desactivar Automix" />
-                        </LinearLayout>
+                        <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
+                        <ImageButton
+                            android:id="@+id/btnToggleExplorer"
+                            android:layout_width="54dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_btn_action"
+                            android:src="@android:drawable/ic_menu_search"
+                            android:tint="@color/accent_cyan"
+                            android:padding="8dp"
+                            android:contentDescription="Mostrar u Ocultar Explorador" />
 
                         <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
                         <View
@@ -899,11 +897,11 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Barra de Progreso y Tiempos: Con 20dp de separación segura de las tarjetas de anterior/siguiente -->
+                <!-- Barra de Progreso y Tiempos: Con 12dp de separación de las tarjetas de anterior/siguiente -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="12dp"
                     android:clipChildren="false"
                     android:clipToPadding="false"
                     android:orientation="vertical">
@@ -961,6 +959,7 @@
 
                 <!-- Controles de Transporte (Botones táctiles grandes ampliados) -->
                 <LinearLayout
+                    android:id="@+id/layoutTransportControls"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"

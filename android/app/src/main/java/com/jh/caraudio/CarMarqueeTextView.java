@@ -28,6 +28,9 @@ public class CarMarqueeTextView extends TextView {
     private static final float END_HOLD = 0.82f;
 
     private long cycleStartMs = SystemClock.uptimeMillis();
+    private boolean singleLineMode = true;
+    private boolean carMarqueeEnabled = true;
+    private String lastText = "";
 
     public CarMarqueeTextView(Context context) {
         super(context);
@@ -48,12 +51,38 @@ public class CarMarqueeTextView extends TextView {
     @Override
     protected void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
         super.onTextChanged(text, start, lengthBefore, lengthAfter);
-        cycleStartMs = SystemClock.uptimeMillis(); // cada canción nueva empieza mostrando el inicio
+        // Solo si el texto cambió de verdad: las listas vuelven a poner el mismo texto al refrescarse
+        String now = text != null ? text.toString() : "";
+        if (!now.equals(lastText)) {
+            lastText = now;
+            cycleStartMs = SystemClock.uptimeMillis(); // cada canción nueva empieza mostrando el inicio
+        }
+        invalidate();
+    }
+
+    @Override
+    public void setSingleLine(boolean singleLine) {
+        super.setSingleLine(singleLine);
+        singleLineMode = singleLine;
+    }
+
+    /**
+     * Activa o desactiva el desplazamiento. Desactivado, un texto largo se corta con "…"
+     * (en la lista, solo la canción que suena se desplaza, como en la web).
+     */
+    public void setCarMarqueeEnabled(boolean enabled) {
+        if (carMarqueeEnabled == enabled) return;
+        carMarqueeEnabled = enabled;
+        setEllipsize(enabled ? null : TextUtils.TruncateAt.END);
         invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (!carMarqueeEnabled || !singleLineMode) {
+            super.onDraw(canvas); // sin desplazamiento, o en varias líneas (modo expandido de la lista)
+            return;
+        }
         CharSequence text = getText();
         TextPaint paint = getPaint();
         float available = getWidth() - getCompoundPaddingLeft() - getCompoundPaddingRight();
@@ -87,6 +116,9 @@ public class CarMarqueeTextView extends TextView {
         paint.drawableState = getDrawableState();
         float left = getCompoundPaddingLeft();
         canvas.save();
+        // Si el texto no entra, TextView desplaza el lienzo por su cuenta (scrollX) para centrarlo
+        // o alinearlo al final según gravity; se anula para dibujar desde el borde visible.
+        canvas.translate(getScrollX(), getScrollY());
         canvas.clipRect(left, 0, getWidth() - getCompoundPaddingRight(), getHeight());
         canvas.drawText(text, 0, text.length(), left - offset, getBaseline(), paint);
         canvas.restore();
