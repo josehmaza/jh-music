@@ -814,14 +814,13 @@ body {
 .pill-eq-bars span {
   width: 5.5px;
   background: rgba(255, 255, 255, 0.25);
-  border-radius: 2.5px;
+  border-radius: 1.5px;
   height: 4px;
   transition: height 0.2s, background 0.3s;
 }
 
 .album-art-container.is-playing .pill-eq-bars span {
-  background: linear-gradient(to top, var(--accent-blue), #a5f3fc);
-  box-shadow: 0 0 6px rgba(0, 210, 255, 0.6);
+  background: linear-gradient(to top, var(--accent-blue), #67e8f9);
 }
 
 .album-art-container.is-playing .pill-eq-bars span:nth-child(1) { animation: pillWave 0.7s infinite alternate ease-in-out; }
@@ -847,8 +846,7 @@ body {
 }
 
 .album-art-container.is-mixing .pill-eq-bars span {
-  background: linear-gradient(to top, #f43f5e, #fbcfe8);
-  box-shadow: 0 0 8px rgba(244, 63, 94, 0.7);
+  background: linear-gradient(to top, #f43f5e, #fb7185);
 }
 
 /* Sound-wave bars para items de la lista (mantiene compatibilidad) */

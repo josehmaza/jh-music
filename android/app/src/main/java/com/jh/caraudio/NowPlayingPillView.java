@@ -26,9 +26,9 @@ public class NowPlayingPillView extends View {
 
     private static final long FRAME_MS = 33;
     private static final int CYAN = Color.rgb(0, 210, 255);
-    private static final int CYAN_LIGHT = Color.rgb(165, 243, 252);   // #a5f3fc
+    private static final int CYAN_LIGHT = Color.rgb(103, 232, 249);   // #67e8f9 (menos lavado, más nítido)
     private static final int MAGENTA = Color.rgb(244, 63, 94);        // #f43f5e
-    private static final int MAGENTA_LIGHT = Color.rgb(251, 207, 232); // #fbcfe8
+    private static final int MAGENTA_LIGHT = Color.rgb(251, 113, 133); // #fb7185 (menos lavado, más nítido)
     private static final int MUTED = Color.rgb(100, 116, 139);        // text-muted
 
     // Duración y retraso de cada barra (pillWave de la web, ida y vuelta)
@@ -141,22 +141,24 @@ public class NowPlayingPillView extends View {
         }
         canvas.drawText(text, textX, textY, textPaint);
 
-        // Barras de ecualizador (alineadas abajo, 4-22 dp)
-        float barW = BAR_W * density;
-        float gap = BAR_GAP * density;
+        // Barras de ecualizador (alineadas abajo, 4-22 dp). Sin sombra y con bordes en píxeles
+        // enteros: en la pantalla de baja densidad el brillo y los bordes a medio píxel las
+        // hacían ver borrosas (sobre todo en magenta).
+        int barW = Math.round(BAR_W * density);
+        int gap = Math.round(BAR_GAP * density);
         float maxH = BAR_MAX_H * density;
         float minH = 4 * density;
-        float barsX = w - PAD_X * density - barsWidth();
-        float barsBottom = h / 2f + maxH / 2f;
+        int barsX = Math.round(w - PAD_X * density - barsWidth());
+        int barsBottom = Math.round(h / 2f + maxH / 2f);
         float tSec = (SystemClock.uptimeMillis() - startMs) / 1000f;
+        barPaint.clearShadowLayer();
         if (active) {
             barPaint.setShader(new LinearGradient(0, barsBottom, 0, barsBottom - maxH, accent, accentLight, Shader.TileMode.CLAMP));
-            barPaint.setShadowLayer(3 * density, 0, 0, withAlpha(accent, mixing ? 0.6f : 0.5f));
         } else {
             barPaint.setShader(null);
             barPaint.setColor(Color.argb(64, 255, 255, 255));
-            barPaint.clearShadowLayer();
         }
+        float corner = 1.5f * density;
         for (int i = 0; i < 5; i++) {
             float barH = minH;
             if (active) {
@@ -168,9 +170,10 @@ public class NowPlayingPillView extends View {
                 float eased = (float) (0.5 - 0.5 * Math.cos(Math.PI * linear));
                 barH = minH + (maxH - minH) * eased;
             }
-            float left = barsX + i * (barW + gap);
-            rect.set(left, barsBottom - barH, left + barW, barsBottom);
-            canvas.drawRoundRect(rect, 2.5f * density, 2.5f * density, barPaint);
+            int left = barsX + i * (barW + gap);
+            int top = barsBottom - Math.round(barH);
+            rect.set(left, top, left + barW, barsBottom);
+            canvas.drawRoundRect(rect, corner, corner, barPaint);
         }
 
         if (active) postInvalidateDelayed(FRAME_MS);
