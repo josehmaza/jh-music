@@ -20,6 +20,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fases 1, 2 y 3 hechas** (Automix: mezcla, mezcla inteligente e igualar volumen). Faltan sin pausas y ajustes |
 | 13 | Ecualizador | 🎵 Audio | Medio | Pendiente |
 | 14 | Extras opcionales | 🟢 Opcional | Variable | Pendiente |
+| 15 | Recortar las franjas negras de las carátulas | 🟡 Usabilidad | Bajo | Pendiente (para más adelante) |
 
 ---
 
@@ -170,6 +171,23 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 **Propuesta.** Al abrir la app, si el volumen supera un límite (por ejemplo 40 %), bajarlo a ese límite. Empezar la primera canción con un fundido de 1–2 segundos.
 
 **Esfuerzo:** bajo.
+
+---
+
+### 15. Recortar las franjas negras de las carátulas
+
+**Problema.** Muchas canciones bajadas de YouTube traen como carátula la miniatura del video, que ya viene con **barras negras arriba y abajo** (o a los costados) dentro de la imagen. La app la muestra tal cual, así que la foto no llena el cuadro y queda una franja oscura (visto en el auto con "A LA VOZ DEL CARNAVAL" de Mary Murillo). Las carátulas sin franjas, como la de DJ MAI, sí llenan el cuadro: no es un error de la app.
+
+**Propuesta.** Al cargar la carátula, en segundo plano (`loadAlbumArt`), detectar las franjas y recortarlas antes de mostrarla:
+- Revisar filas desde arriba y desde abajo (y columnas desde los costados) con unas 32 muestras por línea: es franja si el brillo es muy bajo (menos de ~32 sobre 255) y parejo (poca diferencia entre muestras).
+- Recortar solo si hay franja **en los dos lados opuestos**, de al menos 4 % cada una y de tamaño parecido, como las barras de un video. Así una foto oscura solo arriba (un cielo de noche) no se toca.
+- No recortar si quedaría menos de la mitad de la imagen.
+
+**Riesgo.** Una carátula con un marco negro a propósito podría perderlo. Es poco común.
+
+**Costo en gama baja:** muy bajo: una vez por canción, en segundo plano.
+
+**Esfuerzo:** bajo. El código se llegó a escribir y compilar en la 2.6.1 (sin probarlo en el auto) y se quitó a pedido, para dejarlo para más adelante.
 
 ---
 

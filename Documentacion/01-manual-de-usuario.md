@@ -20,6 +20,10 @@ La pantalla tiene tres zonas:
 - **Explorador (centro):** pestañas, buscador y listas. Se puede ocultar para dejar solo el reproductor.
 - **Reproductor (derecha):** la canción que suena y sus controles. Arriba, a los lados de la carátula, la **lupa** 🔍 (muestra u oculta el explorador) y el botón **Automix** ⇄ (mezcla entre canciones e iguala su volumen).
 
+### Colores de la pantalla
+
+El **fondo de toda la app** (también el explorador) toma el **color de la carátula** de la canción que suena, y cambia con un fundido suave al pasar de canción; en una mezcla de Automix cambia durante la mezcla. El color se oscurece a propósito para que el texto blanco siempre se lea. Sin carátula, el fondo es azul petróleo. Lo que está activo o se puede tocar sigue en **cian** (pestaña elegida, artista, botones).
+
 ## 2. Pestañas
 
 ### Carpetas USB
@@ -51,12 +55,16 @@ Una lista que armas cuando quieras y que después suena entera, seguida, con Aut
 - Un aviso abajo del explorador confirma: "+1 a Mi Mix", "+12 canciones de BACHATAS a Mi Mix", "Ya está en Mi Mix".
 
 **La pestaña `🎧 Mi Mix (N)`:**
-- Arriba, una cabecera con `MI MIX` (y `● SONANDO` si es lo que suena) y un resumen: "8 canciones · 30 min · 2 ✓ ya sonaron".
-- **▶ Reproducir:** suena desde la primera y borra las marcas ✓.
+- Arriba, una cabecera con `MI MIX` (y `● SONANDO` si es lo que suena) y un resumen: "8 canciones · 30 min · 2 sonaron".
+- **▶** (botón cian, solo con el ícono): suena desde la primera y borra las marcas ✓.
 - **Vaciar** (papelera): pide confirmación ahí mismo ("¿Vaciar Mi Mix?" → *Sí, vaciar* / *No*).
 - Las canciones van **numeradas en el orden en que las agregaste**, que es el orden en que suenan. **✕** quita una.
 - **Tocar el número** (o doble toque en la fila): suena Mi Mix desde esa canción.
 - Las que **ya sonaron** quedan en la lista, apagadas, con ✓ verde y "Ya sonó".
+
+**Cómo saber que suena Mi Mix** (desde cualquier pestaña):
+- La pestaña muestra **"Mi Mix (4) ●"**: un punto cian que **late** mientras suena y queda **quieto** en pausa. Si la pestaña Mi Mix está elegida, el punto se ve oscuro sobre el cian.
+- En el reproductor, debajo del título, en lugar de la carpeta dice **"Mi Mix · 2 de 4"**: en qué canción de la lista vas y cuántas son. Así sabes que Siguiente va a la siguiente de Mi Mix y cuánto falta.
 
 **Cómo suena:**
 - En orden, mezclando con Automix si está encendido.
@@ -87,11 +95,14 @@ Mi Mix **se guarda en el radio**: se conserva al cerrar la app, al re-escanear y
 
 Con el buscador vacío, Pistas muestra siempre la carpeta activa, sea cual sea el chip.
 
+**Encontrar la canción que suena:** si moviste la lista y no sabes si la canción quedó arriba o abajo, **toca el chip de la carpeta**: la lista vuelve a ella y deja una canción antes arriba, luego la que suena y luego las demás. Si hay una búsqueda escrita, se ubica en los resultados (si la canción está entre ellos).
+
 ### Búsqueda y cambio de pestaña
 
 - Si buscas en Pistas, vas a otra pestaña sin hacer nada y vuelves, la búsqueda sigue ahí con su texto y su chip.
 - Si en Carpetas abres otra carpeta con `[N ▶]`, la búsqueda anterior se descarta y Pistas muestra la carpeta nueva.
 - Si al volver a Pistas no hay búsqueda pendiente, se elige el chip de la carpeta activa.
+- Al volver a **Pistas** o **Mi Mix**, la lista se ubica en la canción que está sonando (si está en esa lista): una canción antes arriba, luego la que suena y luego las demás.
 
 ### Reproducir desde una búsqueda
 
@@ -123,6 +134,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
   | Sonando | `PLAYING`, barras cian en movimiento | Un haz láser cian gira por el borde |
   | Mezclando (Automix) | `MIXING ⇄`, barras magenta | Además, un haz magenta gira en sentido contrario |
 
+- Alrededor del cuadro hay un **resplandor del color de la canción** (cian si no tiene carátula).
 - **Tocar el cuadro** pausa o reanuda.
 
 ### Título y tarjetas Anterior / Siguiente
@@ -132,6 +144,8 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 - Las tarjetas **Anterior** y **Siguiente** muestran el nombre de esas canciones, con los íconos ⏮ y ⏭ en los extremos. Los nombres largos también se desplazan.
 
 ### Controles del reproductor
+
+Están al estilo de YouTube Music: **play/pausa en un círculo blanco grande** y los demás como **íconos blancos sin caja**. Aleatorio y Repetir encendidos se ven **en cian con un puntito debajo**. Con el explorador oculto, los controles se agrandan. La barra de progreso es una línea fina blanca con un punto blanco.
 
 | Control | Función |
 |---|---|
@@ -147,7 +161,7 @@ Un toque en Siguiente o Anterior espera un instante (0,28 s) para saber si es un
 
 ### Automix: mezcla entre canciones
 
-El botón con **dos curvas cruzadas**, arriba a la derecha del reproductor, activa o desactiva Automix. Encendido se ve en cian. Al tocarlo aparece el aviso "Automix activado: mezcla de 5 s y volumen igualado". La app recuerda si lo dejaste encendido.
+El botón con **dos curvas cruzadas**, arriba a la derecha del reproductor, activa o desactiva Automix. Encendido es un **cuadro cian lleno con brillo** y dice **ON**; apagado es oscuro, en gris, y dice **OFF**. Al tocarlo aparece el aviso "Automix activado: mezcla de 5 s y volumen igualado". La app recuerda si lo dejaste encendido.
 
 Con Automix activado:
 
@@ -241,7 +255,7 @@ Tras escanear, la lista muestra la duración real de cada canción:
 
 - **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema. Si no lo hace, usa **Re-escanear USB**.
 - **Misma ruta en dos pendrives:** dos pendrives con un archivo en la misma ruta interna (por ejemplo `Musica/tema.mp3` en ambos) cuentan como la misma canción en Mi Mix.
-- **Marcas ✓ de Mi Mix:** se borran al cerrar la app o al tocar **▶ Reproducir**.
+- **Marcas ✓ de Mi Mix:** se borran al cerrar la app o al tocar el **▶** de Mi Mix.
 - **Indicaciones del GPS y llamadas:** la música todavía no baja sola cuando habla el navegador ni se pausa con una llamada (ver propuesta #2).
 - **Al prender el auto** la app arranca de cero: no recuerda la última canción ni el punto donde quedó (ver propuesta #1).
 - **Volumen igualado** solo funciona con Automix encendido.

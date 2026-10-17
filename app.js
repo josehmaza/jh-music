@@ -218,6 +218,35 @@ function initApp() {
     }
   ];
 
+  // 47 canciones de prueba más en "Sub subcarpeta 1,1" (en total 50), para ver la maqueta con una
+  // carpeta grande: desplazamiento, A-Z lateral, Mi Mix con muchas canciones, etc.
+  (function addTestTracks() {
+    const titles = ["Amor Prohibido", "Bailando en la Playa", "Corazón Serrano", "Dime Que Sí", "El Ritmo del Barrio",
+      "Fiesta en Quito", "Gotitas de Amor", "Historia de un Amor", "Ilusión Perdida", "Juntos Hasta el Final",
+      "Kilómetro Cero", "La Pollera Colorá", "Mañanitas de Abril", "Noche de Copas", "Ojitos Verdes",
+      "Pasito Tun Tun", "Que Nadie Sepa Mi Sufrir", "Recuerdos de Ipacaraí", "Sabor a Mí", "Tu Abandono",
+      "Una Cerveza", "Vuelve Conmigo", "Ya No Te Creo", "Zapateo Ecuatoriano", "Ay Amor Cuando Hablan las Miradas"];
+    const artists = ["Los Ángeles Azules", "Grupo Niche", "Rodolfo Aicardi", "Jaime Enrique Aymara", "Delfín Quishpe",
+      "Mary Murillo", "Los Hermanos Núñez", "Tierra Canela", "Hipatia Balseca", "Grupo Karu"];
+    for (let i = 0; i < 47; i++) {
+      const sec = 150 + ((i * 37) % 210); // entre 2:30 y 6:00
+      const title = titles[i % titles.length] + (i >= titles.length ? " (Versión " + (Math.floor(i / titles.length) + 1) + ")" : "");
+      sampleTracks.push({
+        id: 1000 + i,
+        title: title,
+        artist: artists[i % artists.length],
+        album: "Prueba 50 canciones",
+        folder: "Sub subcarpeta 1,1",
+        path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
+        duration: String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0"),
+        durationSec: sec,
+        format: "MP3 320K",
+        favorite: false,
+        audioUrl: null
+      });
+    }
+  })();
+
   // Carátulas de ejemplo (SVG generado aquí mismo, sin internet) para ver en la maqueta cómo cambia
   // la carátula en una mezcla de Automix. Orden A-Z: Colegiala → Cumbia del Sol → El Aguacate (sin) → Guaracadita
   function demoCover(colorA, colorB, line1, line2) {
@@ -261,7 +290,7 @@ function initApp() {
     { name: "JH PENDRIVE", path: "/storage/udisk1/JH PENDRIVE/", count: 12, usbSource: "USB 1" },
     { name: "Descargas", path: "/storage/udisk1/Descargas/", count: 2, usbSource: "USB 1" },
     { name: "Subcarpeta 1", path: "/storage/udisk1/Descargas/Subcarpeta 1/", count: 0, usbSource: "USB 1" },
-    { name: "Sub subcarpeta 1,1", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/", count: 3, usbSource: "USB 1" },
+    { name: "Sub subcarpeta 1,1", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/", count: 50, usbSource: "USB 1" },
     { name: "SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/SUbcarpet de prueba jh nombre largo de carpetaa 1,1.1/", count: 2, usbSource: "USB 1" },
     { name: "Sub subcarpeta 2", path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 2/", count: 3, usbSource: "USB 1" },
     { name: "2025-07-18", path: "/storage/udisk1/Descargas/2025-07-18/", count: 29, usbSource: "USB 1" },
@@ -277,7 +306,7 @@ function initApp() {
       isUsbRoot: true,
       usbSource: "USB 1",
       path: "/storage/udisk1/",
-      count: 247,
+      count: 294,
       directCount: 0,
       children: [
         {
@@ -285,7 +314,7 @@ function initApp() {
           name: "Descargas",
           usbSource: "USB 1",
           path: "/storage/udisk1/Descargas/",
-          count: 218,
+          count: 265,
           directCount: 2,
           children: [
             {
@@ -293,7 +322,7 @@ function initApp() {
               name: "Subcarpeta 1",
               usbSource: "USB 1",
               path: "/storage/udisk1/Descargas/Subcarpeta 1/",
-              count: 8,
+              count: 55,
               directCount: 0,
               children: [
                 {
@@ -301,8 +330,8 @@ function initApp() {
                   name: "Sub subcarpeta 1,1",
                   usbSource: "USB 1",
                   path: "/storage/udisk1/Descargas/Subcarpeta 1/Sub subcarpeta 1,1/",
-                  count: 5,
-                  directCount: 3,
+                  count: 52,
+                  directCount: 50,
                   children: [
                     {
                       id: "subsub1_1_1_deep",
@@ -760,6 +789,7 @@ function initApp() {
     currentTrackIndex = Math.max(0, idx);
     mixCurPos = currentTrackIndex;
     updatePreviews();
+    updateTrackSource(currentPlaylist[currentTrackIndex]); // "2 de 4" cambia al agregar o quitar
   }
 
   /** Agrega canciones al final de Mi Mix (sin repetir). Devuelve cuántas se agregaron. */
@@ -855,6 +885,7 @@ function initApp() {
   const MIX_PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
   const MIX_CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17.5 19 7"/></svg>';
   const MIX_REMOVE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  const MIX_TAB_ICON = '<svg class="mix-source-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><line x1="18" y1="13" x2="18" y2="21"/><line x1="14" y1="17" x2="22" y2="17"/></svg>';
 
   function mixToggleButtonHtml(track) {
     const inMix = isInMix(track);
@@ -913,7 +944,7 @@ function initApp() {
     // Actualizar UI
     trackTitle.textContent = track.title;
     trackArtist.textContent = track.artist;
-    trackAlbum.textContent = track.album || track.folder;
+    updateTrackSource(track);
     formatBadge.textContent = (track.format && track.format.includes('K')) ? track.format : `${track.format || 'MP3'} 320K`;
     totalDurationEl.textContent = track.duration;
     currentTimeEl.textContent = "00:00";
@@ -961,6 +992,9 @@ function initApp() {
     updatePreviews();
 
     renderList();
+
+    // Que se vea la fila de la canción que empezó, moviendo la lista lo justo (no si ya se ve)
+    scrollListToRow(trackListContainer.querySelector('.list-item.is-playing'), false);
   }
 
   /** Tarjetas Anterior / Siguiente. En Mi Mix, después de la última dice "Fin de Mi Mix". */
@@ -1103,7 +1137,30 @@ function initApp() {
     }
   }
 
+  /**
+   * Debajo del título: la carpeta de la canción, o "Mi Mix · 2 de 4" si lo que suena es Mi Mix
+   * (así se sabe que Siguiente va a la siguiente de Mi Mix y cuánto falta).
+   */
+  function updateTrackSource(track) {
+    if (!track) return;
+    if (playingFromMix) {
+      trackAlbum.innerHTML = `<span class="mix-source">${MIX_TAB_ICON}Mi Mix</span><span class="mix-source-pos"> · ${currentTrackIndex + 1} de ${currentPlaylist.length}</span>`;
+    } else {
+      trackAlbum.textContent = track.album || track.folder;
+    }
+    updateMixLiveDot();
+  }
+
+  /** Punto de la pestaña Mi Mix: visible mientras la cola es Mi Mix; late si está sonando. */
+  function updateMixLiveDot() {
+    const dot = document.getElementById('mixLiveDot');
+    if (!dot) return;
+    dot.classList.toggle('hidden', !playingFromMix);
+    dot.classList.toggle('is-playing', playingFromMix && isPlaying);
+  }
+
   function updatePlayStateUI() {
+    updateMixLiveDot();
     const pillStatusText = document.getElementById('pillStatusText');
     if (isPlaying) {
       playIcon.classList.add('hidden');
@@ -1929,6 +1986,8 @@ function initApp() {
       if (searchInput.value.trim().length > 0) {
         renderList();
       }
+      // Tocar la carpeta actual lleva la lista a la canción que suena (por si te perdiste moviéndola)
+      if (currentSearchFilter === 'folder') scrollListToPlaying();
     });
   });
 
@@ -2035,10 +2094,54 @@ function initApp() {
         }
       }
       renderList();
+      // Al volver a Pistas o Mi Mix: la lista va a la canción que está sonando (si está en esa lista)
+      if (activeTab !== 'folders') {
+        scrollListToPlaying();
+      }
     });
   });
 
+  /**
+   * Mueve solo la lista (no la página) para que se vea la fila. center: la deja en el medio;
+   * si no, la mueve lo justo y solo si no se ve. (scrollIntoView también movía toda la pantalla.)
+   */
+  function scrollListToRow(row, center) {
+    if (!row) return;
+    const list = trackListContainer;
+    const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    const bottom = top + row.offsetHeight;
+    if (center) {
+      list.scrollTop = Math.max(0, top - (list.clientHeight - row.offsetHeight) / 2);
+    } else if (top < list.scrollTop) {
+      list.scrollTop = top;
+    } else if (bottom > list.scrollTop + list.clientHeight) {
+      list.scrollTop = bottom - list.clientHeight;
+    }
+  }
+
+  /**
+   * Lleva la lista a la canción que suena (si está en la lista): arriba queda una canción antes,
+   * luego la que suena y luego las demás. Al volver a Pistas / Mi Mix o al tocar la carpeta actual.
+   */
+  function scrollListToPlaying() {
+    const row = trackListContainer.querySelector('.list-item.is-playing');
+    if (!row) return;
+    let before = row.previousElementSibling;
+    while (before && !before.classList.contains('list-item')) before = before.previousElementSibling;
+    const list = trackListContainer;
+    const target = before || row;
+    const top = target.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    list.scrollTop = before ? Math.max(0, top - 4) : 0;
+  }
+
+  // Qué lista se está mostrando: si se vuelve a dibujar la misma, se conserva el desplazamiento
+  let lastListViewKey = null;
+
   function renderList() {
+    const viewKey = [activeTab, searchInput.value, currentFolder, currentFolderUsbSource, currentSearchFilter].join('|');
+    const keepScroll = viewKey === lastListViewKey;
+    const previousScroll = trackListContainer.scrollTop;
+    lastListViewKey = viewKey;
     trackListContainer.innerHTML = '';
     updateFilterChipsUI();
 
@@ -2491,7 +2594,7 @@ function initApp() {
       setTimeout(() => {
         const playingFolderEl = trackListContainer.querySelector('.tree-node-item.is-playing-folder');
         if (playingFolderEl) {
-          playingFolderEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          scrollListToRow(playingFolderEl, false);
         }
       }, 70);
     } 
@@ -2616,6 +2719,9 @@ function initApp() {
       });
     }
 
+    // Misma lista: queda donde estaba (antes volvía arriba al empezar una canción)
+    if (keepScroll) trackListContainer.scrollTop = previousScroll;
+
     // Activar marquesina en la canción que está sonando en la lista
     setTimeout(refreshAllMarquees, 70);
     setTimeout(updateWebFastScroller, 80);
@@ -2654,16 +2760,16 @@ function initApp() {
     } else {
       const summary = list.length === 0
         ? 'Vacío'
-        : `${list.length} ${list.length === 1 ? 'canción' : 'canciones'} · ${formatMixLength(list)}${playedCount > 0 ? ` · ${playedCount} ✓ ya sonaron` : ''}`;
+        : `${list.length} ${list.length === 1 ? 'canción' : 'canciones'} · ${formatMixLength(list)}${playedCount > 0 ? ` · ${playedCount} sonaron` : ''}`;
       header.innerHTML = `
         <div class="mix-header-info">
           <span class="mix-header-title">MI MIX${playingFromMix ? ' <span class="mix-live-badge">● SONANDO</span>' : ''}</span>
           <span class="mix-header-sub">${summary}</span>
         </div>
         <div class="mix-header-actions">
-          <button class="btn-mix-action is-primary" id="btnMixPlay" ${list.length === 0 ? 'disabled' : ''}>
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            Reproducir
+          <!-- Solo el ▶ (sin texto): deja espacio para el resumen -->
+          <button class="btn-mix-action is-primary btn-mix-play-icon" id="btnMixPlay" title="Reproducir Mi Mix" ${list.length === 0 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.2-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg>
           </button>
           <button class="btn-mix-action" id="btnMixClear" title="Vaciar Mi Mix" ${list.length === 0 ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
@@ -2831,7 +2937,7 @@ function initApp() {
     // Que se vea la que está sonando
     setTimeout(() => {
       const playingEl = trackListContainer.querySelector('.mix-item.is-playing');
-      if (playingEl) playingEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      scrollListToRow(playingEl, false);
     }, 70);
   }
 

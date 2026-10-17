@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.6.0</span>
+        <span class="version-badge" id="appVersionBadge">v2.6.1</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -102,6 +102,8 @@
               <button class="tab-btn" data-tab="mymix">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><line x1="18" y1="13" x2="18" y2="21"/><line x1="14" y1="17" x2="22" y2="17"/></svg>
                 <span>Mi Mix (<span id="mixCount">0</span>)</span>
+                <!-- Punto cian que late mientras suena Mi Mix (quieto en pausa) -->
+                <span class="tab-live-dot hidden" id="mixLiveDot"></span>
               </button>
             </div>
 

@@ -135,7 +135,8 @@ public class MainActivity extends Activity {
     // Cabecera de Mi Mix
     private View layoutMixHeader;
     private TextView tvMixHeaderTitle, tvMixHeaderSub, tvMixEmpty;
-    private Button btnMixPlay, btnMixConfirmClear, btnMixCancelClear;
+    private ImageButton btnMixPlay;
+    private Button btnMixConfirmClear, btnMixCancelClear;
     private ImageButton btnMixClear;
     private EditText etSearch;
     private ImageButton btnSearchClear;
@@ -1015,6 +1016,8 @@ public class MainActivity extends Activity {
         }
         // Activar marquesina en el título
         tvTrackTitle.setSelected(isPlaying);
+        // Punto de Mi Mix en la pestaña: late si suena, quieto en pausa
+        refreshTabLabels();
     }
 
     // ==========================================
@@ -1190,6 +1193,13 @@ public class MainActivity extends Activity {
             btnFilterFolder.setOnClickListener(v -> {
                 hideKeyboard();
                 setSearchFilter(FILTER_FOLDER);
+                // Tocar la carpeta actual también lleva la lista a la canción que suena (1 antes arriba).
+                // Con búsqueda, después de que lleguen los resultados
+                if (etSearch != null && etSearch.getText().length() > 0) {
+                    scrollToPlayingAfterSearch = true;
+                } else {
+                    scrollToPlayingTrack();
+                }
             });
         }
         if (btnFilterAll != null) {
@@ -1430,6 +1440,75 @@ public class MainActivity extends Activity {
         setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Carpetas USB", currentTab == 0);
         setTabLabel(tabTracks, R.drawable.ic_tab_list, "Pistas (" + currentPlaylist.size() + ")", currentTab == 1);
         setTabLabel(tabMyMix, R.drawable.ic_tab_mymix, "Mi Mix (" + (myMixLoaded ? mixTracks().size() : 0) + ")", currentTab == 2);
+        addMixLiveDot();
+    }
+
+    // Punto de la pestaña Mi Mix mientras suena Mi Mix (opción C): late mientras suena, quieto en pausa.
+    // Grande y sin brillo difuso, para que se vea nítido en la pantalla del radio
+    private GradientDrawable mixLiveDot;
+    private long mixLiveDotStartMs;
+    private final Runnable mixLiveDotPulse = new Runnable() {
+        @Override
+        public void run() {
+            if (mixLiveDot == null || !playingFromMix || !isPlaying) return;
+            float t = ((SystemClock.uptimeMillis() - mixLiveDotStartMs) % 1200) / 1200f;
+            float wave = (float) (0.5 + 0.5 * Math.cos(2 * Math.PI * t)); // 1 → 0 → 1
+            mixLiveDot.setAlpha(Math.round(255 * (0.3f + 0.7f * wave)));
+            if (tabMyMix != null) tabMyMix.invalidate();
+            handler.postDelayed(this, 60);
+        }
+    };
+
+    private void addMixLiveDot() {
+        handler.removeCallbacks(mixLiveDotPulse);
+        mixLiveDot = null;
+        if (tabMyMix == null || !playingFromMix) return;
+        mixLiveDot = new GradientDrawable();
+        mixLiveDot.setShape(GradientDrawable.OVAL);
+        mixLiveDot.setColor(Color.parseColor(currentTab == 2 ? "#0c0e12" : "#38bdf8"));
+        mixLiveDot.setBounds(0, 0, dp(11), dp(11));
+        SpannableStringBuilder ssb = new SpannableStringBuilder(tabMyMix.getText());
+        ssb.append("  ");
+        int start = ssb.length();
+        ssb.append(" ");
+        ssb.setSpan(new CenteredImageSpan(mixLiveDot), start, start + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        tabMyMix.setText(ssb);
+        if (isPlaying) {
+            mixLiveDotStartMs = SystemClock.uptimeMillis();
+            handler.post(mixLiveDotPulse);
+        }
+    }
+
+    /**
+     * Debajo del título: la carpeta de la canción, o "Mi Mix · 2 de 4" si lo que suena es Mi Mix
+     * (así se sabe que Siguiente va a la siguiente de Mi Mix y cuánto falta). Opción 2.
+     */
+    private void updateTrackSource(Track track) {
+        if (tvTrackAlbum == null || track == null) return;
+        if (!playingFromMix) {
+            tvTrackAlbum.setText(track.getAlbum());
+            return;
+        }
+        SpannableStringBuilder ssb = new SpannableStringBuilder(" ");
+        try {
+            Drawable icon = getDrawable(R.drawable.ic_tab_mymix);
+            if (icon != null) {
+                icon = icon.mutate();
+                icon.setColorFilter(Color.parseColor("#cbd5e1"), PorterDuff.Mode.SRC_IN);
+                icon.setBounds(0, 0, dp(17), dp(17));
+                ssb.setSpan(new CenteredImageSpan(icon), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        } catch (Exception ignored) {}
+        ssb.append(" ");
+        int start = ssb.length();
+        ssb.append("Mi Mix");
+        ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#cbd5e1")), start, ssb.length(), 0);
+        ssb.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, ssb.length(), 0);
+        start = ssb.length();
+        ssb.append(" · ").append(String.valueOf(currentTrackIndex + 1)).append(" de ").append(String.valueOf(getQueue().size()));
+        ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#94a3b8")), start, ssb.length(), 0);
+        ssb.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, ssb.length(), 0);
+        tvTrackAlbum.setText(ssb);
     }
 
     private void setTabLabel(Button tab, int iconRes, String text, boolean selected) {
@@ -1625,7 +1704,31 @@ public class MainActivity extends Activity {
             performAsyncSearch(savedTracksQuery, searchVersion);
         } else {
             filterByTab();
+            // Al volver a Pistas o Mi Mix: la lista va a la canción que está sonando (si está en esa lista)
+            if (tabIndex != 0) scrollToPlayingTrack();
         }
+    }
+
+    private boolean scrollToPlayingAfterSearch = false;
+
+    /**
+     * Lleva la lista a la canción que suena, si está en la lista mostrada: arriba queda una canción
+     * antes, luego la que suena y luego las demás. Al volver a la pestaña o al tocar la carpeta actual.
+     */
+    private void scrollToPlayingTrack() {
+        if (listViewContent == null || listViewContent.getAdapter() != trackAdapter) return;
+        Track playing = getCurrentTrack();
+        if (playing == null) return;
+        int index = -1;
+        for (int i = 0; i < displayedTracks.size(); i++) {
+            if (displayedTracks.get(i).getFilePath().equals(playing.getFilePath())) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) return;
+        final int target = index;
+        listViewContent.post(() -> listViewContent.setSelectionFromTop(Math.max(0, target - 1), 0));
     }
 
     private void openFolder(String folderName, String usbSource) {
@@ -2345,6 +2448,10 @@ public class MainActivity extends Activity {
                     tvCurrentPath.setText("🔍 Pistas" + filterLabel + ": \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
                     showDisplayedTracks();
                     updateFastScrollerVisibility();
+                    if (scrollToPlayingAfterSearch) {
+                        scrollToPlayingAfterSearch = false;
+                        scrollToPlayingTrack();
+                    }
                 });
 
             } else {
@@ -2631,6 +2738,7 @@ public class MainActivity extends Activity {
 
         albumArtFadeForPath = smoothUi ? track.getFilePath() : null;
         showTrackOnScreen(track);
+        refreshTabLabels(); // el punto de Mi Mix aparece o se va según lo que suena
         // En la pestaña Mi Mix: marcas ✓, resumen y la que suena fuera de la lista
         if (currentTab == 2 && etSearch != null && etSearch.getText().toString().trim().isEmpty()) showMixTab();
     }
@@ -3064,6 +3172,7 @@ public class MainActivity extends Activity {
         // La siguiente precargada puede haber cambiado: Automix la vuelve a elegir
         autoMixer.invalidateNext();
         updatePreviews();
+        updateTrackSource(getCurrentTrack()); // "2 de 4" cambia al agregar o quitar
     }
 
     /** Reproduce Mi Mix desde una posición. fromStart: botón Reproducir (borra las marcas ✓). */
@@ -3185,7 +3294,7 @@ public class MainActivity extends Activity {
                 int m = Math.round((totalSec % 3600) / 60f);
                 String length = h > 0 ? h + " h " + m + " min" : m + " min";
                 tvMixHeaderSub.setText(list.size() + (list.size() == 1 ? " canción" : " canciones") + " · " + length
-                        + (played > 0 ? " · " + played + " ✓ ya sonaron" : ""));
+                        + (played > 0 ? " · " + played + " sonaron" : ""));
             }
         }
         btnMixPlay.setVisibility(mixConfirmClear ? View.GONE : View.VISIBLE);
@@ -3673,7 +3782,7 @@ public class MainActivity extends Activity {
             tvTrackArtist.setVisibility(View.GONE);
             if (tvTrackArtistDot != null) tvTrackArtistDot.setVisibility(View.GONE);
         }
-        tvTrackAlbum.setText(track.getAlbum());
+        updateTrackSource(track);
         tvFormatBadge.setText(track.getFormat());
         tvHeaderPath.setText("Q hubo jefe 😉");
 

@@ -53,7 +53,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.6.0"
+                android:text="v2.6.1"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -479,18 +479,16 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <Button
+                    <!-- Reproducir Mi Mix: solo el ▶ (sin texto), así el resumen entra completo -->
+                    <ImageButton
                         android:id="@+id/btnMixPlay"
-                        android:layout_width="wrap_content"
+                        android:layout_width="52dp"
                         android:layout_height="42dp"
                         android:background="@drawable/bg_folder_play_btn"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="16dp"
-                        android:text="▶  Reproducir"
-                        android:textAllCaps="false"
-                        android:textColor="#ffffff"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:src="@drawable/ic_mix_play"
+                        android:scaleType="fitCenter"
+                        android:padding="9dp"
+                        android:contentDescription="Reproducir Mi Mix" />
 
                     <ImageButton
                         android:id="@+id/btnMixClear"

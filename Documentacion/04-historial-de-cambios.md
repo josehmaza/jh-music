@@ -2,7 +2,14 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## 2.6.0 — 2026-10-17 (pendiente de commit)
+## 2.6.1 — 2026-10-17
+
+- **Mi Mix:** el botón Reproducir queda solo con ▶ y el resumen dice "2 sonaron", para que entre completo.
+- **Se sabe cuándo suena Mi Mix:** la pestaña Mi Mix muestra un punto cian que late mientras suena (quieto en pausa), y debajo del título dice "Mi Mix · 2 de 4" en lugar de la carpeta.
+- **Al volver a Pistas o Mi Mix**, la lista se ubica en la canción que está sonando: arriba una canción antes, luego la que suena y luego las demás (antes empezaba arriba y había que buscarla).
+- **Tocar el filtro de la carpeta actual** lleva la lista a la canción que suena, ubicada igual: sirve para encontrarla si moviste la lista.
+
+## 2.6.0 — 2026-10-17 (`bf4139a`)
 
 Solo diseño, sin cambios de funcionamiento. La app queda igual que la maqueta web:
 

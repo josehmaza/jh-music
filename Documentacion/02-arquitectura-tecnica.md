@@ -105,6 +105,10 @@ Con Mi Mix sonando, `playNextTrack()`, `playPreviousTrack()` (Anterior en la pri
 
 La pestaña (`showMixTab()`) tiene una cabecera propia (`layoutMixHeader`: resumen, Reproducir, Vaciar con confirmación) y `tvMixEmpty` cuando está vacía. `TrackAdapter.setMixMode(true)` numera por la lista, muestra ✕ y apaga las que ya sonaron; la que suena fuera de la lista va primero con un + (`MixState.isOrphan`). Los botones + de carpetas están en `FolderTreeAdapter` (`onNodeAddMixClick`) y `FolderAdapter` (`OnFolderAddMixListener`). Los avisos cortos son un `TextView` sobre `android.R.id.content` (`showMixToast`).
 
+**Indicar que suena Mi Mix:** `refreshTabLabels()` agrega a la pestaña Mi Mix un punto cian (`addMixLiveDot`, un `GradientDrawable` de 11dp dentro de un `CenteredImageSpan`) mientras `playingFromMix`; con música sonando, `mixLiveDotPulse` le cambia la opacidad cada 60 ms (late). Se refresca en `updatePlaybackStateUI()` y en `onTrackStarted()`. `updateTrackSource()` pone debajo del título "Mi Mix · N de M" (posición en `playQueue`) en lugar del álbum; se actualiza al empezar cada canción y en `syncMixQueue()`.
+
+**Ubicar la canción que suena en la lista:** `scrollToPlayingTrack()` busca la canción en `displayedTracks` y hace `setSelectionFromTop(índice - 1, 0)`: queda una canción antes arriba. Se llama al volver a Pistas o Mi Mix (`selectTab`) y al tocar el chip de la carpeta actual; si hay búsqueda, después de que llegan los resultados (`scrollToPlayingAfterSearch`). En la maqueta web lo mismo hace `scrollListToPlaying()`, y `renderList()` conserva el desplazamiento cuando se vuelve a dibujar la misma lista. La web mueve solo la lista (`scrollListToRow`), no `scrollIntoView`, que también desplazaba toda la pantalla.
+
 ### `reconcileListsAfterRescan()`
 
 Tras un re-escaneo pasa `currentPlaylist` y `playQueue` a los objetos `Track` nuevos (por ruta) y quita los que ya no existen. Si la carpeta activa queda vacía, se limpia. Si la canción que sonaba ya no existe, libera el `MediaPlayer` y detiene la reproducción.

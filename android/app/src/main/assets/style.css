@@ -2838,3 +2838,58 @@ body {
 .btn-toggle-expand.btn-automix:hover {
   border-color: rgba(56, 189, 248, 0.6);
 }
+
+/* Reproducir de Mi Mix: solo el ▶, cuadrado, para que el resumen entre completo */
+.btn-mix-action.btn-mix-play-icon {
+  width: 52px;
+  padding: 0;
+}
+
+.btn-mix-action.btn-mix-play-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Mi Mix sonando: punto cian en la pestaña (opción C). Late mientras suena; quieto en pausa.
+   Grande y sin brillo difuso, para que se vea nítido en la pantalla del radio */
+.tab-live-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #38bdf8;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.tab-btn.active .tab-live-dot {
+  background: #0c0e12;
+}
+
+.tab-live-dot.is-playing {
+  animation: liveDotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+/* Reproductor: "Mi Mix · 2 de 4" en lugar de la carpeta (opción 2) */
+.mix-source {
+  color: #cbd5e1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mix-source-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.mix-source-pos {
+  color: #94a3b8;
+  font-weight: 700;
+}
