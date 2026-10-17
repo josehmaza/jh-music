@@ -13,7 +13,15 @@
 
 ## 2. Generar el APK
 
-Desde `android/`:
+La forma más simple, desde la raíz del repositorio en Git Bash:
+
+```bash
+bash build.sh
+```
+
+`build.sh` fija `JAVA_HOME` en el JDK 11, entra a `android/`, ejecuta `./gradlew clean assembleDebug` y muestra el APK generado.
+
+También se puede hacer a mano, desde `android/`:
 
 ```bash
 # Git Bash
@@ -42,15 +50,17 @@ Hay que cambiar tres lugares:
 
 1. `android/app/build.gradle`:
    ```groovy
-   versionCode 20        // entero: +1 en cada versión
-   versionName "2.0.1"   // lo que se ve y el nombre del APK
+   versionCode 26        // entero: +1 en cada versión
+   versionName "2.5.0"   // lo que se ve y el nombre del APK
    ```
-2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.0.1"` de la barra superior.
-3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.0.1</span>`.
+2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.5.0"` de la barra superior.
+3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.5.0</span>`.
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 
-Luego se compila con `clean assembleDebug` y se hace commit del código y del APK nuevo. Los APK anteriores quedan en el historial de git.
+Luego se compila con `bash build.sh` (o `clean assembleDebug`) y se hace commit del código y del APK nuevo. Los APK anteriores quedan en el historial de git.
+
+Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo en la barra superior de la app.
 
 ## 4. Instalar en el radio
 
@@ -62,7 +72,7 @@ Si después de actualizar sigue apareciendo el ícono anterior, reinicia el radi
 
 ## 5. Convenciones del repositorio
 
-- **Rama:** `master`. El repositorio no tiene remoto configurado.
+- **Ramas:** `master` es la principal; el trabajo de Automix se hace en `hotfix/automix` (también existe `mix`). El repositorio no tiene remoto configurado.
 - **Mensajes de commit:** en español, con prefijo `feat:`, `fix:` o `build:`.
-- **El APK se versiona en git** junto con el código, para tener siempre a mano el de cada versión.
+- **El APK se versiona en git** junto con el código, para tener siempre a mano el de cada versión. Mientras se prueba en el auto, se hacen commits solo del código; el APK se agrega en el commit final de la versión, junto con el borrado del APK anterior.
 - **Simulador web:** si se cambia `index.html`, `app.js` o `style.css` en la raíz, copiarlos también a `android/app/src/main/assets/`.

@@ -12,6 +12,8 @@ import android.os.SystemClock;
  * - Mezcla con curva de igual potencia (cos/sin): el volumen percibido no baja a mitad de la mezcla.
  * - Si la canción termina antes de lo previsto (duración mal informada en MP3 VBR), la siguiente
  *   ya preparada entra al instante.
+ * - Iguala el volumen entre canciones (fase 3, {@link LoudnessLeveler}): la que entra ya llega
+ *   con su corrección; si el análisis llega tarde, se ajusta con una rampa suave al inicio.
  *
  * Todo corre en el hilo principal (Handler); los callbacks de MediaPlayer llegan a ese mismo hilo.
  */
@@ -66,10 +68,13 @@ final class AutoMixer {
     static final int QUICK_FADE_MS = 500;                 // Siguiente / Anterior a mano: cambio suave pero inmediato
     private static final int TICK_MS = 250;
     private static final int FADE_STEP_MS = 50;           // pasos más largos se oyen "escalonados"
+    private static final int GAIN_RAMP_MS = 2000;          // corrección de volumen que llega tarde: rampa suave
+    private static final int LATE_GAIN_WINDOW_MS = 20000;  // pasado esto la canción sigue como está (sin saltos a mitad)
 
     private final Handler handler;
     private final Host host;
     private final AudioAnalyzer analyzer;
+    private final LoudnessLeveler leveler = new LoudnessLeveler();
 
     private boolean enabled = false;
     private String currentPath;          // canción principal (para buscar su análisis)
@@ -87,6 +92,14 @@ final class AutoMixer {
     private int fadeDurationMs;
     private boolean visibleMix = false;  // mezcla automática (se muestra el borde neón); el fundido de Siguiente no
 
+    // Igualar volumen
+    private String pendingGainPath;      // canción que espera su análisis para corregir el volumen
+    private long pendingGainSinceMs;
+    private MediaPlayer rampPlayer;
+    private float rampFromDb;
+    private float rampToDb;
+    private long rampStartMs;
+
     private final Runnable tickRunnable = new Runnable() {
         @Override
         public void run() {
@@ -99,6 +112,13 @@ final class AutoMixer {
         @Override
         public void run() {
             stepFade();
+        }
+    };
+
+    private final Runnable gainRampRunnable = new Runnable() {
+        @Override
+        public void run() {
+            stepGainRamp();
         }
     };
 
@@ -115,7 +135,18 @@ final class AutoMixer {
     /** Empezó a sonar una canción (a mano o por mezcla): analizar su final en segundo plano. */
     void onTrackStarted(Track track) {
         currentPath = track != null ? track.getFilePath() : null;
-        if (enabled) analyzer.request(currentPath);
+        cancelGainRamp();
+        pendingGainPath = null;
+        MediaPlayer current = host.getCurrentPlayer();
+        if (!enabled) {
+            setGainNow(current, 0f); // el reproductor reutilizado puede traer la corrección de otra canción
+            return;
+        }
+        analyzer.request(currentPath);
+        AudioAnalyzer.Result analysis = analyzer.get(currentPath);
+        // Ya analizada (sonó antes o se precargó): su volumen se corrige desde el inicio
+        setGainNow(current, LoudnessLeveler.gainFor(analysis));
+        if (analysis == null) waitForGain(currentPath);
     }
 
     void setEnabled(boolean on) {
@@ -123,10 +154,13 @@ final class AutoMixer {
         handler.removeCallbacks(tickRunnable);
         if (on) {
             analyzer.request(currentPath);
+            waitForGain(currentPath); // la que suena también se iguala, con una rampa suave
             handler.post(tickRunnable);
         } else {
             finishMixNow();
             cancelPreload();
+            pendingGainPath = null;
+            startGainRamp(host.getCurrentPlayer(), 0f); // vuelve a su volumen original, sin salto
         }
     }
 
@@ -209,21 +243,31 @@ final class AutoMixer {
         MediaPlayer current = host.getCurrentPlayer();
         if (current != null) {
             try {
-                current.setVolume(1f, 1f);
+                setPlayerVolume(current, 1f);
             } catch (Exception ignored) {}
         }
     }
 
     void release() {
         handler.removeCallbacks(tickRunnable);
+        cancelGainRamp();
         finishMixNow();
         cancelPreload();
+        leveler.releaseAll();
+    }
+
+    /** La Activity va a liberar este reproductor: soltar su corrección de volumen. */
+    void forgetPlayer(MediaPlayer mp) {
+        if (mp == rampPlayer) cancelGainRamp();
+        leveler.release(mp);
     }
 
     // ------------------------------------------------------------------
 
     private void tick() {
-        if (!enabled || isMixing()) return;
+        if (!enabled) return;
+        checkPendingGain();
+        if (isMixing()) return;
         MediaPlayer current = host.getCurrentPlayer();
         if (current == null || !host.isPlaybackActive()) return;
 
@@ -340,6 +384,8 @@ final class AutoMixer {
             if (nextAnalysis != null && nextAnalysis.contentStartMs >= MIN_SKIP_INTRO_MS) {
                 incoming.seekTo(nextAnalysis.contentStartMs);
             }
+            // Entra ya con su volumen igualado (en silencio, así el cambio no se oye)
+            leveler.setGain(incoming, LoudnessLeveler.gainFor(nextAnalysis));
             incoming.start();
         } catch (Exception e) {
             releaseQuietly(incoming);
@@ -347,8 +393,10 @@ final class AutoMixer {
         }
 
         preloadedFor = null;
-        host.onMixStarted(incoming, next, visible);
+        // Primero el fundido (queda "mezclando") y después el cambio de canción: así, al actualizar
+        // la pantalla, nadie le pone volumen completo a la que entra antes del primer paso del fundido
         beginFade(current, durationMs, visible);
+        host.onMixStarted(incoming, next, visible);
     }
 
     /** Cruza volúmenes entre {@code old} (sale) y el reproductor principal (entra). */
@@ -378,8 +426,8 @@ final class AutoMixer {
         float outVolume = (float) Math.cos(t * Math.PI / 2);
         float inVolume = (float) Math.sin(t * Math.PI / 2);
         try {
-            outgoing.setVolume(outVolume, outVolume);
-            incoming.setVolume(inVolume, inVolume);
+            setPlayerVolume(outgoing, outVolume);
+            setPlayerVolume(incoming, inVolume);
         } catch (Exception ignored) {}
 
         if (t >= 1f) {
@@ -399,9 +447,82 @@ final class AutoMixer {
         MediaPlayer current = host.getCurrentPlayer();
         if (current != null) {
             try {
-                current.setVolume(1f, 1f);
+                setPlayerVolume(current, 1f);
             } catch (Exception ignored) {}
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Igualar volumen (fase 3)
+
+    /** Volumen del reproductor (0-1) aplicándole su corrección de volumen. */
+    private void setPlayerVolume(MediaPlayer mp, float volume) {
+        float v = volume * leveler.volumeFactor(mp);
+        mp.setVolume(v, v);
+    }
+
+    /**
+     * Fija la corrección de volumen. Si no hay mezcla en curso, se aplica ya; durante una mezcla
+     * la aplica el siguiente paso del fundido.
+     */
+    private void setGainNow(MediaPlayer mp, float gainDb) {
+        if (mp == null) return;
+        leveler.setGain(mp, gainDb);
+        if (!isMixing() && mp == host.getCurrentPlayer()) {
+            try {
+                setPlayerVolume(mp, 1f);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /** La canción que suena aún no tiene análisis: corregirla apenas llegue (si es pronto). */
+    private void waitForGain(String path) {
+        pendingGainPath = path;
+        pendingGainSinceMs = SystemClock.uptimeMillis();
+    }
+
+    private void checkPendingGain() {
+        if (pendingGainPath == null) return;
+        if (!pendingGainPath.equals(currentPath)
+                || SystemClock.uptimeMillis() - pendingGainSinceMs > LATE_GAIN_WINDOW_MS) {
+            pendingGainPath = null; // muy tarde: un cambio de volumen a mitad de canción se notaría
+            return;
+        }
+        AudioAnalyzer.Result analysis = analyzer.get(pendingGainPath);
+        if (analysis == null) return;
+        pendingGainPath = null;
+        startGainRamp(host.getCurrentPlayer(), LoudnessLeveler.gainFor(analysis));
+    }
+
+    /** Lleva la corrección del reproductor hasta toDb en 2 s, para que el cambio no se note. */
+    private void startGainRamp(MediaPlayer mp, float toDb) {
+        cancelGainRamp();
+        if (mp == null || Math.abs(leveler.getGain(mp) - toDb) < 0.1f) return;
+        rampPlayer = mp;
+        rampFromDb = leveler.getGain(mp);
+        rampToDb = toDb;
+        rampStartMs = SystemClock.uptimeMillis();
+        handler.post(gainRampRunnable);
+    }
+
+    private void stepGainRamp() {
+        MediaPlayer mp = rampPlayer;
+        if (mp == null || mp != host.getCurrentPlayer()) {
+            rampPlayer = null; // cambió la canción: la nueva trae su propia corrección
+            return;
+        }
+        float t = Math.min(1f, (SystemClock.uptimeMillis() - rampStartMs) / (float) GAIN_RAMP_MS);
+        setGainNow(mp, rampFromDb + (rampToDb - rampFromDb) * t);
+        if (t < 1f) {
+            handler.postDelayed(gainRampRunnable, FADE_STEP_MS);
+        } else {
+            rampPlayer = null;
+        }
+    }
+
+    private void cancelGainRamp() {
+        handler.removeCallbacks(gainRampRunnable);
+        rampPlayer = null;
     }
 
     private void cancelPreload() {
@@ -418,7 +539,8 @@ final class AutoMixer {
         nextReady = false;
     }
 
-    private static void releaseQuietly(MediaPlayer mp) {
+    private void releaseQuietly(MediaPlayer mp) {
+        leveler.release(mp);
         try {
             mp.release();
         } catch (Exception ignored) {}

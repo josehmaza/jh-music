@@ -2267,3 +2267,231 @@ body {
   font-family: var(--font-mono);
   margin-top: 4px;
 }
+
+/* ======================================================== */
+/* MI MIX (reemplaza a Favoritos)                            */
+/* ======================================================== */
+
+/* Botón + / ✓ / ✕ de cada canción: grande para tocarlo manejando */
+.btn-item-mix {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #151922;
+  border: 1.5px solid var(--border-light);
+  color: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-item-mix svg {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-item-mix:active {
+  transform: scale(0.92);
+}
+
+/* Ya está en Mi Mix */
+.btn-item-mix.is-in-mix {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #0c0e12;
+  box-shadow: 0 0 10px var(--accent-blue-glow);
+}
+
+/* Quitar (dentro de Mi Mix) */
+.btn-item-mix.is-remove {
+  color: #94a3b8;
+}
+
+.btn-item-mix.is-remove:hover {
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.5);
+}
+
+/* + de una carpeta, al lado de [N ▶] */
+.btn-folder-addmix {
+  width: 38px;
+  height: 36px;
+  border-radius: 10px;
+  background: #151922;
+  border: 1.5px solid #38bdf8;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: all 0.18s ease;
+}
+
+.btn-folder-addmix svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-folder-addmix:active {
+  transform: scale(0.92);
+}
+
+.btn-folder-addmix + .btn-folder-play {
+  margin-left: 8px;
+}
+
+/* Cabecera de la pestaña Mi Mix */
+.mix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.03));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  flex-shrink: 0;
+}
+
+.mix-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mix-header-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mix-live-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #00d2ff;
+  text-shadow: 0 0 6px rgba(0, 210, 255, 0.5);
+}
+
+.mix-header-sub {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mix-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-mix-action {
+  height: 42px;
+  min-width: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: #151922;
+  border: 1.5px solid var(--border-light);
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-mix-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-mix-action:active {
+  transform: scale(0.95);
+}
+
+.btn-mix-action:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn-mix-action.is-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+}
+
+.btn-mix-action.is-danger {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: #f43f5e;
+  color: #fda4af;
+}
+
+/* Posición en la lista (01, 02...) en lugar del ▶ */
+.mix-position {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+.mix-item .item-icon-wrap svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Ya sonó: queda en la lista, apagada y con ✓ */
+.mix-item.is-played {
+  opacity: 0.5;
+}
+
+.mix-item.is-played .item-icon-wrap {
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.mix-item.is-played .item-title {
+  color: #94a3b8;
+}
+
+/* Aviso corto al pie del explorador */
+.mix-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translate(-50%, 12px);
+  background: rgba(12, 16, 24, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 14px rgba(56, 189, 248, 0.25);
+  color: #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.mix-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

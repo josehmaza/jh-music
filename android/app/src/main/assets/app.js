@@ -383,9 +383,32 @@ function initApp() {
   let currentVolume = 75;
   let previousVolume = 75;
   let isMuted = false;
-  let activeTab = "folders"; // "folders", "playlist", "favorites"
+  let activeTab = "folders"; // "folders", "playlist", "mymix"
   let currentFolder = "Descargas";
   let currentFolderUsbSource = "USB 1";
+  // Lo que muestra Pistas (carpeta activa). Va aparte de la cola (currentPlaylist) para que,
+  // mientras suena Mi Mix, puedas abrir carpetas y agregar canciones sin cortar la lista.
+  let pistasTracks = [...sampleTracks];
+
+  // =================== MI MIX (reemplaza a Favoritos) ===================
+  // Una lista que armas cuando quieras (botón + en cada canción o carpeta) y que después suena
+  // entera, en el orden en que agregaste, con Automix. Como la lista de Automix de Virtual DJ:
+  // - Lo que agregas mientras suena entra al final de la cola en vivo.
+  // - Al terminar la última canción, se detiene.
+  // - Las que ya sonaron quedan en la lista, marcadas con ✓.
+  let myMixIds = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem('jhmusic_mymix') || 'null');
+    if (Array.isArray(saved)) myMixIds = saved;
+  } catch (e) {}
+  if (myMixIds.length === 0) {
+    // Las estrellas de Favoritos pasan a Mi Mix (en la app, la primera vez)
+    myMixIds = sampleTracks.filter(t => t.favorite).map(t => t.id);
+  }
+  const mixPlayedIds = new Set();
+  let playingFromMix = false;  // la cola que suena es Mi Mix
+  let mixCurPos = 0;           // posición de la que suena dentro de Mi Mix
+  let mixConfirmClear = false; // mostrando "¿Vaciar Mi Mix?"
 
   // Audio HTML5 y Sintetizador Web Audio
   const audio = document.getElementById('audioPlayer');
@@ -457,7 +480,7 @@ function initApp() {
     }
     if (!btnAutoMix) return;
     btnAutoMix.classList.toggle('is-active', isAutoMix);
-    btnAutoMix.title = isAutoMix ? "Automix activado: toca para desactivar" : "Automix: mezcla automática entre canciones";
+    btnAutoMix.title = isAutoMix ? "Automix activado: toca para desactivar" : "Automix: mezcla automática e igualar volumen entre canciones";
   }
 
   function autoMixSecondsFor(current, next) {
@@ -569,6 +592,186 @@ function initApp() {
   const treeActions = document.getElementById('treeActions');
   const btnCollapseAllTree = document.getElementById('btnCollapseAllTree');
 
+  // =================== MI MIX: LISTA Y COLA ===================
+  function allTracksPool() {
+    return masterTracks.length > 0 ? masterTracks : sampleTracks;
+  }
+
+  /** Canciones de Mi Mix en el orden en que se agregaron. */
+  function mixTracks() {
+    const byId = new Map(allTracksPool().map(t => [t.id, t]));
+    return myMixIds.map(id => byId.get(id)).filter(Boolean);
+  }
+
+  function isInMix(track) {
+    return !!track && myMixIds.includes(track.id);
+  }
+
+  function saveMix() {
+    try {
+      localStorage.setItem('jhmusic_mymix', JSON.stringify(myMixIds));
+    } catch (e) {}
+  }
+
+  function updateMixTabCount() {
+    const el = document.getElementById('mixCount');
+    if (el) el.textContent = mixTracks().length;
+  }
+
+  /** Muestra lo que muestra Pistas; mientras suena Mi Mix, la cola no se toca. */
+  function setPistasTracks(list) {
+    pistasTracks = list;
+    if (!playingFromMix) currentPlaylist = list;
+  }
+
+  /**
+   * Mientras suena Mi Mix, la cola se rearma con la lista actual (agregar / quitar en vivo).
+   * Si se quitó la que suena, sigue sonando y después viene la que estaba a continuación.
+   */
+  function syncMixQueue() {
+    if (!playingFromMix) return;
+    const cur = currentPlaylist[currentTrackIndex];
+    const list = mixTracks();
+    let idx = cur ? list.findIndex(t => t.id === cur.id) : -1;
+    if (idx < 0 && cur) {
+      idx = Math.min(mixCurPos, list.length);
+      list.splice(idx, 0, cur);
+    }
+    currentPlaylist = list;
+    currentTrackIndex = Math.max(0, idx);
+    mixCurPos = currentTrackIndex;
+    updatePreviews();
+  }
+
+  /** Agrega canciones al final de Mi Mix (sin repetir). Devuelve cuántas se agregaron. */
+  function addToMix(tracks) {
+    let added = 0;
+    tracks.forEach(t => {
+      if (t && !myMixIds.includes(t.id)) {
+        myMixIds.push(t.id);
+        added++;
+      }
+    });
+    if (added > 0) {
+      saveMix();
+      updateMixTabCount();
+      syncMixQueue();
+    }
+    return added;
+  }
+
+  function removeFromMix(track) {
+    myMixIds = myMixIds.filter(id => id !== track.id);
+    mixPlayedIds.delete(track.id);
+    saveMix();
+    updateMixTabCount();
+    syncMixQueue();
+  }
+
+  function clearMix() {
+    myMixIds = [];
+    mixPlayedIds.clear();
+    saveMix();
+    updateMixTabCount();
+    syncMixQueue();
+  }
+
+  /** Reproduce Mi Mix desde una posición. fromStart: botón Reproducir (borra las marcas ✓). */
+  function playMix(position, fromStart) {
+    const list = mixTracks();
+    if (list.length === 0) return;
+    if (fromStart) mixPlayedIds.clear();
+    cancelAutoMix();
+    playingFromMix = true;
+    currentPlaylist = list;
+    loadTrack(Math.max(0, Math.min(position, list.length - 1)), true);
+  }
+
+  /** Siguiente dentro de Mi Mix, o -1 si ya no queda ninguna (la lista se detiene). */
+  function nextMixIndex() {
+    const n = currentPlaylist.length;
+    if (isShuffle) {
+      // En aleatorio: una que todavía no haya sonado
+      const pending = [];
+      for (let i = 0; i < n; i++) {
+        if (i !== currentTrackIndex && !mixPlayedIds.has(currentPlaylist[i].id)) pending.push(i);
+      }
+      return pending.length > 0 ? pending[Math.floor(Math.random() * pending.length)] : -1;
+    }
+    return currentTrackIndex + 1 < n ? currentTrackIndex + 1 : -1;
+  }
+
+  /** Terminó la última canción de Mi Mix: se detiene y queda en pausa al inicio de esa canción. */
+  function finishMix() {
+    cancelAutoMix();
+    stopSimulatedAudio();
+    audio.pause();
+    isPlaying = false;
+    simCurrentSec = 0;
+    if (audio.src) audio.currentTime = 0;
+    progressCurrent.style.width = "0%";
+    currentTimeEl.textContent = "00:00";
+    updatePlayStateUI();
+    showMixToast("Fin de Mi Mix");
+  }
+
+  let mixToastTimer = null;
+  /** Aviso corto al pie del explorador ("+1 a Mi Mix", "Fin de Mi Mix"...). */
+  function showMixToast(text) {
+    let toast = document.getElementById('mixToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'mixToast';
+      toast.className = 'mix-toast';
+      const wrapper = document.querySelector('.track-list-wrapper') || document.body;
+      wrapper.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.classList.add('is-visible');
+    clearTimeout(mixToastTimer);
+    mixToastTimer = setTimeout(() => toast.classList.remove('is-visible'), 1600);
+  }
+
+  /** Botón + / ✓ de cada canción (Pistas y búsquedas). */
+  const MIX_PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  const MIX_CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17.5 19 7"/></svg>';
+  const MIX_REMOVE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+
+  function mixToggleButtonHtml(track) {
+    const inMix = isInMix(track);
+    return `<button class="btn-item-mix ${inMix ? 'is-in-mix' : ''}" title="${inMix ? 'En Mi Mix (toca para quitar)' : 'Agregar a Mi Mix'}">${inMix ? MIX_CHECK_SVG : MIX_PLUS_SVG}</button>`;
+  }
+
+  function bindMixToggleButton(itemEl, track) {
+    const btn = itemEl.querySelector('.btn-item-mix');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      searchInput.blur();
+      if (isInMix(track)) {
+        removeFromMix(track);
+        showMixToast("Quitada de Mi Mix");
+      } else {
+        addToMix([track]);
+        showMixToast(playingFromMix ? "+1 al final de Mi Mix" : "+1 a Mi Mix");
+      }
+      const inMix = isInMix(track);
+      btn.classList.toggle('is-in-mix', inMix);
+      btn.innerHTML = inMix ? MIX_CHECK_SVG : MIX_PLUS_SVG;
+      btn.title = inMix ? 'En Mi Mix (toca para quitar)' : 'Agregar a Mi Mix';
+    });
+  }
+
+  /** Agrega una carpeta entera (sus canciones directas, en orden A-Z). */
+  function addFolderToMix(tracks, folderName) {
+    const added = addToMix(tracks);
+    if (added > 0) {
+      showMixToast(`+${added} ${added === 1 ? 'canción' : 'canciones'} de ${folderName} a Mi Mix`);
+    } else {
+      showMixToast(`${folderName} ya está en Mi Mix`);
+    }
+  }
+
   // =================== RELOJ DE AUTO ===================
   function updateClock() {
     const now = new Date();
@@ -578,6 +781,7 @@ function initApp() {
   }
   setInterval(updateClock, 1000);
   updateClock();
+  updateMixTabCount();
 
   // =================== CARGA Y REPRODUCCIÓN ===================
   function loadTrack(index, autoPlay = true) {
@@ -628,18 +832,34 @@ function initApp() {
       if (autoPlay) startSimulatedAudio();
     }
 
-    // Actualizar Previsualización de canción anterior y siguiente
+    // Mi Mix: la que empieza a sonar queda marcada como "ya sonó"
+    if (playingFromMix) {
+      mixCurPos = currentTrackIndex;
+      mixPlayedIds.add(track.id);
+    }
+
+    updatePreviews();
+
+    renderList();
+  }
+
+  /** Tarjetas Anterior / Siguiente. En Mi Mix, después de la última dice "Fin de Mi Mix". */
+  function updatePreviews() {
     if (currentPlaylist.length > 0) {
       const prevIdx = (currentTrackIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
       const nextIdx = (currentTrackIndex + 1) % currentPlaylist.length;
       const prevTrackObj = currentPlaylist[prevIdx];
       const nextTrackObj = currentPlaylist[nextIdx];
+      const mixEnds = playingFromMix && !isShuffle && currentTrackIndex >= currentPlaylist.length - 1;
 
       if (prevTrackObj && prevTrackTitle) {
         prevTrackTitle.textContent = `${prevTrackObj.title} • ${prevTrackObj.artist}`;
         if (adjPrevCard) adjPrevCard.setAttribute('title', `Anterior: ${prevTrackObj.title} - ${prevTrackObj.artist}`);
       }
-      if (nextTrackObj && nextTrackTitle) {
+      if (mixEnds && nextTrackTitle) {
+        nextTrackTitle.textContent = "■ Fin de Mi Mix";
+        if (adjNextCard) adjNextCard.setAttribute('title', 'Es la última canción de Mi Mix');
+      } else if (nextTrackObj && nextTrackTitle) {
         nextTrackTitle.textContent = `${nextTrackObj.title} • ${nextTrackObj.artist}`;
         if (adjNextCard) adjNextCard.setAttribute('title', `Siguiente: ${nextTrackObj.title} - ${nextTrackObj.artist}`);
       }
@@ -647,8 +867,6 @@ function initApp() {
 
     // Auto-scroll / Marquesina para títulos largos
     refreshAllMarquees();
-
-    renderList();
   }
 
   // =================== AUTO-SCROLL / MARQUESINA PARA TÍTULOS LARGOS ===================
@@ -824,10 +1042,12 @@ function initApp() {
 
       // Automix: al llegar a los últimos segundos, pasar a la siguiente mezclando
       if (isAutoMix && !isMixing && !isRepeat && currentPlaylist.length > 1) {
-        const next = currentPlaylist[(currentTrackIndex + 1) % currentPlaylist.length];
+        // En Mi Mix no se vuelve a empezar: después de la última no hay mezcla (se detiene)
+        const nextIdx = playingFromMix ? nextMixIndex() : pickAutoMixNextIndex();
+        const next = nextIdx >= 0 ? currentPlaylist[nextIdx] : null;
         const mixSec = autoMixSecondsFor(track, next);
         if (mixSec > 0 && maxSec - simCurrentSec <= mixSec) {
-          startAutoMix(pickAutoMixNextIndex(), mixSec);
+          startAutoMix(nextIdx, mixSec);
           return;
         }
       }
@@ -854,6 +1074,15 @@ function initApp() {
 
   function nextTrack() {
     cancelAutoMix();
+    if (playingFromMix) {
+      const idx = nextMixIndex();
+      if (idx < 0) {
+        finishMix(); // era la última de Mi Mix
+      } else {
+        loadTrack(idx, true);
+      }
+      return;
+    }
     if (isShuffle) {
       const rand = Math.floor(Math.random() * currentPlaylist.length);
       loadTrack(rand, true);
@@ -864,8 +1093,8 @@ function initApp() {
 
   function prevTrack() {
     cancelAutoMix();
-    if (simCurrentSec > 3) {
-      // Si ya avanzó más de 3 segundos, reiniciar la pista
+    if (simCurrentSec > 3 || (playingFromMix && currentTrackIndex === 0)) {
+      // Si ya avanzó más de 3 segundos (o es la primera de Mi Mix), reiniciar la pista
       simCurrentSec = 0;
       currentTimeEl.textContent = "00:00";
       progressCurrent.style.width = "0%";
@@ -1678,8 +1907,9 @@ function initApp() {
         } else {
           currentSearchFilter = 'all';
         }
-      } else if (activeTab === 'favorites') {
-        searchInput.placeholder = "Buscar en favoritos...";
+      } else if (activeTab === 'mymix') {
+        mixConfirmClear = false;
+        searchInput.placeholder = "Buscar en Mi Mix...";
         if (currentSearchFilter === 'folder') {
           currentSearchFilter = 'all';
         }
@@ -1749,6 +1979,7 @@ function initApp() {
           folderEl.className = 'list-item';
           const hasFolderMusic = (folder.count || 0) > 0;
           const playBtnHtml = hasFolderMusic ? `
+            <button class="btn-folder-addmix" title="Agregar esta carpeta a Mi Mix">${MIX_PLUS_SVG}</button>
             <button class="btn-folder-play" title="Reproducir inmediatamente esta carpeta">
               <span class="track-count-num">${folder.count}</span>
               <div class="play-circle">
@@ -1773,6 +2004,14 @@ function initApp() {
             ${playBtnHtml}
           `;
 
+          const addMixBtn = folderEl.querySelector('.btn-folder-addmix');
+          if (addMixBtn) {
+            addMixBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              addFolderToMix(tracksOfFolderNode(folder), folder.name);
+            });
+          }
+
           const playBtn = folderEl.querySelector('.btn-folder-play');
           if (playBtn) {
             playBtn.addEventListener('click', (e) => {
@@ -1790,7 +2029,7 @@ function initApp() {
             
             const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
             const folderTracks = allPool.filter(t => t.folder === folder.name);
-            currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+            setPistasTracks(folderTracks.length > 0 ? folderTracks : [...allPool]);
             tabButtons[1].click();
           });
 
@@ -1803,8 +2042,8 @@ function initApp() {
       const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
       let searchPool = allPool;
 
-      if (activeTab === 'favorites') {
-        searchPool = allPool.filter(t => t.favorite);
+      if (activeTab === 'mymix') {
+        searchPool = mixTracks();
       } else {
         if (currentSearchFilter === 'folder' && currentFolder) {
           searchPool = allPool.filter(t => t.folder === currentFolder && isSameUsb(t, currentFolderUsbSource));
@@ -1817,14 +2056,14 @@ function initApp() {
         searchPool = searchPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
       }
 
-      const filterLabel = (activeTab === 'favorites') ? ' [Favoritos]' :
+      const filterLabel = (activeTab === 'mymix') ? ' [Mi Mix]' :
           (currentSearchFilter === 'folder' ? ` [${currentFolder}]` : (currentSearchFilter === 'usb1' ? ' [USB 1]' : (currentSearchFilter === 'usb2' ? ' [USB 2]' : ' [TODO]')));
       crumbFolder.innerHTML = `🔍 Búsqueda${filterLabel}: "<strong>${escapeHtml(rawQuery)}</strong>"`;
       
       const searchResults = searchPool.filter(t => trackMatchesTokens(t, tokens));
       searchResults.sort((a, b) => getTrackRelevance(b, rawQuery, normQuery, tokens) - getTrackRelevance(a, rawQuery, normQuery, tokens));
 
-      songCountEl.textContent = searchResults.length;
+      if (activeTab !== 'mymix') songCountEl.textContent = searchResults.length;
 
       if (searchResults.length === 0) {
         trackListContainer.innerHTML = `
@@ -1877,9 +2116,7 @@ function initApp() {
           </div>
           <div class="item-right">
             <span class="item-duration">${track.duration}</span>
-            <button class="btn-item-fav ${track.favorite ? 'is-fav' : ''}" title="Marcar Favorito">
-              <svg viewBox="0 0 24 24" fill="${track.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
+            ${mixToggleButtonHtml(track)}
           </div>
         `;
 
@@ -1889,14 +2126,21 @@ function initApp() {
         playBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
-          
+
+          // Búsqueda dentro de Mi Mix: suena Mi Mix desde esa canción
+          if (activeTab === 'mymix') {
+            playMix(mixTracks().findIndex(t => t.id === track.id), false);
+            return;
+          }
+
           // 1. Setear la carpeta actual a la carpeta de la canción seleccionada
           currentFolder = track.folder;
           currentFolderUsbSource = track.usbSource || (track.path && track.path.toLowerCase().includes('udisk2') ? 'USB 2' : 'USB 1');
 
           // 2. Cargar en currentPlaylist todas las canciones de esa carpeta
           const folderTracks = allPool.filter(t => t.folder === track.folder && (track.usbSource ? t.usbSource === track.usbSource : true));
-          currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+          playingFromMix = false; // deja Mi Mix: ahora suena la carpeta de la canción
+          setPistasTracks(folderTracks.length > 0 ? folderTracks : [...allPool]);
 
           // 3. Índice de la pista en esa carpeta
           const realFolderIdx = currentPlaylist.findIndex(t => t.id === track.id);
@@ -1961,14 +2205,8 @@ function initApp() {
           }
         });
 
-        // Click en favorito
-        const favBtn = itemEl.querySelector('.btn-item-fav');
-        favBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          track.favorite = !track.favorite;
-          favBtn.classList.toggle('is-fav', track.favorite);
-          favBtn.querySelector('svg').setAttribute('fill', track.favorite ? 'currentColor' : 'none');
-        });
+        // Botón + / ✓ de Mi Mix
+        bindMixToggleButton(itemEl, track);
 
         trackListContainer.appendChild(itemEl);
       });
@@ -2016,6 +2254,7 @@ function initApp() {
         let playBtnHtml = '';
         if (hasDirectMusic) {
           playBtnHtml = `
+            <button class="btn-folder-addmix" title="Agregar ${escapeHtml(node.name)} a Mi Mix">${MIX_PLUS_SVG}</button>
             <button class="btn-folder-play" title="Reproducir música de ${escapeHtml(node.name)}">
               <span class="track-count-num">${directTracksCount}</span>
               <div class="play-circle">
@@ -2064,6 +2303,15 @@ function initApp() {
           ${playBtnHtml}
         `;
 
+        // + : agregar la carpeta entera a Mi Mix
+        const addMixBtn = nodeEl.querySelector('.btn-folder-addmix');
+        if (addMixBtn) {
+          addMixBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            addFolderToMix(tracksOfFolderNode(node), node.name);
+          });
+        }
+
         // Click en botón Play [ N ▶ ] (Solo si la carpeta tiene canciones directas)
         const playBtn = nodeEl.querySelector('.btn-folder-play');
         if (playBtn) {
@@ -2098,8 +2346,8 @@ function initApp() {
           });
           if (folderTracks.length > 0) {
             sortTracksAlphabetically(folderTracks);
-            currentPlaylist = folderTracks;
-            songCountEl.textContent = currentPlaylist.length;
+            setPistasTracks(folderTracks);
+            songCountEl.textContent = pistasTracks.length;
           }
 
           renderList();
@@ -2127,16 +2375,14 @@ function initApp() {
         }
       }, 70);
     } 
-    else if (activeTab === 'playlist' || activeTab === 'favorites') {
-      let filtered = currentPlaylist;
+    else if (activeTab === 'mymix') {
+      renderMixTab();
+    }
+    else if (activeTab === 'playlist') {
+      let filtered = pistasTracks;
       const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
 
-      if (activeTab === 'favorites') {
-        let favPool = allPool.filter(t => t.favorite);
-        sortTracksAlphabetically(favPool);
-        filtered = favPool;
-        crumbFolder.textContent = `Mis Favoritos (${filtered.length})`;
-      } else {
+      {
         if (currentSearchFilter === 'usb1') {
           filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
           crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
@@ -2147,7 +2393,7 @@ function initApp() {
           filtered = [...allPool];
           crumbFolder.textContent = `Todas las pistas (${filtered.length})`;
         } else {
-          filtered = currentPlaylist;
+          filtered = pistasTracks;
           const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
           crumbFolder.textContent = `${usbTag}${currentFolder} (${filtered.length})`;
         }
@@ -2186,9 +2432,7 @@ function initApp() {
           </div>
           <div class="item-right">
             <span class="item-duration">${track.duration}</span>
-            <button class="btn-item-fav ${track.favorite ? 'is-fav' : ''}" title="Marcar Favorito">
-              <svg viewBox="0 0 24 24" fill="${track.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
+            ${mixToggleButtonHtml(track)}
           </div>
         `;
 
@@ -2198,6 +2442,11 @@ function initApp() {
         playBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           searchInput.blur();
+          if (playingFromMix) {
+            // Tocar una canción de Pistas deja Mi Mix: ahora suena esta lista
+            playingFromMix = false;
+            currentPlaylist = filtered;
+          }
           const realIdx = currentPlaylist.findIndex(t => t.id === track.id);
           loadTrack(realIdx >= 0 ? realIdx : idx, true);
         });
@@ -2240,15 +2489,8 @@ function initApp() {
           }
         });
 
-        // Click en favorito
-        const favBtn = itemEl.querySelector('.btn-item-fav');
-        favBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          track.favorite = !track.favorite;
-          favBtn.classList.toggle('is-fav', track.favorite);
-          favBtn.querySelector('svg').setAttribute('fill', track.favorite ? 'currentColor' : 'none');
-          if (activeTab === 'favorites') renderList();
-        });
+        // Botón + / ✓ de Mi Mix
+        bindMixToggleButton(itemEl, track);
 
         trackListContainer.appendChild(itemEl);
       });
@@ -2257,6 +2499,220 @@ function initApp() {
     // Activar marquesina en la canción que está sonando en la lista
     setTimeout(refreshAllMarquees, 70);
     setTimeout(updateWebFastScroller, 80);
+  }
+
+  // =================== PESTAÑA MI MIX ===================
+  /** Minutos totales para el resumen ("12 canciones · 48 min"). */
+  function formatMixLength(tracks) {
+    const totalSec = tracks.reduce((sum, t) => sum + (t.durationSec || 0), 0);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.round((totalSec % 3600) / 60);
+    return h > 0 ? `${h} h ${m} min` : `${m} min`;
+  }
+
+  function renderMixTab() {
+    const list = mixTracks();
+    updateMixTabCount();
+    crumbFolder.textContent = `Mi Mix (${list.length})`;
+
+    // Cabecera: resumen + Reproducir / Vaciar
+    const header = document.createElement('div');
+    header.className = 'mix-header';
+    const playingNowId = playingFromMix ? currentPlaylist[currentTrackIndex]?.id : null;
+    const playedCount = list.filter(t => mixPlayedIds.has(t.id) && t.id !== playingNowId).length;
+    if (mixConfirmClear) {
+      header.innerHTML = `
+        <div class="mix-header-info">
+          <span class="mix-header-title">¿Vaciar Mi Mix?</span>
+          <span class="mix-header-sub">Se quitan las ${list.length}. Lo que suena sigue.</span>
+        </div>
+        <div class="mix-header-actions">
+          <button class="btn-mix-action is-danger" id="btnMixConfirmClear">Sí, vaciar</button>
+          <button class="btn-mix-action" id="btnMixCancelClear">No</button>
+        </div>
+      `;
+    } else {
+      const summary = list.length === 0
+        ? 'Vacío'
+        : `${list.length} ${list.length === 1 ? 'canción' : 'canciones'} · ${formatMixLength(list)}${playedCount > 0 ? ` · ${playedCount} ✓ ya sonaron` : ''}`;
+      header.innerHTML = `
+        <div class="mix-header-info">
+          <span class="mix-header-title">MI MIX${playingFromMix ? ' <span class="mix-live-badge">● SONANDO</span>' : ''}</span>
+          <span class="mix-header-sub">${summary}</span>
+        </div>
+        <div class="mix-header-actions">
+          <button class="btn-mix-action is-primary" id="btnMixPlay" ${list.length === 0 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Reproducir
+          </button>
+          <button class="btn-mix-action" id="btnMixClear" title="Vaciar Mi Mix" ${list.length === 0 ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      `;
+    }
+    trackListContainer.appendChild(header);
+
+    const btnPlay = header.querySelector('#btnMixPlay');
+    if (btnPlay) btnPlay.addEventListener('click', () => playMix(0, true));
+    const btnClear = header.querySelector('#btnMixClear');
+    if (btnClear) btnClear.addEventListener('click', () => { mixConfirmClear = true; renderList(); });
+    const btnConfirm = header.querySelector('#btnMixConfirmClear');
+    if (btnConfirm) btnConfirm.addEventListener('click', () => {
+      mixConfirmClear = false;
+      clearMix();
+      showMixToast("Mi Mix vacío");
+      renderList();
+    });
+    const btnCancel = header.querySelector('#btnMixCancelClear');
+    if (btnCancel) btnCancel.addEventListener('click', () => { mixConfirmClear = false; renderList(); });
+
+    // La que suena ya no está en la lista (se quitó o se vació Mi Mix): sigue sonando y se muestra
+    // arriba, para que se entienda qué suena y que lo nuevo entra después de ella
+    const orphan = playingFromMix ? currentPlaylist[currentTrackIndex] : null;
+    if (orphan && !isInMix(orphan)) {
+      const orphanEl = document.createElement('div');
+      orphanEl.className = 'list-item mix-item is-playing mix-orphan';
+      orphanEl.innerHTML = `
+        <div class="item-left">
+          <div class="item-icon-wrap">
+            ${isPlaying ? `
+              <div class="sound-wave-bars" style="height:14px; gap:2px;">
+                <span style="height:12px;background:#0c0e12"></span>
+                <span style="height:8px;background:#0c0e12"></span>
+                <span style="height:14px;background:#0c0e12"></span>
+              </div>` : `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;"><path d="M8 5v14l11-7z"/></svg>`}
+          </div>
+          <div class="item-info">
+            <div class="item-title-wrap">
+              <span class="item-title">${orphan.title}</span>
+            </div>
+            <div class="item-subtitle">
+              <span class="path-text">Sonando · ya no está en Mi Mix</span>
+            </div>
+          </div>
+        </div>
+        <div class="item-right">
+          <span class="item-duration">${orphan.duration}</span>
+          ${mixToggleButtonHtml(orphan)}
+        </div>
+      `;
+      // + : volver a agregarla en su lugar (no al final, para no saltarse las que venían después)
+      orphanEl.querySelector('.btn-item-mix').addEventListener('click', (e) => {
+        e.stopPropagation();
+        myMixIds.splice(Math.min(mixCurPos, myMixIds.length), 0, orphan.id);
+        saveMix();
+        updateMixTabCount();
+        syncMixQueue();
+        showMixToast("Vuelve a Mi Mix");
+        renderList();
+      });
+      trackListContainer.appendChild(orphanEl);
+    }
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-search-box';
+      empty.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="empty-icon"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><line x1="18" y1="13" x2="18" y2="21"/><line x1="14" y1="17" x2="22" y2="17"/></svg>
+        <div class="empty-title">Tu Mi Mix está vacío</div>
+        <div class="empty-desc">${orphan && !isInMix(orphan)
+          ? 'Lo que agregues con <strong>+</strong> sonará después de la canción actual. Si no agregas nada, la música se detiene al terminar.'
+          : 'Toca <strong>+</strong> en una canción, o en una carpeta para agregarla entera. Después reprodúcelo y suena todo seguido con Automix.'}</div>
+      `;
+      trackListContainer.appendChild(empty);
+      return;
+    }
+
+    const playingId = currentPlaylist[currentTrackIndex]?.id;
+    list.forEach((track, position) => {
+      const isCurrent = playingFromMix && playingId === track.id;
+      const wasPlayed = !isCurrent && mixPlayedIds.has(track.id);
+      const itemEl = document.createElement('div');
+      itemEl.className = `list-item mix-item ${isCurrent ? 'is-playing' : ''} ${wasPlayed ? 'is-played' : ''}`;
+
+      let iconHtml;
+      if (isCurrent && isPlaying) {
+        iconHtml = `
+          <div class="sound-wave-bars" style="height:14px; gap:2px;">
+            <span style="height:12px;background:#0c0e12"></span>
+            <span style="height:8px;background:#0c0e12"></span>
+            <span style="height:14px;background:#0c0e12"></span>
+          </div>`;
+      } else if (wasPlayed) {
+        iconHtml = MIX_CHECK_SVG; // ya sonó
+      } else {
+        iconHtml = `<span class="mix-position">${String(position + 1).padStart(2, '0')}</span>`;
+      }
+
+      itemEl.innerHTML = `
+        <div class="item-left">
+          <div class="item-icon-wrap">${iconHtml}</div>
+          <div class="item-info">
+            <div class="item-title-wrap">
+              <span class="item-title">${track.title}</span>
+            </div>
+            <div class="item-subtitle">
+              ${getStorageBadgeHtml(track.path)}
+              <span class="path-text">${wasPlayed ? 'Ya sonó • ' : ''}${track.artist} • ${track.album || track.folder}</span>
+            </div>
+          </div>
+        </div>
+        <div class="item-right">
+          <span class="item-duration">${track.duration}</span>
+          <button class="btn-item-mix is-remove" title="Quitar de Mi Mix">${MIX_REMOVE_SVG}</button>
+        </div>
+      `;
+
+      // Número / ícono: reproducir Mi Mix desde esta canción
+      const playBtn = itemEl.querySelector('.item-icon-wrap');
+      playBtn.setAttribute('title', 'Reproducir Mi Mix desde aquí');
+      playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchInput.blur();
+        playMix(position, false);
+      });
+
+      // Texto: 1 toque ver nombre completo, 2 toques reproducir (igual que en Pistas)
+      const infoEl = itemEl.querySelector('.item-info');
+      let clickCount = 0;
+      let clickTimer = null;
+      infoEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchInput.blur();
+        clickCount++;
+        if (clickCount === 1) {
+          clickTimer = setTimeout(() => {
+            clickCount = 0;
+            clickTimer = null;
+            const wasExpanded = itemEl.classList.contains('is-expanded');
+            trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => el.classList.remove('is-expanded'));
+            if (!wasExpanded) itemEl.classList.add('is-expanded');
+          }, 280);
+        } else {
+          if (clickTimer) clearTimeout(clickTimer);
+          clickTimer = null;
+          clickCount = 0;
+          playBtn.click();
+        }
+      });
+
+      // ✕: quitar de Mi Mix
+      itemEl.querySelector('.btn-item-mix').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFromMix(track);
+        showMixToast("Quitada de Mi Mix");
+        renderList();
+      });
+
+      trackListContainer.appendChild(itemEl);
+    });
+
+    // Que se vea la que está sonando
+    setTimeout(() => {
+      const playingEl = trackListContainer.querySelector('.mix-item.is-playing');
+      if (playingEl) playingEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 70);
   }
 
   // =================== FASTSCROLLER TÁCTIL ERGONÓMICO Y BURBUJA A-Z ===================
@@ -2386,7 +2842,8 @@ function initApp() {
   }
 
   // =================== GESTIÓN Y REPRODUCCIÓN DEL ÁRBOL JERÁRQUICO ===================
-  function playFolderTree(node) {
+  /** Canciones directas de una carpeta del árbol (o de un resultado de búsqueda de carpetas), A-Z. */
+  function tracksOfFolderNode(node) {
     const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
     const nodeUsb = node.usbSource || (node.path && node.path.includes('udisk2') ? 'USB 2' : 'USB 1');
     let folderTracks = allPool.filter(t => {
@@ -2405,13 +2862,19 @@ function initApp() {
     }
 
     sortTracksAlphabetically(folderTracks);
+    return folderTracks;
+  }
 
-    currentPlaylist = folderTracks.length > 0 ? folderTracks : [...allPool];
+  function playFolderTree(node) {
+    const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
+    const folderTracks = tracksOfFolderNode(node);
+
+    setPistasTracks(folderTracks.length > 0 ? folderTracks : [...allPool]);
     currentFolder = node.name;
     currentFolderUsbSource = node.usbSource || (node.path && node.path.includes('udisk2') ? 'USB 2' : 'USB 1');
     const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';
     crumbFolder.textContent = `${usbTag}${node.name}`;
-    songCountEl.textContent = currentPlaylist.length;
+    songCountEl.textContent = pistasTracks.length;
 
     // Abrir lista de pistas mostrando las canciones de la carpeta seleccionada (sin autoreproducir a pedido de Hernan)
     tabButtons[1].click();
@@ -2542,6 +3005,8 @@ function initApp() {
         };
       });
       masterTracks = [...currentPlaylist];
+      pistasTracks = currentPlaylist;
+      playingFromMix = false;
       currentFolder = "Archivos USB";
       songCountEl.textContent = currentPlaylist.length;
       tabButtons[1].click();
@@ -2670,6 +3135,9 @@ function initApp() {
     sortTracksAlphabetically(tracks);
     masterTracks = [...tracks];
     currentPlaylist = tracks;
+    pistasTracks = tracks;
+    playingFromMix = false;
+    updateMixTabCount();
 
     // Extraer todas las carpetas únicas de ambos pendrives
     const foldersMap = {};

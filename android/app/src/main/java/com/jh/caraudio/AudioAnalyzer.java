@@ -28,7 +28,10 @@ import java.util.concurrent.Executors;
  * - Fin de la parte fuerte: dónde la canción ya bajó claramente de volumen (fade-out),
  *   para empezar la mezcla ahí y no cuando ya casi no se oye.
  *
- * Decodifica solo los primeros 10 s y los últimos 25 s, con el decodificador por SOFTWARE de
+ * - Sonoridad: qué tan fuerte se oye la canción (aprox. LUFS, como ReplayGain 2.0 / EBU R128),
+ *   para igualar el volumen entre canciones.
+ *
+ * Decodifica solo los primeros 10 s, 10 s del medio y los últimos 25 s, con el decodificador por SOFTWARE de
  * Android (los radios de gama baja tienen pocos decodificadores por hardware y la música los
  * necesita), en un hilo de baja prioridad y de a una canción por vez. Si algo falla, el
  * resultado queda como "sin análisis" y Automix usa la mezcla simple.
@@ -40,13 +43,15 @@ final class AudioAnalyzer {
         final int contentStartMs;  // fin del silencio inicial
         final int contentEndMs;    // inicio del silencio final
         final int loudEndMs;       // último momento con volumen "normal" antes del final
-        final float referenceDb;   // nivel de la parte fuerte del final (para igualar volumen más adelante)
+        final float referenceDb;   // nivel de la parte fuerte del final (detección de fade-out)
+        final float loudnessDb;    // sonoridad de la canción en LUFS aprox. (igualar volumen); NaN si no se pudo medir
 
-        Result(int contentStartMs, int contentEndMs, int loudEndMs, float referenceDb) {
+        Result(int contentStartMs, int contentEndMs, int loudEndMs, float referenceDb, float loudnessDb) {
             this.contentStartMs = contentStartMs;
             this.contentEndMs = contentEndMs;
             this.loudEndMs = loudEndMs;
             this.referenceDb = referenceDb;
+            this.loudnessDb = loudnessDb;
         }
     }
 
@@ -57,12 +62,13 @@ final class AudioAnalyzer {
     private static final int SMOOTH_WINDOWS = 10; // promedio de 1 s para ignorar golpes sueltos
     private static final int HEAD_MS = 10000;
     private static final int TAIL_MS = 25000;
+    private static final int MID_MS = 10000;   // tramo del medio: solo para medir la sonoridad
     private static final int MAX_CONTENT_START_MS = 8000; // no saltar más de 8 s de "silencio" inicial
     private static final long MAX_ANALYSIS_MS = 10000;     // tiempo límite por canción
     private static final int CACHE_SIZE = 300;
 
     /** Marca de análisis fallido: evita reintentar la misma canción una y otra vez. */
-    private static final Result FAILED = new Result(0, 0, 0, 0f);
+    private static final Result FAILED = new Result(0, 0, 0, 0f, Float.NaN);
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(() -> {
@@ -120,6 +126,7 @@ final class AudioAnalyzer {
     private static final class Levels {
         final List<Float> db = new ArrayList<>();
         final List<Integer> startMs = new ArrayList<>();
+        final List<Double> weightedPower = new ArrayList<>(); // potencia con ponderación K (sonoridad)
     }
 
     private static Result analyze(String path) throws Exception {
@@ -155,14 +162,27 @@ final class AudioAnalyzer {
             Levels head = decodeRange(extractor, codec, 0, HEAD_MS * 1000L, pcm, deadline);
             if (head == null) return null;
 
+            long tailStartUs = Math.max(HEAD_MS * 1000L, durationUs - TAIL_MS * 1000L);
+
+            // Un tramo del medio (solo si la canción es larga): el inicio y el final suelen ser más
+            // suaves que el cuerpo de la canción, y sin él la sonoridad saldría baja
+            Levels mid = null;
+            long midStartUs = durationUs / 2 - MID_MS * 500L;
+            if (midStartUs >= HEAD_MS * 1000L && midStartUs + MID_MS * 1000L <= tailStartUs) {
+                codec.flush();
+                extractor.seekTo(midStartUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+                mid = decodeRange(extractor, codec, midStartUs, midStartUs + MID_MS * 1000L, pcm, deadline);
+                if (mid == null) return null;
+            }
+
             // Final de la canción
             codec.flush();
-            long tailStartUs = Math.max(HEAD_MS * 1000L, durationUs - TAIL_MS * 1000L);
             extractor.seekTo(tailStartUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
             Levels tail = decodeRange(extractor, codec, tailStartUs, Long.MAX_VALUE, pcm, deadline);
             if (tail == null || tail.db.isEmpty()) return null;
 
-            return buildResult(head, tail, (int) (tailStartUs / 1000));
+            float loudness = gatedLoudness(head, mid, tail);
+            return buildResult(head, tail, (int) (tailStartUs / 1000), loudness);
         } finally {
             if (codec != null) {
                 try {
@@ -203,6 +223,9 @@ final class AudioAnalyzer {
         int currentWindow = -1;
         double sumSquares = 0;
         long samples = 0;
+        double weightedSum = 0;   // suma de la potencia ponderada de todos los canales
+        long frames = 0;
+        KWeighting kFilter = null;
 
         while (true) {
             if (SystemClock.uptimeMillis() > deadline || Thread.currentThread().isInterrupted()) return null;
@@ -235,8 +258,11 @@ final class AudioAnalyzer {
                     outBuffer.limit(info.offset + info.size);
                     ShortBuffer shorts = outBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
                     int channels = Math.max(1, pcm[1]);
-                    int frames = shorts.remaining() / channels;
-                    for (int frame = 0; frame < frames; frame++) {
+                    if (kFilter == null || !kFilter.matches(pcm[0], channels)) {
+                        kFilter = new KWeighting(Math.max(8000, pcm[0]), channels);
+                    }
+                    int bufferFrames = shorts.remaining() / channels;
+                    for (int frame = 0; frame < bufferFrames; frame++) {
                         long timeUs = info.presentationTimeUs + frame * 1000000L / Math.max(1, pcm[0]);
                         if (timeUs < startUs) {
                             shorts.position(shorts.position() + channels);
@@ -246,35 +272,141 @@ final class AudioAnalyzer {
                         int window = (int) ((timeUs - startUs) / windowUs);
                         if (window != currentWindow) {
                             if (currentWindow >= 0 && samples > 0) {
-                                addWindow(levels, startUs, currentWindow, sumSquares, samples);
+                                addWindow(levels, startUs, currentWindow, sumSquares, samples, weightedSum, frames);
                             }
                             currentWindow = window;
                             sumSquares = 0;
                             samples = 0;
+                            weightedSum = 0;
+                            frames = 0;
                         }
                         for (int c = 0; c < channels; c++) {
                             double s = shorts.get() / 32768.0;
                             sumSquares += s * s;
                             samples++;
+                            double k = kFilter.process(c, s);
+                            weightedSum += k * k;
                         }
+                        frames++;
                     }
                 }
                 codec.releaseOutputBuffer(out, false);
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break;
             }
         }
-        if (currentWindow >= 0 && samples > 0) addWindow(levels, startUs, currentWindow, sumSquares, samples);
+        if (currentWindow >= 0 && samples > 0) {
+            addWindow(levels, startUs, currentWindow, sumSquares, samples, weightedSum, frames);
+        }
         return levels;
     }
 
-    private static void addWindow(Levels levels, long startUs, int window, double sumSquares, long samples) {
+    /**
+     * Ponderación K de ITU-R BS.1770 (la que usan EBU R128 y ReplayGain 2.0): resta peso a los bajos
+     * y suma a los agudos, como el oído. Sin ella, una cumbia o un reguetón con mucho bajo
+     * parecería más fuerte de lo que se oye. Dos filtros biquad por canal: muy poco cálculo.
+     * Coeficientes para cualquier frecuencia de muestreo (fórmulas de libebur128).
+     */
+    private static final class KWeighting {
+        private final int sampleRate;
+        private final int channels;
+        private final double sb0, sb1, sb2, sa1, sa2; // etapa 1: realce de agudos
+        private final double hb0, hb1, hb2, ha1, ha2; // etapa 2: filtro pasa altos
+        private final double[] z1, z2, z3, z4;
+
+        KWeighting(int sampleRate, int channels) {
+            this.sampleRate = sampleRate;
+            this.channels = channels;
+            double fs = sampleRate;
+
+            double f0 = 1681.974450955533;
+            double gain = 3.999843853973347;
+            double q = 0.7071752369554196;
+            double k = Math.tan(Math.PI * f0 / fs);
+            double vh = Math.pow(10.0, gain / 20.0);
+            double vb = Math.pow(vh, 0.4996667741545416);
+            double a0 = 1.0 + k / q + k * k;
+            sb0 = (vh + vb * k / q + k * k) / a0;
+            sb1 = 2.0 * (k * k - vh) / a0;
+            sb2 = (vh - vb * k / q + k * k) / a0;
+            sa1 = 2.0 * (k * k - 1.0) / a0;
+            sa2 = (1.0 - k / q + k * k) / a0;
+
+            f0 = 38.13547087602444;
+            q = 0.5003270373238773;
+            k = Math.tan(Math.PI * f0 / fs);
+            double d = 1.0 + k / q + k * k;
+            hb0 = 1.0;
+            hb1 = -2.0;
+            hb2 = 1.0;
+            ha1 = 2.0 * (k * k - 1.0) / d;
+            ha2 = (1.0 - k / q + k * k) / d;
+
+            z1 = new double[channels];
+            z2 = new double[channels];
+            z3 = new double[channels];
+            z4 = new double[channels];
+        }
+
+        boolean matches(int sampleRate, int channels) {
+            return this.sampleRate == Math.max(8000, sampleRate) && this.channels == channels;
+        }
+
+        double process(int c, double x) {
+            double y = sb0 * x + z1[c];
+            z1[c] = sb1 * x - sa1 * y + z2[c];
+            z2[c] = sb2 * x - sa2 * y;
+            double out = hb0 * y + z3[c];
+            z3[c] = hb1 * y - ha1 * out + z4[c];
+            z4[c] = hb2 * y - ha2 * out;
+            return out;
+        }
+    }
+
+    /**
+     * Sonoridad aproximada en LUFS, con las compuertas de EBU R128: se ignoran los silencios
+     * (por debajo de −70) y los pasajes muy suaves (10 dB por debajo del promedio), para que una
+     * intro o un final que se apaga no hagan parecer más baja la canción.
+     */
+    private static float gatedLoudness(Levels... parts) {
+        double absoluteGate = Math.pow(10.0, (-70.0 + 0.691) / 10.0);
+        double sum = 0;
+        int count = 0;
+        for (Levels part : parts) {
+            if (part == null) continue;
+            for (double p : part.weightedPower) {
+                if (p > absoluteGate) {
+                    sum += p;
+                    count++;
+                }
+            }
+        }
+        if (count == 0) return Float.NaN;
+        double relativeGate = (sum / count) * 0.1; // −10 dB
+        double gatedSum = 0;
+        int gatedCount = 0;
+        for (Levels part : parts) {
+            if (part == null) continue;
+            for (double p : part.weightedPower) {
+                if (p > absoluteGate && p >= relativeGate) {
+                    gatedSum += p;
+                    gatedCount++;
+                }
+            }
+        }
+        if (gatedCount == 0) return Float.NaN;
+        return (float) (-0.691 + 10.0 * Math.log10(gatedSum / gatedCount));
+    }
+
+    private static void addWindow(Levels levels, long startUs, int window, double sumSquares, long samples,
+                                  double weightedSum, long frames) {
         double rms = Math.sqrt(sumSquares / samples);
         float db = rms > 0 ? (float) (20 * Math.log10(rms)) : -100f;
         levels.db.add(db);
         levels.startMs.add((int) (startUs / 1000) + window * WINDOW_MS);
+        levels.weightedPower.add(frames > 0 ? weightedSum / frames : 0.0);
     }
 
-    private static Result buildResult(Levels head, Levels tail, int tailStartMs) {
+    private static Result buildResult(Levels head, Levels tail, int tailStartMs, float loudness) {
         // Inicio real: primera ventana con sonido
         int contentStart = 0;
         for (int i = 0; i < head.db.size(); i++) {
@@ -295,7 +427,7 @@ final class AudioAnalyzer {
         }
         if (lastSound < 0) {
             // Todo el final es silencio: se toma el inicio del tramo analizado
-            return new Result(contentStart, tailStartMs, tailStartMs, SILENCE_DB);
+            return new Result(contentStart, tailStartMs, tailStartMs, SILENCE_DB, loudness);
         }
         int contentEnd = tail.startMs.get(lastSound) + WINDOW_MS;
 
@@ -319,6 +451,6 @@ final class AudioAnalyzer {
                 break;
             }
         }
-        return new Result(contentStart, contentEnd, Math.min(loudEnd, contentEnd), reference);
+        return new Result(contentStart, contentEnd, Math.min(loudEnd, contentEnd), reference, loudness);
     }
 }

@@ -2,13 +2,36 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## 2.3.0 — 2026-10-16
+## 2.5.0 — 2026-10-17 (pendiente de commit)
+
+- **Mi Mix reemplaza a Favoritos:** una lista que armas con **+** (en cada canción o en una carpeta entera) y que suena seguida, en su orden, con Automix, como la lista de Automix de Virtual DJ.
+  - Lo que agregas mientras suena entra al final de la cola en vivo.
+  - Al terminar la última se detiene (`■ Fin de Mi Mix`).
+  - Las que ya sonaron quedan marcadas con ✓.
+  - Cabecera con resumen, **▶ Reproducir** y **Vaciar** con confirmación. Al vaciar o quitar la que suena, esa canción sigue hasta el final.
+  - Las estrellas de Favoritos pasan a Mi Mix la primera vez.
+
+## 2.4.0 — 2026-10-17 (pendiente de commit)
+
+- **Automix iguala el volumen entre canciones** (fase 3): mide qué tan fuerte suena cada canción y la acerca a un mismo nivel. Baja las fuertes hasta 6 dB y sube las suaves hasta 4 dB. La que entra en una mezcla ya llega corregida; si el análisis llega tarde, se ajusta con una rampa de 2 s en los primeros segundos.
+- El análisis de cada canción suma 10 s del medio para medir la sonoridad.
+
+## 2.3.1 — 2026-10-17 (`c674ab4`, `2366cbe`)
+
+- **Carátula más grande**, arriba del reproductor, entre la lupa (izquierda) y Automix (derecha). En la app su tamaño se ajusta solo al espacio libre.
+- **Automix arriba a la derecha** y etiqueta de estado oculta, como en la web.
+- **Arreglo:** el título y la tarjeta Siguiente salían vacíos con nombres largos.
+- La canción que suena también se desplaza en la lista.
+- **Cápsula PLAYING / MIXING** más grande y nítida: texto de 15 sp y barras sin brillo, dibujadas en píxeles enteros.
+- Menos espacio entre la barra de progreso y los controles.
+
+## 2.3.0 — 2026-10-16 (`13978ea`)
 
 - **Cuadro de la carátula como la web:** un haz láser cian gira por el borde mientras suena; al mezclar se suma un haz magenta en sentido contrario. Abajo, una cápsula `PAUSED / PLAYING / MIXING ⇄` con ecualizador.
 - **Doble toque en Siguiente/Anterior** (y en sus tarjetas): adelanta o retrocede 10 s, con un aviso `+10s` / `-10s` centrado en el reproductor.
 - **Tarjetas Anterior/Siguiente:** íconos ⏮ ⏭ en los extremos y nombre más grande, en gris claro.
 - **Título largo:** se desplaza como en la web (inicio, deslizamiento, final y vuelta), también en las tarjetas.
-- **Tiempos** de la canción más grandes y en blanco.
+- **Tiempos** de la canción más grandes y en blanco; nombres de las tarjetas en gris claro (`#cbd5e1`).
 - **Automix** al lado de la lupa; la lupa queda resaltada con el explorador oculto.
 - Al mezclar, los datos de la canción nueva aparecen al instante y solo la carátula hace fundido.
 

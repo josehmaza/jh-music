@@ -20,6 +20,9 @@ public class FolderTreeAdapter extends BaseAdapter {
     public interface OnTreeNodeClickListener {
         void onNodeClick(TreeNode node, int position);
         void onNodePlayClick(TreeNode node, int position);
+
+        /** + : agregar la carpeta entera a Mi Mix. */
+        void onNodeAddMixClick(TreeNode node, int position);
     }
 
     private Context context;
@@ -75,6 +78,7 @@ public class FolderTreeAdapter extends BaseAdapter {
         ImageView ivTreeIcon;
         TextView tvTreeTitle;
         LinearLayout btnFolderPlay;
+        View btnTreeAddMix;
         TextView tvTreeDirectCount;
     }
 
@@ -91,6 +95,7 @@ public class FolderTreeAdapter extends BaseAdapter {
             holder.ivTreeIcon = convertView.findViewById(R.id.ivTreeIcon);
             holder.tvTreeTitle = convertView.findViewById(R.id.tvTreeTitle);
             holder.btnFolderPlay = convertView.findViewById(R.id.btnFolderPlay);
+            holder.btnTreeAddMix = convertView.findViewById(R.id.btnTreeAddMix);
             holder.tvTreeDirectCount = convertView.findViewById(R.id.tvTreeDirectCount);
             convertView.setTag(holder);
         } else {
@@ -146,9 +151,17 @@ public class FolderTreeAdapter extends BaseAdapter {
                         listener.onNodePlayClick(node, position);
                     }
                 });
+                holder.btnTreeAddMix.setVisibility(View.VISIBLE);
+                holder.btnTreeAddMix.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onNodeAddMixClick(node, position);
+                    }
+                });
             } else {
                 holder.btnFolderPlay.setVisibility(View.GONE);
                 holder.btnFolderPlay.setOnClickListener(null);
+                holder.btnTreeAddMix.setVisibility(View.GONE);
+                holder.btnTreeAddMix.setOnClickListener(null);
             }
 
             // Resaltado de la carpeta que está sonando actualmente

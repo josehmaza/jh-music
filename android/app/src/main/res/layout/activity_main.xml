@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.3.1"
+                android:text="v2.5.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -245,13 +245,13 @@
                         android:textStyle="bold" />
 
                     <Button
-                        android:id="@+id/tabFavorites"
+                        android:id="@+id/tabMyMix"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="⭐ Favoritos"
+                        android:text="🎧 Mi Mix (0)"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -430,6 +430,105 @@
                     android:layout_height="0dp"
                     android:visibility="gone" />
 
+                <!-- Cabecera de Mi Mix: resumen + Reproducir / Vaciar (con confirmación). Solo en la pestaña Mi Mix -->
+                <LinearLayout
+                    android:id="@+id/layoutMixHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_mix_header"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvMixHeaderTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:singleLine="true"
+                            android:text="MI MIX"
+                            android:textColor="@color/text_primary"
+                            android:textSize="17sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.06" />
+
+                        <TextView
+                            android:id="@+id/tvMixHeaderSub"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:singleLine="true"
+                            android:ellipsize="end"
+                            android:text="Vacío"
+                            android:textColor="#cbd5e1"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnMixPlay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_folder_play_btn"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="16dp"
+                        android:text="▶  Reproducir"
+                        android:textAllCaps="false"
+                        android:textColor="#ffffff"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <ImageButton
+                        android:id="@+id/btnMixClear"
+                        android:layout_width="46dp"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@drawable/ic_trash"
+                        android:scaleType="center"
+                        android:contentDescription="Vaciar Mi Mix" />
+
+                    <!-- Confirmación de vaciar -->
+                    <Button
+                        android:id="@+id/btnMixConfirmClear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_mix_danger"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Sí, vaciar"
+                        android:textAllCaps="false"
+                        android:textColor="#fda4af"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/btnMixCancelClear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:text="No"
+                        android:textAllCaps="false"
+                        android:textColor="#cbd5e1"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
+
                 <!-- Contenedor de Lista con FastScroller Táctil y Burbuja Flotante A-Z para 200+ canciones -->
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -481,6 +580,21 @@
                                 android:background="@drawable/bg_fastscroll_thumb" />
                         </LinearLayout>
                     </LinearLayout>
+
+                    <!-- Mi Mix vacío: cómo agregar canciones -->
+                    <TextView
+                        android:id="@+id/tvMixEmpty"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="30dp"
+                        android:layout_marginEnd="30dp"
+                        android:gravity="center"
+                        android:lineSpacingExtra="3dp"
+                        android:text="Tu Mi Mix está vacío"
+                        android:textColor="@color/text_muted"
+                        android:textSize="15sp"
+                        android:visibility="gone" />
 
                     <!-- Overlay de Búsqueda Activa (Efecto cargando y lista atenuada mientras busca) -->
                     <LinearLayout

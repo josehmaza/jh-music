@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -36,7 +37,9 @@ import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -124,7 +127,12 @@ public class MainActivity extends Activity {
     // Explorador y Reproductor
     private LinearLayout layoutExplorerPanel;
     private View layoutPlayerPanel;
-    private Button tabFolders, tabTracks, tabFavorites;
+    private Button tabFolders, tabTracks, tabMyMix;
+    // Cabecera de Mi Mix
+    private View layoutMixHeader;
+    private TextView tvMixHeaderTitle, tvMixHeaderSub, tvMixEmpty;
+    private Button btnMixPlay, btnMixConfirmClear, btnMixCancelClear;
+    private ImageButton btnMixClear;
     private EditText etSearch;
     private ImageButton btnSearchClear;
     private View pbSearchLoading;
@@ -176,7 +184,7 @@ public class MainActivity extends Activity {
     private boolean isShuffle = false;
     private boolean isRepeat = false;
     private boolean isMuted = false;
-    private int currentTab = 0; // 0: Carpetas, 1: Pistas, 2: Favoritos
+    private int currentTab = 0; // 0: Carpetas, 1: Pistas, 2: Mi Mix
     // Búsqueda de Pistas guardada al cambiar de pestaña (se descarta al abrir otra carpeta con [N ▶])
     private String savedTracksQuery = "";
     private int savedTracksFilter = FILTER_FOLDER;
@@ -338,7 +346,7 @@ public class MainActivity extends Activity {
         layoutPlayerPanel = findViewById(R.id.layoutPlayerPanel);
         tabFolders = findViewById(R.id.tabFolders);
         tabTracks = findViewById(R.id.tabTracks);
-        tabFavorites = findViewById(R.id.tabFavorites);
+        tabMyMix = findViewById(R.id.tabMyMix);
         etSearch = findViewById(R.id.etSearch);
         btnSearchClear = findViewById(R.id.btnSearchClear);
         pbSearchLoading = findViewById(R.id.pbSearchLoading);
@@ -349,6 +357,15 @@ public class MainActivity extends Activity {
         }
         tvStorageStatus = findViewById(R.id.tvStorageStatus);
         btnPlayAll = findViewById(R.id.btnPlayAll);
+        layoutMixHeader = findViewById(R.id.layoutMixHeader);
+        tvMixHeaderTitle = findViewById(R.id.tvMixHeaderTitle);
+        tvMixHeaderSub = findViewById(R.id.tvMixHeaderSub);
+        tvMixEmpty = findViewById(R.id.tvMixEmpty);
+        btnMixPlay = findViewById(R.id.btnMixPlay);
+        btnMixClear = findViewById(R.id.btnMixClear);
+        btnMixConfirmClear = findViewById(R.id.btnMixConfirmClear);
+        btnMixCancelClear = findViewById(R.id.btnMixCancelClear);
+        setupMixHeader();
         listViewContent = findViewById(R.id.listViewContent);
         if (listViewContent != null) {
             listViewContent.setVerticalScrollBarEnabled(false);
@@ -376,17 +393,16 @@ public class MainActivity extends Activity {
                     hideKeyboard();
                     playTrack(position);
                 },
-                (track, position) -> {
-                    track.setFavorite(!track.isFavorite());
-                    saveFavorite(track);
-                }
+                (track, position) -> onTrackMixButton(track),
+                mixState
         );
 
         folderAdapter = new FolderAdapter(this, displayedFolders,
                 (folder, position) -> {
                     hideKeyboard();
                     openFolder(folder.getName(), folder.getUsbSource());
-                }
+                },
+                (folder, position) -> addFolderToMix(tracksOfFolder(folder.getName(), folder.getUsbSource()), folder.getName())
         );
 
         folderTreeAdapter = new FolderTreeAdapter(this, visibleTreeNodes, new FolderTreeAdapter.OnTreeNodeClickListener() {
@@ -404,6 +420,11 @@ public class MainActivity extends Activity {
             public void onNodePlayClick(TreeNode node, int position) {
                 hideKeyboard();
                 playFolderFromNode(node);
+            }
+
+            @Override
+            public void onNodeAddMixClick(TreeNode node, int position) {
+                addFolderToMix(getTracksForNode(node), node.getName());
             }
         });
 
@@ -711,7 +732,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // 3. Si estamos en Favoritos (tab 2), volver a Carpetas (tab 0)
+        // 3. Si estamos en Mi Mix (tab 2), volver a Carpetas (tab 0)
         if (currentTab == 2) {
             selectTab(0);
             return;
@@ -1065,7 +1086,7 @@ public class MainActivity extends Activity {
             hideKeyboard();
             selectTab(1);
         });
-        tabFavorites.setOnClickListener(v -> {
+        tabMyMix.setOnClickListener(v -> {
             hideKeyboard();
             selectTab(2);
         });
@@ -1104,7 +1125,7 @@ public class MainActivity extends Activity {
 
         btnPlayAll.setOnClickListener(v -> {
             hideKeyboard();
-            // Solo visible en Pistas y Favoritos: reproduce la lista que se está mostrando
+            // Solo visible en Pistas: reproduce la lista que se está mostrando (Mi Mix tiene su propio Reproducir)
             if (!displayedTracks.isEmpty()) {
                 playTrack(0);
             } else if (!currentPlaylist.isEmpty()) {
@@ -1338,7 +1359,7 @@ public class MainActivity extends Activity {
 
     private void updateFilterChipsVisibility() {
         // La barra de filtros solo tiene utilidad en la pestaña Pistas (currentTab == 1).
-        // En Carpetas USB (0) el árbol organiza los pendrives, y en Favoritos (2) se muestra la lista VIP completa.
+        // En Carpetas USB (0) el árbol organiza los pendrives, y en Mi Mix (2) se muestra la lista completa.
         if (scrollSearchFilters != null) {
             scrollSearchFilters.setVisibility(currentTab == 1 ? View.VISIBLE : View.GONE);
         }
@@ -1417,12 +1438,13 @@ public class MainActivity extends Activity {
         currentTab = tabIndex;
         if (btnPlayAll != null) {
             // En Carpetas USB cada carpeta tiene su propio botón [N ▶]
-            btnPlayAll.setVisibility(tabIndex == 0 ? View.GONE : View.VISIBLE);
+            // En Mi Mix, Reproducir está en su cabecera
+            btnPlayAll.setVisibility(tabIndex == 1 ? View.VISIBLE : View.GONE);
         }
         if (etSearch != null) {
             // El texto de ayuda indica qué busca cada pestaña
             etSearch.setHint(tabIndex == 0 ? "Buscar carpeta..." :
-                    (tabIndex == 1 ? "Buscar canción o artista..." : "Buscar en favoritos..."));
+                    (tabIndex == 1 ? "Buscar canción o artista..." : "Buscar en Mi Mix..."));
         }
         tabFolders.setBackgroundResource(tabIndex == 0 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
         tabFolders.setTextColor(tabIndex == 0 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
@@ -1432,9 +1454,15 @@ public class MainActivity extends Activity {
         tabTracks.setTextColor(tabIndex == 1 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
         tabTracks.setTypeface(null, Typeface.BOLD);
 
-        tabFavorites.setBackgroundResource(tabIndex == 2 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
-        tabFavorites.setTextColor(tabIndex == 2 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
-        tabFavorites.setTypeface(null, Typeface.BOLD);
+        tabMyMix.setBackgroundResource(tabIndex == 2 ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
+        tabMyMix.setTextColor(tabIndex == 2 ? Color.parseColor("#38bdf8") : Color.parseColor("#cbd5e1"));
+        tabMyMix.setTypeface(null, Typeface.BOLD);
+
+        // Mi Mix: cabecera propia (Reproducir / Vaciar), filas numeradas por la lista y botón ✕
+        mixConfirmClear = false;
+        trackAdapter.setMixMode(tabIndex == 2);
+        if (layoutMixHeader != null) layoutMixHeader.setVisibility(tabIndex == 2 ? View.VISIBLE : View.GONE);
+        if (tvMixEmpty != null && tabIndex != 2) tvMixEmpty.setVisibility(View.GONE);
 
         if (tabIndex == 0) {
             if (etSearch.getText().toString().trim().isEmpty()) {
@@ -1464,7 +1492,7 @@ public class MainActivity extends Activity {
         } else {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             listViewContent.setAdapter(trackAdapter);
-            tvCurrentPath.setText("⭐ Mis Favoritos");
+            tvCurrentPath.setText("🎧 Mi Mix");
             if (currentSearchFilter == FILTER_FOLDER) {
                 currentSearchFilter = FILTER_ALL;
             }
@@ -1515,6 +1543,26 @@ public class MainActivity extends Activity {
 
     private void openFolder(String folderName) {
         openFolder(folderName, null);
+    }
+
+    /** Canciones de una carpeta de los resultados de búsqueda (las mismas que abre openFolder). */
+    private List<Track> tracksOfFolder(String folderName, String usbSource) {
+        String usb = usbSource;
+        if (usb == null || usb.isEmpty()) {
+            for (Track t : allTracks) {
+                if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(folderName)) {
+                    usb = t.getUsbSource();
+                    break;
+                }
+            }
+        }
+        List<Track> list = new ArrayList<>();
+        for (Track t : allTracks) {
+            if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(folderName) && isTrackFromUsb(t, usb)) {
+                list.add(t);
+            }
+        }
+        return list;
     }
 
     // ========================================================
@@ -2047,6 +2095,8 @@ public class MainActivity extends Activity {
         final int tab = currentTab;
         final int filter = currentSearchFilter;
         final String folder = currentSelectedFolder;
+        // Mi Mix se busca sobre una copia hecha aquí (el hilo de búsqueda no toca la lista)
+        final List<Track> mixSnapshot = tab == 2 ? mixTracks() : null;
         runOnUiThread(() -> {
             if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.VISIBLE);
             if (layoutSearchLoading != null) layoutSearchLoading.setVisibility(View.VISIBLE);
@@ -2183,11 +2233,11 @@ public class MainActivity extends Activity {
                 });
 
             } else {
-                // PESTAÑA FAVORITOS: Buscar en todas las canciones favoritas
+                // PESTAÑA MI MIX: buscar dentro de la lista
+                List<Track> mixPool = mixSnapshot;
                 List<Scored<Track>> scoredFavs = new ArrayList<>();
-                for (Track t : allTracks) {
+                for (Track t : mixPool) {
                     if (targetVersion != searchVersion) return;
-                    if (!t.isFavorite()) continue;
                     if (fastTrackMatches(t, tokens, tokensDedup)) {
                         scoredFavs.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens)));
                     }
@@ -2210,7 +2260,9 @@ public class MainActivity extends Activity {
                     if (listViewContent.getAdapter() != trackAdapter) {
                         listViewContent.setAdapter(trackAdapter);
                     }
-                    tvCurrentPath.setText("⭐ Favoritos: \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
+                    tvCurrentPath.setText("🎧 Mi Mix: \"" + rawQuery + "\" (" + displayedTracks.size() + ")");
+                    if (tvMixEmpty != null) tvMixEmpty.setVisibility(View.GONE);
+                    updateMixHeader(mixTracks());
                     showDisplayedTracks();
                     updateFastScrollerVisibility();
                 });
@@ -2283,17 +2335,7 @@ public class MainActivity extends Activity {
 
         } else if (currentTab == 2) {
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
-            displayedTracks.clear();
-            for (Track t : allTracks) {
-                if (t.isFavorite()) {
-                    displayedTracks.add(t);
-                }
-            }
-            showDisplayedTracks();
-            if (listViewContent.getAdapter() != trackAdapter) {
-                listViewContent.setAdapter(trackAdapter);
-            }
-            tvCurrentPath.setText("⭐ Mis Favoritos (" + displayedTracks.size() + ")");
+            showMixTab();
         }
         updateFastScrollerVisibility();
     }
@@ -2306,13 +2348,19 @@ public class MainActivity extends Activity {
 
         Track track = displayedTracks.get(index);
 
-        int indexInPlaylist = currentPlaylist.indexOf(track);
         if (currentTab == 2) {
-            // Desde Favoritos: la cola es la lista de favoritos mostrada; la carpeta activa de Pistas no cambia
-            playQueue.clear();
-            playQueue.addAll(displayedTracks);
-            currentTrackIndex = index;
-        } else if (indexInPlaylist >= 0) {
+            // Desde Mi Mix (lista o búsqueda dentro de ella): suena Mi Mix desde esa canción.
+            // La que suena fuera de la lista ya está sonando: no hace nada.
+            if (isMixOrphan(track)) return;
+            int position = mixTracks().indexOf(track);
+            if (position >= 0) playMix(position, false);
+            return;
+        }
+
+        // Cualquier otra lista deja Mi Mix: ahora suena esa carpeta / lista
+        playingFromMix = false;
+        int indexInPlaylist = currentPlaylist.indexOf(track);
+        if (indexInPlaylist >= 0) {
             // La canción ya es de la carpeta activa: conservar esa lista tal cual (la del botón [N ▶])
             setPlayQueueFromFolder();
             currentTrackIndex = indexInPlaylist;
@@ -2454,6 +2502,12 @@ public class MainActivity extends Activity {
      * parpadeos) y solo la carátula cambia con fundido cruzado.
      */
     private void onTrackStarted(Track track, boolean smoothUi) {
+        // Mi Mix: la que empieza a sonar queda marcada como "ya sonó"
+        if (playingFromMix) {
+            mixCurPos = currentTrackIndex;
+            mixPlayedKeys.add(favoriteKey(track));
+        }
+
         // Automix analiza en segundo plano dónde se apaga esta canción
         autoMixer.onTrackStarted(track);
 
@@ -2462,6 +2516,8 @@ public class MainActivity extends Activity {
 
         albumArtFadeForPath = smoothUi ? track.getFilePath() : null;
         showTrackOnScreen(track);
+        // En la pestaña Mi Mix: marcas ✓, resumen y la que suena fuera de la lista
+        if (currentTab == 2 && etSearch != null && etSearch.getText().toString().trim().isEmpty()) showMixTab();
     }
 
     /** Pone en pantalla los datos de la canción que suena. */
@@ -2588,6 +2644,11 @@ public class MainActivity extends Activity {
             List<Track> queue = getQueue();
             if (queue.size() < 2 || currentTrackIndex < 0 || currentTrackIndex >= queue.size()) return null;
             int index;
+            if (playingFromMix) {
+                // Mi Mix: después de la última no hay mezcla (se detiene)
+                index = nextMixIndex();
+                return index < 0 ? null : new AutoMixer.NextTrack(index, queue.get(index));
+            }
             if (isShuffle) {
                 // Aleatorio: se sortea ahora (no al terminar) y nunca la misma canción
                 index = new Random().nextInt(queue.size() - 1);
@@ -2633,7 +2694,7 @@ public class MainActivity extends Activity {
         updateAutoMixButton();
         updatePlaybackStateUI();
         Toast.makeText(this, on
-                ? "Automix activado: las canciones se mezclan " + (AutoMixer.DEFAULT_MIX_MS / 1000) + " s"
+                ? "Automix activado: mezcla de " + (AutoMixer.DEFAULT_MIX_MS / 1000) + " s y volumen igualado"
                 : "Automix desactivado", Toast.LENGTH_SHORT).show();
     }
 
@@ -2677,10 +2738,14 @@ public class MainActivity extends Activity {
         Track stillPlaying = playing != null ? tracksByPath.get(playing.getFilePath()) : null;
         if (stillPlaying != null) {
             currentTrackIndex = getQueue().indexOf(stillPlaying);
+            // Mi Mix: rearmar la cola con las canciones nuevas (un pendrive pudo quitarse o conectarse)
+            syncMixQueue();
         } else if (playing != null) {
             // La canción que sonaba estaba en el pendrive que se quitó
+            playingFromMix = false;
             autoMixer.onManualPlayback();
             if (mediaPlayer != null) {
+                autoMixer.forgetPlayer(mediaPlayer);
                 try {
                     mediaPlayer.release();
                 } catch (Exception ignored) {}
@@ -2695,29 +2760,383 @@ public class MainActivity extends Activity {
     }
 
     // ==========================================
-    // FAVORITOS PERSISTENTES
+    // MI MIX (reemplaza a Favoritos)
+    // Una lista que se arma cuando quieras (botón + en cada canción o carpeta) y que suena entera,
+    // en el orden en que se agregó, con Automix. Como la lista de Automix de Virtual DJ:
+    // - Lo que se agrega mientras suena entra al final de la cola en vivo.
+    // - Al terminar la última canción, se detiene.
+    // - Las que ya sonaron quedan en la lista, marcadas con ✓.
     // ==========================================
     private static final String PREFS_NAME = "jh_music";
-    private static final String PREF_FAVORITES = "favorite_paths";
+    private static final String PREF_FAVORITES = "favorite_paths"; // solo para pasar las estrellas viejas a Mi Mix
+    private static final String PREF_MYMIX = "mymix_keys";
 
-    /** Clave del favorito: ruta relativa al pendrive, para que se conserve aunque el USB cambie de puerto. */
+    /** Canciones de Mi Mix, en orden, por su ruta dentro del pendrive (se conservan aunque cambie de puerto). */
+    private final List<String> myMixKeys = new ArrayList<>();
+    private final Set<String> mixPlayedKeys = new HashSet<>();
+    private boolean myMixLoaded = false;
+    private boolean playingFromMix = false;  // la cola que suena es Mi Mix
+    private int mixCurPos = 0;               // posición de la que suena dentro de la cola de Mi Mix
+    private boolean mixConfirmClear = false; // mostrando "¿Vaciar Mi Mix?"
+
+    /** Clave de una canción: ruta relativa al pendrive, para que se conserve aunque el USB cambie de puerto. */
     private static String favoriteKey(Track t) {
         return SearchText.relativeUsbPath(t.getFilePath());
     }
 
-    private Set<String> loadFavoriteKeys() {
-        return new HashSet<>(getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getStringSet(PREF_FAVORITES, new HashSet<>()));
+    /**
+     * Carga Mi Mix guardado. La primera vez (sin Mi Mix guardado) pasan las estrellas de Favoritos:
+     * primero en el orden A-Z de la biblioteca y después las de pendrives que no están conectados.
+     */
+    private void loadMyMix(List<Track> library) {
+        if (myMixLoaded) return;
+        myMixLoaded = true;
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        myMixKeys.clear();
+        if (prefs.contains(PREF_MYMIX)) {
+            String saved = prefs.getString(PREF_MYMIX, "");
+            for (String key : saved.split("\n")) {
+                if (!key.isEmpty() && !myMixKeys.contains(key)) myMixKeys.add(key);
+            }
+            return;
+        }
+        Set<String> favorites = new HashSet<>(prefs.getStringSet(PREF_FAVORITES, new HashSet<>()));
+        for (Track t : library) {
+            String key = favoriteKey(t);
+            if (favorites.remove(key) && !myMixKeys.contains(key)) myMixKeys.add(key);
+        }
+        List<String> rest = new ArrayList<>(favorites);
+        Collections.sort(rest);
+        myMixKeys.addAll(rest);
+        saveMyMix();
     }
 
-    private void saveFavorite(Track t) {
-        Set<String> keys = loadFavoriteKeys();
-        if (t.isFavorite()) {
-            keys.add(favoriteKey(t));
-        } else {
-            keys.remove(favoriteKey(t));
+    private void saveMyMix() {
+        StringBuilder sb = new StringBuilder();
+        for (String key : myMixKeys) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(key);
         }
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putStringSet(PREF_FAVORITES, keys).apply();
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_MYMIX, sb.toString()).apply();
+    }
+
+    /** Canciones de Mi Mix conectadas ahora, en el orden de la lista. */
+    private List<Track> mixTracks() {
+        Map<String, Track> byKey = new HashMap<>();
+        for (Track t : allTracks) byKey.put(favoriteKey(t), t);
+        List<Track> list = new ArrayList<>();
+        for (String key : myMixKeys) {
+            Track t = byKey.get(key);
+            if (t != null) list.add(t);
+        }
+        return list;
+    }
+
+    private boolean isInMix(Track t) {
+        return t != null && myMixKeys.contains(favoriteKey(t));
+    }
+
+    /** La que suena es de Mi Mix pero ya no está en la lista (se quitó o se vació). */
+    private boolean isMixOrphan(Track t) {
+        if (!playingFromMix || t == null) return false;
+        Track current = getCurrentTrack();
+        return current != null && current.getFilePath().equals(t.getFilePath()) && !isInMix(t);
+    }
+
+    private final TrackAdapter.MixState mixState = new TrackAdapter.MixState() {
+        @Override
+        public boolean isInMix(Track track) {
+            return MainActivity.this.isInMix(track);
+        }
+
+        @Override
+        public boolean isPlayed(Track track) {
+            return track != null && mixPlayedKeys.contains(favoriteKey(track));
+        }
+
+        @Override
+        public boolean isOrphan(Track track) {
+            return isMixOrphan(track);
+        }
+    };
+
+    private void updateMixTabCount() {
+        if (tabMyMix != null) tabMyMix.setText("🎧 Mi Mix (" + mixTracks().size() + ")");
+    }
+
+    /** Agrega canciones al final de Mi Mix (sin repetir). Devuelve cuántas se agregaron. */
+    private int addToMix(List<Track> tracks) {
+        int added = 0;
+        for (Track t : tracks) {
+            String key = favoriteKey(t);
+            if (!myMixKeys.contains(key)) {
+                myMixKeys.add(key);
+                added++;
+            }
+        }
+        if (added > 0) onMixChanged();
+        return added;
+    }
+
+    private void removeFromMix(Track t) {
+        String key = favoriteKey(t);
+        myMixKeys.remove(key);
+        mixPlayedKeys.remove(key);
+        onMixChanged();
+    }
+
+    private void clearMix() {
+        myMixKeys.clear();
+        mixPlayedKeys.clear();
+        onMixChanged();
+    }
+
+    /** La que suena se había quitado: vuelve a su lugar en la lista (no al final, para no saltarse las siguientes). */
+    private void reAddToMixInPlace(Track t) {
+        String key = favoriteKey(t);
+        if (myMixKeys.contains(key)) return;
+        // Su lugar: antes de la primera canción de la lista que venía después en la cola
+        List<Track> queue = getQueue();
+        int insertAt = myMixKeys.size();
+        for (int i = currentTrackIndex + 1; i < queue.size(); i++) {
+            int idx = myMixKeys.indexOf(favoriteKey(queue.get(i)));
+            if (idx >= 0) {
+                insertAt = idx;
+                break;
+            }
+        }
+        myMixKeys.add(insertAt, key);
+        onMixChanged();
+    }
+
+    private void onMixChanged() {
+        saveMyMix();
+        updateMixTabCount();
+        syncMixQueue();
+        if (currentTab == 2) filterSearch(etSearch != null ? etSearch.getText().toString() : "");
+    }
+
+    /**
+     * Mientras suena Mi Mix, la cola se rearma con la lista actual (agregar / quitar en vivo).
+     * Si se quitó la que suena, sigue sonando y después viene la que estaba a continuación.
+     */
+    private void syncMixQueue() {
+        if (!playingFromMix) return;
+        Track current = getCurrentTrack();
+        List<Track> list = mixTracks();
+        int idx = current != null ? list.indexOf(current) : -1;
+        if (idx < 0 && current != null) {
+            idx = Math.min(mixCurPos, list.size());
+            list.add(idx, current);
+        }
+        playQueue.clear();
+        playQueue.addAll(list);
+        currentTrackIndex = Math.max(0, idx);
+        mixCurPos = currentTrackIndex;
+        // La siguiente precargada puede haber cambiado: Automix la vuelve a elegir
+        autoMixer.invalidateNext();
+        updatePreviews();
+    }
+
+    /** Reproduce Mi Mix desde una posición. fromStart: botón Reproducir (borra las marcas ✓). */
+    private void playMix(int position, boolean fromStart) {
+        List<Track> list = mixTracks();
+        if (list.isEmpty()) return;
+        if (fromStart) mixPlayedKeys.clear();
+        playingFromMix = true;
+        playQueue.clear();
+        playQueue.addAll(list);
+        int index = Math.max(0, Math.min(position, list.size() - 1));
+        playTrackFromQueue(playQueue, index, true);
+    }
+
+    /** Siguiente dentro de Mi Mix, o -1 si ya no queda ninguna (la lista se detiene). */
+    private int nextMixIndex() {
+        List<Track> queue = getQueue();
+        if (isShuffle) {
+            // En aleatorio: una que todavía no haya sonado
+            List<Integer> pending = new ArrayList<>();
+            for (int i = 0; i < queue.size(); i++) {
+                if (i != currentTrackIndex && !mixPlayedKeys.contains(favoriteKey(queue.get(i)))) pending.add(i);
+            }
+            return pending.isEmpty() ? -1 : pending.get(new Random().nextInt(pending.size()));
+        }
+        return currentTrackIndex + 1 < queue.size() ? currentTrackIndex + 1 : -1;
+    }
+
+    /** Terminó la última canción de Mi Mix: se detiene y queda en pausa al inicio de esa canción. */
+    private void finishMix() {
+        autoMixer.onManualPlayback();
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.pause();
+                mediaPlayer.seekTo(0);
+            } catch (Exception ignored) {}
+        }
+        isPlaying = false;
+        if (seekTrackProgress != null) seekTrackProgress.setProgress(0);
+        if (tvTimeCurrent != null) tvTimeCurrent.setText(formatMs(0));
+        updatePlaybackStateUI();
+        showMixToast("Fin de Mi Mix");
+    }
+
+    /** Agrega una carpeta entera a Mi Mix y avisa cuántas entraron. */
+    private void addFolderToMix(List<Track> tracks, String folderName) {
+        int added = addToMix(tracks);
+        if (added > 0) {
+            showMixToast("+" + added + (added == 1 ? " canción" : " canciones") + " de " + folderName + " a Mi Mix");
+        } else {
+            showMixToast(folderName + " ya está en Mi Mix");
+        }
+    }
+
+    /** Botón de Mi Mix de una fila: ✕ / ✓ quitan, + agrega; el + de la que suena fuera de la lista la devuelve. */
+    private void onTrackMixButton(Track track) {
+        if (isMixOrphan(track)) {
+            reAddToMixInPlace(track);
+            showMixToast("Vuelve a Mi Mix");
+        } else if (isInMix(track)) {
+            removeFromMix(track);
+            showMixToast("Quitada de Mi Mix");
+        } else {
+            addToMix(Collections.singletonList(track));
+            showMixToast(playingFromMix ? "+1 al final de Mi Mix" : "+1 a Mi Mix");
+        }
+    }
+
+    /** Muestra la pestaña Mi Mix (sin búsqueda): cabecera, la que suena fuera de la lista y las canciones. */
+    private void showMixTab() {
+        List<Track> list = mixTracks();
+        displayedTracks.clear();
+        Track current = playingFromMix ? getCurrentTrack() : null;
+        boolean orphan = current != null && !isInMix(current);
+        if (orphan) displayedTracks.add(current);
+        displayedTracks.addAll(list);
+        showDisplayedTracks();
+        if (listViewContent.getAdapter() != trackAdapter) {
+            listViewContent.setAdapter(trackAdapter);
+        }
+        trackAdapter.setCurrentPlayingTrack(getCurrentTrack());
+        tvCurrentPath.setText("🎧 Mi Mix (" + list.size() + ")");
+        updateMixHeader(list);
+
+        if (tvMixEmpty != null) {
+            tvMixEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+            tvMixEmpty.setText(orphan
+                    ? "Tu Mi Mix está vacío\n\nLo que agregues con + sonará después de la canción actual.\nSi no agregas nada, la música se detiene al terminar."
+                    : "Tu Mi Mix está vacío\n\nToca + en una canción, o en una carpeta para agregarla entera.\nDespués reprodúcelo y suena todo seguido con Automix.");
+        }
+    }
+
+    /** Resumen ("8 canciones · 30 min · 2 ✓ ya sonaron") y botones de la cabecera de Mi Mix. */
+    private void updateMixHeader(List<Track> list) {
+        if (layoutMixHeader == null) return;
+        Track current = playingFromMix ? getCurrentTrack() : null;
+        if (mixConfirmClear) {
+            tvMixHeaderTitle.setText("¿Vaciar Mi Mix?");
+            tvMixHeaderSub.setText("Se quitan las " + list.size() + ". Lo que suena sigue.");
+        } else {
+            SpannableStringBuilder title = new SpannableStringBuilder("MI MIX");
+            if (playingFromMix) {
+                int start = title.length();
+                title.append("   ● SONANDO");
+                title.setSpan(new ForegroundColorSpan(Color.rgb(0, 210, 255)), start, title.length(), 0);
+                title.setSpan(new RelativeSizeSpan(0.7f), start, title.length(), 0);
+            }
+            tvMixHeaderTitle.setText(title);
+            if (list.isEmpty()) {
+                tvMixHeaderSub.setText("Vacío");
+            } else {
+                int totalSec = 0;
+                int played = 0;
+                for (Track t : list) {
+                    totalSec += Math.max(0, t.getDurationSec());
+                    if (mixPlayedKeys.contains(favoriteKey(t)) && t != current) played++;
+                }
+                int h = totalSec / 3600;
+                int m = Math.round((totalSec % 3600) / 60f);
+                String length = h > 0 ? h + " h " + m + " min" : m + " min";
+                tvMixHeaderSub.setText(list.size() + (list.size() == 1 ? " canción" : " canciones") + " · " + length
+                        + (played > 0 ? " · " + played + " ✓ ya sonaron" : ""));
+            }
+        }
+        btnMixPlay.setVisibility(mixConfirmClear ? View.GONE : View.VISIBLE);
+        btnMixClear.setVisibility(mixConfirmClear ? View.GONE : View.VISIBLE);
+        btnMixConfirmClear.setVisibility(mixConfirmClear ? View.VISIBLE : View.GONE);
+        btnMixCancelClear.setVisibility(mixConfirmClear ? View.VISIBLE : View.GONE);
+        btnMixPlay.setEnabled(!list.isEmpty());
+        btnMixPlay.setAlpha(list.isEmpty() ? 0.4f : 1f);
+        btnMixClear.setEnabled(!list.isEmpty());
+        btnMixClear.setAlpha(list.isEmpty() ? 0.4f : 1f);
+    }
+
+    private void setupMixHeader() {
+        if (layoutMixHeader == null) return;
+        btnMixPlay.setOnClickListener(v -> {
+            hideKeyboard();
+            playMix(0, true);
+        });
+        btnMixClear.setOnClickListener(v -> {
+            mixConfirmClear = true;
+            updateMixHeader(mixTracks());
+        });
+        btnMixConfirmClear.setOnClickListener(v -> {
+            mixConfirmClear = false;
+            clearMix();
+            showMixToast("Mi Mix vacío");
+        });
+        btnMixCancelClear.setOnClickListener(v -> {
+            mixConfirmClear = false;
+            updateMixHeader(mixTracks());
+        });
+    }
+
+    // Aviso corto al pie del explorador ("+1 a Mi Mix", "Fin de Mi Mix"...)
+    private TextView mixToastView;
+    private final Runnable hideMixToastRunnable = () -> {
+        if (mixToastView != null) mixToastView.setVisibility(View.GONE);
+    };
+
+    private void showMixToast(String text) {
+        FrameLayout root = findViewById(android.R.id.content);
+        if (root == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        if (mixToastView == null) {
+            mixToastView = new TextView(this);
+            mixToastView.setTextColor(Color.parseColor("#e2e8f0"));
+            mixToastView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            mixToastView.setTypeface(null, Typeface.BOLD);
+            mixToastView.setSingleLine(true);
+            mixToastView.setPadding(Math.round(20 * density), Math.round(10 * density),
+                    Math.round(20 * density), Math.round(10 * density));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(12 * density);
+            bg.setColor(Color.argb(240, 12, 16, 24));
+            bg.setStroke(Math.max(1, Math.round(density)), Color.argb(128, 56, 189, 248));
+            mixToastView.setBackground(bg);
+            mixToastView.setClickable(false);
+            root.addView(mixToastView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+        }
+        mixToastView.setText(text);
+        mixToastView.setVisibility(View.VISIBLE);
+        mixToastView.bringToFront();
+
+        // Centrado abajo del explorador (o de la pantalla si el explorador está oculto)
+        mixToastView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        View anchor = layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE
+                && layoutExplorerPanel.getWidth() > 0 ? layoutExplorerPanel : root;
+        int[] anchorLoc = new int[2];
+        int[] rootLoc = new int[2];
+        anchor.getLocationInWindow(anchorLoc);
+        root.getLocationInWindow(rootLoc);
+        float centerX = anchorLoc[0] - rootLoc[0] + anchor.getWidth() / 2f;
+        float bottom = anchorLoc[1] - rootLoc[1] + anchor.getHeight() - 56 * density;
+        mixToastView.setX(centerX - mixToastView.getMeasuredWidth() / 2f);
+        mixToastView.setY(bottom - mixToastView.getMeasuredHeight());
+
+        handler.removeCallbacks(hideMixToastRunnable);
+        handler.postDelayed(hideMixToastRunnable, 1600);
     }
 
     // ==========================================
@@ -2852,6 +3271,16 @@ public class MainActivity extends Activity {
         if (autoMixer.skipToPreparedNext()) return;
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
+        if (playingFromMix) {
+            // Mi Mix no vuelve a empezar: después de la última se detiene
+            int mixNext = nextMixIndex();
+            if (mixNext < 0) {
+                finishMix();
+            } else {
+                playTrackFromQueue(queue, mixNext, true);
+            }
+            return;
+        }
         int nextIndex;
         if (isShuffle) {
             nextIndex = new Random().nextInt(queue.size());
@@ -2864,7 +3293,9 @@ public class MainActivity extends Activity {
     private void playPreviousTrack() {
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
-        int prevIndex = (currentTrackIndex - 1 + queue.size()) % queue.size();
+        // En Mi Mix, Anterior en la primera la vuelve a empezar (no salta a la última)
+        int prevIndex = playingFromMix ? Math.max(0, currentTrackIndex - 1)
+                : (currentTrackIndex - 1 + queue.size()) % queue.size();
         playTrackFromQueue(queue, prevIndex, true);
     }
 
@@ -3029,7 +3460,11 @@ public class MainActivity extends Activity {
         int nextIdx = (currentTrackIndex + 1) % queue.size();
 
         tvPrevTrackPreview.setText(queue.get(prevIdx).getTitle());
-        tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
+        if (playingFromMix && !isShuffle && currentTrackIndex >= queue.size() - 1) {
+            tvNextTrackPreview.setText("■ Fin de Mi Mix");
+        } else {
+            tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
+        }
     }
 
     private void loadAlbumArt(Track track) {
@@ -3329,11 +3764,10 @@ public class MainActivity extends Activity {
                     return n1.compareToIgnoreCase(n2);
                 });
 
-                // Marcar los favoritos guardados en el radio
-                Set<String> favoriteKeys = loadFavoriteKeys();
+                // Mi Mix guardado en el radio (la primera vez, con las estrellas de Favoritos)
+                loadMyMix(foundTracks);
                 Map<String, Track> tracksByPath = new HashMap<>();
                 for (Track t : foundTracks) {
-                    if (favoriteKeys.contains(favoriteKey(t))) t.setFavorite(true);
                     tracksByPath.put(t.getFilePath(), t);
                 }
 
@@ -3344,6 +3778,7 @@ public class MainActivity extends Activity {
                 folderList.addAll(generatedFolders);
 
                 reconcileListsAfterRescan(tracksByPath);
+                updateMixTabCount();
                 startDurationFill(allTracks);
 
                 buildTreeFromTracks(allTracks);

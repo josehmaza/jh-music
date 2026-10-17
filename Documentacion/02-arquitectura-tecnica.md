@@ -1,6 +1,6 @@
 # Arquitectura técnica — JH MUSIC
 
-App Android nativa en Java, sin librerías externas: una sola `Activity`, adapters de `ListView` y vistas propias dibujadas con `Canvas`. El audio se reproduce con `MediaPlayer` del sistema.
+App Android nativa en Java, sin librerías externas: una sola `Activity`, adapters de `ListView` y vistas propias dibujadas con `Canvas`. El audio se reproduce con `MediaPlayer` del sistema; Automix usa dos a la vez durante la mezcla.
 
 | Dato | Valor |
 |---|---|
@@ -16,18 +16,22 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | Clase | Responsabilidad |
 |---|---|
 | `MainActivity` | Toda la lógica: escaneo USB, árbol de carpetas, pestañas, buscador, cola y reproducción, volumen, gestos y teclas multimedia |
-| `Track` | Una canción: ruta, título, artista, álbum, carpeta, pendrive, formato, duración (0 = desconocida), favorito. Guarda su `SearchKey` |
+| `Track` | Una canción: ruta, título, artista, álbum, carpeta, pendrive, formato, duración (0 = desconocida). Guarda su `SearchKey` |
 | `FolderItem` | Carpeta agrupada por nombre (resultados de búsqueda en la pestaña Carpetas). Guarda su `SearchKey` |
 | `TreeNode` | Nodo del árbol de Carpetas: hijos, contador y lista de canciones directas |
 | `SearchText` | Utilidades del buscador con regex precompilados: normalizar, colapsar letras repetidas, rutas relativas |
-| `AutoMixer` | Automix: precarga de la siguiente canción y mezcla de igual potencia entre dos `MediaPlayer` |
-| `AudioAnalyzer` | Analiza inicio y final de cada canción (silencios y fade-out) para que Automix mezcle en el lugar correcto |
-| `TrackAdapter` | Lista de canciones: resaltado de la que suena, toque / doble toque, favoritos, índice A-Z |
+| `AutoMixer` | Automix: precarga de la siguiente canción, mezcla de igual potencia entre dos `MediaPlayer`, fundido corto de Siguiente/Anterior y aplicación de la corrección de volumen |
+| `AudioAnalyzer` | Analiza inicio, medio y final de cada canción: silencios, fade-out y sonoridad (LUFS aprox.) |
+| `LoudnessLeveler` | Igualar volumen: corrección por reproductor, con `setVolume` para bajar y `LoudnessEnhancer` para subir |
+| `TrackAdapter` | Lista de canciones: resaltado de la que suena, toque / doble toque, botón de Mi Mix (+ / ✓ / ✕), marcas "ya sonó", índice A-Z |
 | `FolderTreeAdapter` | Filas del árbol de Carpetas con el botón `[N ▶]` |
 | `FolderAdapter` | Lista plana de carpetas (resultados de búsqueda en Carpetas) |
 | `VerticalVolumeBar` | Barra de volumen vertical dibujada a mano |
 | `SearchSpinnerView` | Spinner de "Buscando…" que no depende de las animaciones del sistema |
-| `SoundWaveBarsView` | Barras animadas de ecualizador en la carátula |
+| `LaserRingView` | Haz láser que gira por el borde de la carátula: cian al sonar, más uno magenta al mezclar |
+| `NowPlayingPillView` | Cápsula `PAUSED / PLAYING / MIXING ⇄` con 5 barras de ecualizador, al pie de la carátula |
+| `CarMarqueeTextView` | Texto de una línea que se desplaza como la marquesina de la web (título, tarjetas y fila que suena) |
+| `SoundWaveBarsView` | Barras de ecualizador antiguas. **Sin uso desde 2.3.0** (las reemplazó `NowPlayingPillView`); se puede borrar |
 
 ## 2. Estado principal en `MainActivity`
 
@@ -38,9 +42,9 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | `rootTreeNodes` | Raíces del árbol (`USB 1`, `USB 2`) |
 | `currentSelectedFolder` / `currentSelectedFolderUsbSource` | Carpeta activa de la pestaña Pistas |
 | `currentPlaylist` | Canciones de la carpeta activa (lo que muestra Pistas sin búsqueda y su número) |
-| `displayedTracks` | Lo que muestra la lista en este momento (carpeta, resultados o favoritos) |
+| `displayedTracks` | Lo que muestra la lista en este momento (carpeta, resultados o Mi Mix) |
 | `playQueue` + `currentTrackIndex` | Cola de reproducción (copia) y posición en ella |
-| `currentTab` | 0 Carpetas, 1 Pistas, 2 Favoritos |
+| `currentTab` | 0 Carpetas, 1 Pistas, 2 Mi Mix |
 | `currentSearchFilter` | Chip: `FILTER_FOLDER`, `FILTER_ALL`, `FILTER_USB1`, `FILTER_USB2` |
 | `savedTracksQuery` / `savedTracksFilter` | Búsqueda de Pistas guardada al cambiar de pestaña |
 | `hasUsb1` / `hasUsb2` | Pendrives conectados (decide qué raíces y chips mostrar) |
@@ -63,7 +67,7 @@ Se ejecuta en `scanExecutor` (hilo de fondo) al abrir la app, con **Re-escanear 
 2. **Complemento con MediaStore:** consulta la biblioteca de música del sistema y agrega solo las pistas de rutas con `udisk`/`usb` que aún no estén y cuyo archivo exista.
 3. **Agrupado y precálculo:** arma `FolderItem` por nombre de carpeta y calcula el `SearchKey` de cada pista y carpeta (en el hilo de fondo).
 4. **Detección de pendrives:** un USB cuenta como conectado si tiene pistas o si su punto de montaje tiene contenido (`isUsbMounted`). La carpeta `/storage/udiskN` existe vacía aunque el pendrive no esté, por eso no basta con `File.exists()`.
-5. **En el hilo de UI:** ordena, marca los favoritos guardados, reemplaza `allTracks`, llama a `reconcileListsAfterRescan()`, arranca la lectura de duraciones y reconstruye el árbol.
+5. **En el hilo de UI:** ordena, carga Mi Mix (`loadMyMix`), reemplaza `allTracks`, llama a `reconcileListsAfterRescan()`, arranca la lectura de duraciones y reconstruye el árbol.
 
 ### Re-escaneo automático
 
@@ -80,9 +84,24 @@ Se ejecuta en `scanExecutor` (hilo de fondo) al abrir la app, con **Re-escanear 
 
 `durationGeneration` invalida el trabajo pendiente cuando hay un re-escaneo o se cierra la app.
 
-### Favoritos persistentes
+### Mi Mix (reemplaza a Favoritos)
 
-Se guardan en `SharedPreferences` (`jh_music` → `favorite_paths`) como un conjunto de rutas **relativas al pendrive** (`favoriteKey()`). Así sobreviven a cerrar la app y a que el pendrive cambie de `udisk1` a `udisk2`. Se escriben al tocar la estrella (`saveFavorite()`) y se aplican a las pistas nuevas en cada escaneo.
+Mi Mix es una lista **ordenada** de claves (ruta relativa al pendrive, `favoriteKey()`), guardada en `SharedPreferences` (`jh_music` → `mymix_keys`, una clave por línea). Así sobrevive a cerrar la app y a que el pendrive cambie de `udisk1` a `udisk2`. La primera vez (`loadMyMix`) pasan las claves de los viejos favoritos (`favorite_paths`): primero en el orden A-Z de la biblioteca y después las de pendrives no conectados.
+
+| Pieza | Qué hace |
+|---|---|
+| `myMixKeys` | Orden de la lista (el orden en que suena) |
+| `mixTracks()` | Las canciones conectadas, en ese orden |
+| `mixPlayedKeys` | Las que ya sonaron en esta sesión (marcas ✓, solo en memoria; se borran con **▶ Reproducir**) |
+| `playingFromMix` | La cola que suena (`playQueue`) es Mi Mix |
+| `addToMix` / `removeFromMix` / `clearMix` / `reAddToMixInPlace` | Cambian la lista y llaman a `onMixChanged()`: guardar, contador de la pestaña, `syncMixQueue()` y refrescar la pestaña |
+| `syncMixQueue()` | Con Mi Mix sonando, rearma `playQueue` con la lista actual (agregar en vivo). Si se quitó la que suena, la deja en su posición (`mixCurPos`) para que siga y después venga la siguiente. Llama a `autoMixer.invalidateNext()` para que Automix vuelva a elegir la siguiente |
+| `nextMixIndex()` | Siguiente en Mi Mix, o −1 al final. En aleatorio, una que no haya sonado |
+| `finishMix()` | Al final: pausa, vuelve al inicio de la canción y avisa "Fin de Mi Mix" |
+
+Con Mi Mix sonando, `playNextTrack()`, `playPreviousTrack()` (Anterior en la primera la reinicia), `pickNextTrack()` (Automix no mezcla después de la última) y `updatePreviews()` (`■ Fin de Mi Mix`) usan `nextMixIndex()`. `playTrack()` desde cualquier otra pestaña pone `playingFromMix = false`.
+
+La pestaña (`showMixTab()`) tiene una cabecera propia (`layoutMixHeader`: resumen, Reproducir, Vaciar con confirmación) y `tvMixEmpty` cuando está vacía. `TrackAdapter.setMixMode(true)` numera por la lista, muestra ✕ y apaga las que ya sonaron; la que suena fuera de la lista va primero con un + (`MixState.isOrphan`). Los botones + de carpetas están en `FolderTreeAdapter` (`onNodeAddMixClick`) y `FolderAdapter` (`OnFolderAddMixListener`). Los avisos cortos son un `TextView` sobre `android.R.id.content` (`showMixToast`).
 
 ### `reconcileListsAfterRescan()`
 
@@ -129,7 +148,7 @@ Cada `Track` guarda un `SearchKey` inmutable con título, artista, álbum y carp
 
 | Situación | Cola (`playQueue`) | Carpeta activa |
 |---|---|---|
-| Pestaña Favoritos | Copia de la lista mostrada | No cambia |
+| Pestaña Mi Mix | Mi Mix (`playMix`), en vivo | No cambia |
 | La canción está en `currentPlaylist` | Copia de `currentPlaylist` | No cambia |
 | Canción de otra carpeta (búsqueda) | Se rearma la carpeta de la canción | Pasa a ser esa carpeta |
 | Canción sin carpeta | Copia de la lista mostrada | No cambia |
@@ -138,7 +157,7 @@ La cola es una **copia**, para que abrir otra carpeta no altere lo que suena des
 
 ### Inicio de reproducción
 
-Todo inicio manual pasa por `startPlayback(track)`: cancela cualquier mezcla y precarga, prepara el archivo y llama a `onTrackStarted(track)`. Ese método, compartido con Automix, actualiza pantalla, resaltado, carátula y vistas previas. Los reproductores se crean con `createPlayer()`, que asigna el `OnCompletionListener` común (`onPlayerCompleted`).
+Todo inicio manual pasa por `startPlayback(track)`: cancela cualquier mezcla y precarga, prepara el archivo (con `prepare()`, que bloquea el hilo de UI mientras lee el pendrive; ver propuesta #4) y llama a `onTrackStarted(track)`. Ese método, compartido con Automix, actualiza pantalla, resaltado, carátula y vistas previas. Los reproductores se crean con `createPlayer()`, que asigna el `OnCompletionListener` común (`onPlayerCompleted`).
 
 ### Automix — `AutoMixer`
 
@@ -150,6 +169,17 @@ Clase aparte que maneja dos `MediaPlayer` durante la mezcla y habla con la Activ
 4. **Respaldo:** si la canción principal termina sin mezcla, `onPlayerCompleted` usa la siguiente ya preparada (`startPreparedNextNow`) antes de recurrir a `playNextTrack()`.
 
 **Mezcla inteligente:** `onTrackStarted` pide a `AudioAnalyzer` el análisis del final de la canción, y la precarga pide el del inicio de la siguiente. `planMix()` usa ese análisis para decidir dónde empieza la mezcla y cuánto dura (fade-out → desde que bajó 8 dB; final seco → 3 s antes del fin real), y `startMix` salta el silencio inicial de la que entra. Sin análisis se usan los últimos 5 s. Detalle en [06 · Investigación del mezclador](06-investigacion-mezclador.md#13-estado-de-la-implementación).
+
+**Siguiente / Anterior con Automix:** `startPlayback(track, quickFade)` prepara la canción en un reproductor nuevo y `fadeManual()` la cruza con la anterior en 0,5 s. Si la siguiente ya estaba precargada, `skipToPreparedNext()` la usa directo, sin esperar al pendrive.
+
+**Igualar volumen (fase 3):** `AudioAnalyzer` también mide la sonoridad de la canción (ponderación K de ITU-R BS.1770 y compuertas de EBU R128, sobre 10 s de inicio, 10 s del medio y 25 s del final). `LoudnessLeveler.gainFor()` calcula la corrección hacia −12 LUFS, con tope de −6 dB / +4 dB:
+- La parte de **bajar** se multiplica en cada `setVolume` del mezclador (`setPlayerVolume`), también durante los fundidos.
+- La parte de **subir** usa un `LoudnessEnhancer` sobre el `audioSessionId` del reproductor, creado solo si hace falta. Si el radio no lo soporta, se omite.
+- `startMix` fija la corrección de la que entra **antes** de arrancarla (en volumen 0). Por eso `beginFade` se llama antes de `onMixStarted`: mientras dura la mezcla, `onTrackStarted` no aplica volumen completo.
+- Si una canción iniciada a mano no tenía análisis, `checkPendingGain()` (en el tick) aplica la corrección con una rampa de 2 s cuando llega, solo si llega en los primeros 20 s.
+- Al apagar Automix, la canción vuelve a 0 dB con la misma rampa. Cada `LoudnessEnhancer` se libera junto con su reproductor (`releaseQuietly`, `forgetPlayer`, `release`).
+
+**Pantalla durante la mezcla:** `onMixVisualChanged(true/false)` enciende el haz magenta de `LaserRingView` y el estado `MIXING ⇄` de `NowPlayingPillView`. Solo las mezclas automáticas lo muestran; el fundido de Siguiente/Anterior, no.
 
 La siguiente precargada se descarta con cualquier inicio manual, al cambiar Aleatorio o Repetir, y al re-escanear (`invalidateNext`). El estado se guarda en `SharedPreferences` (`automix_enabled`).
 
@@ -163,7 +193,11 @@ La siguiente precargada se descarta con cualquier inicio manual, al cambiar Alea
 
 ### Carátula y bitrate
 
-`loadAlbumArt()` usa `MediaMetadataRetriever` en segundo plano para la carátula embebida, el bitrate real (`MP3 192K`) y el artista de las etiquetas.
+`loadAlbumArt()` usa `MediaMetadataRetriever` en segundo plano para la carátula embebida, el bitrate real (`MP3 192K`) y el artista de las etiquetas. En una mezcla automática, `showAlbumArt(bitmap, smooth)` cambia la carátula con un `TransitionDrawable` (fundido cruzado); el resto de los datos cambia al instante, como en la web. Sin carátula se muestra el disco (`ivVinylDisc`).
+
+### Doble toque en Siguiente / Anterior
+
+`handleNextButtonClick()` / `handlePrevButtonClick()` (botones ⏮ ⏭ y tarjetas) esperan 280 ms (`DOUBLE_TAP_TIMEOUT_MS`): un toque cambia de canción; dos o más llaman a `seekRelative(±10 s)` y suman 10 s por toque extra. `showSeekFeedback()` muestra un aviso `+10s` / `-10s` en un `TextView` agregado sobre `android.R.id.content`, centrado en el reproductor, que aparece y se va con fundido. Adelantar termina cualquier mezcla en curso.
 
 ## 7. Volumen y mute
 
@@ -176,7 +210,11 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 ## 8. Gestos e interfaz
 
 - **`dispatchTouchEvent`:** detecta el gesto de jalar en la zona de la lupa (más de 35 px en horizontal) para mostrar u ocultar el explorador, y protege las barras de progreso y de volumen.
-- **Lupa:** está dentro de esa zona y no es clicable por sí misma; un toque simple sobre ella se detecta en el `OnTouchListener` de la zona (`isTouchOnView`).
+- **Lupa:** está dentro de esa zona y no es clicable por sí misma; un toque simple sobre ella se detecta en el `OnTouchListener` de la zona (`isTouchOnView`). `setExplorerVisible()` la deja resaltada (`setSelected`) mientras el explorador está oculto.
+- **Automix:** botón normal (`btnAutoMix`, arriba a la derecha del reproductor) que llama a `toggleAutoMix()`.
+- **Tamaño de la carátula:** el cuadro mide 150 dp en el layout. `setupAlbumArtAutoSize()` espera al primer layout y lo agranda con el espacio que sobra en la fila de controles (`layoutTransportControls`), con un máximo de 260 dp y sin tocar la lupa ni Automix.
+- **Animaciones propias:** `LaserRingView`, `NowPlayingPillView` y `CarMarqueeTextView` se redibujan con `postInvalidateDelayed(33 ms)` (unos 30 cuadros por segundo) y no con `Animator`, porque el radio puede tener las animaciones del sistema desactivadas. Solo se animan mientras hace falta (sonando, mezclando o con texto que no entra).
+- **Marquesina (`CarMarqueeTextView`):** el ciclo dura entre 6 y 16 s según cuánto sobra el texto: quieto al inicio (0–20 %), se desliza al final (20–65 %), quieto (65–82 %) y vuelve (82–100 %). Antes de dibujar compensa el `scrollX` interno de `TextView`; sin eso, los textos centrados que no entraban salían vacíos. En la lista solo se desplaza la fila que suena; las demás se cortan con "…".
 - **`TrackAdapter`:** un toque en la fila espera 280 ms para distinguirlo de un doble toque. Uno expande el nombre; dos reproducen.
 - **Modo inmersivo** a pantalla completa y pantalla siempre encendida (`FLAG_KEEP_SCREEN_ON`).
 - **Teclas multimedia** (control Bluetooth u otro auto; el Tucson del proyecto no tiene botones en el volante) en `onKeyDown`: `MEDIA_PLAY_PAUSE`, `HEADSETHOOK`, `MEDIA_NEXT`, `MEDIA_PREVIOUS`, `VOLUME_UP/DOWN`, `VOLUME_MUTE`.
@@ -187,6 +225,9 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 |---|---|
 | `res/layout/activity_main.xml` | Pantalla completa |
 | `res/layout/item_track.xml`, `item_folder.xml`, `item_tree_folder.xml` | Filas de las listas |
+| `res/drawable/bg_album_card.xml`, `bg_album_inner.xml` | Marco y fondo redondeados del cuadro de la carátula |
+| `res/drawable/bg_audio_badge.xml` | Etiqueta de formato (`MP3 320K`) |
+| `res/drawable/ic_automix.xml` | Ícono de Automix (dos curvas cruzadas) |
 | `res/drawable/ic_launcher.xml` | Ícono para Android 7 o anterior |
 | `res/drawable-v26/ic_launcher.xml` | Ícono adaptativo (Android 8+), con `ic_launcher_background` y `ic_launcher_foreground` |
 | `res/values/strings.xml` | Nombre de la app (`JH MUSIC`) |
@@ -195,3 +236,7 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 ## 10. Simulador web
 
 `index.html`, `app.js` y `style.css` (raíz) son una maqueta de la interfaz en navegador, con lógica propia en JavaScript y audio simulado. Se mantiene sincronizada a mano con la app nativa y se copia en `android/app/src/main/assets/`. La app nativa **no** la carga (no usa `WebView`).
+
+La maqueta es la referencia de diseño: la app nativa debe verse igual. Muestra canciones de ejemplo con carátula (Colegiala, Cumbia del Sol, Guaracadita), el haz láser, la cápsula, la mezcla de Automix y el doble toque ±10 s. En la parte superior del reproductor, la lupa y Automix flotan sobre la carátula (`.player-top-bar` con `position: absolute`), y la carátula mide 240 px.
+
+`demo-animaciones.html` y `demo-mezcla.html` son muestrarios de diseño con variantes de la animación de la carátula y de las transiciones de Automix. Sirvieron para elegir el diseño y no forman parte de la app.

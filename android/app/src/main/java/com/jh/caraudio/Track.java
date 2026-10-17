@@ -11,7 +11,6 @@ public class Track {
     private String format;
     private int durationSec;
     private String usbSource; // "USB 1", "USB 2", "SD", etc.
-    private boolean isFavorite;
     // Texto normalizado para el buscador; se calcula una vez y se invalida si cambia título/artista
     private volatile SearchKey searchKey;
 
@@ -26,7 +25,6 @@ public class Track {
         this.format = format;
         this.durationSec = durationSec;
         this.usbSource = usbSource;
-        this.isFavorite = false;
     }
 
     public String getId() { return id; }
@@ -43,8 +41,6 @@ public class Track {
     public int getDurationSec() { return durationSec; }
     public void setDurationSec(int durationSec) { this.durationSec = durationSec; }
     public String getUsbSource() { return usbSource; }
-    public boolean isFavorite() { return isFavorite; }
-    public void setFavorite(boolean favorite) { isFavorite = favorite; }
 
     /** 0 = duración aún desconocida (se completa en segundo plano tras el escaneo). */
     public boolean hasDuration() { return durationSec > 0; }

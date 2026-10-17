@@ -1,6 +1,6 @@
 # Propuestas de mejora — JH MUSIC
 
-Análisis de la versión 2.0.1 pensando en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
+Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.4.0**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
 
 Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto.
 
@@ -12,12 +12,12 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 4 | Una canción dañada no traba la reproducción | 🔴 Alta | Bajo | Pendiente |
 | 5 | Carátulas reducidas al tamaño del cuadro | 🟠 Media | Muy bajo | Pendiente |
 | 6 | Biblioteca guardada para arrancar al instante | 🟠 Media | Medio | Pendiente |
-| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | Pendiente |
+| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | **En parte** (las animaciones de la carátula van a ~30 fps; falta el spinner de búsqueda) |
 | 8 | Carpeta siguiente / anterior con pulsación larga en pantalla | 🟡 Usabilidad | Bajo | Pendiente |
 | 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente |
 | 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente |
 | 11 | Volumen de arranque limitado | 🟡 Usabilidad | Bajo | Pendiente |
-| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fase 1 hecha** (botón Automix, mezcla de 5 s) |
+| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fases 1, 2 y 3 hechas** (Automix: mezcla, mezcla inteligente e igualar volumen). Faltan sin pausas y ajustes |
 | 13 | Ecualizador | 🎵 Audio | Medio | Pendiente |
 | 14 | Extras opcionales | 🟢 Opcional | Variable | Pendiente |
 
@@ -27,7 +27,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ### 1. Retomar donde quedaste al encender el auto
 
-**Problema.** Cada vez que se apaga y prende el auto, la app arranca de cero: sin carpeta, sin canción y con Pistas en 0. No guarda la sesión; lo único que guarda son los favoritos.
+**Problema.** Cada vez que se apaga y prende el auto, la app arranca de cero: sin carpeta, sin canción y con Pistas en 0. No guarda la sesión; lo único que guarda es Mi Mix.
 
 **Por qué importa.** Hay mixes de más de 14 minutos. Perder el punto cada vez que se baja del auto es molesto.
 
@@ -116,7 +116,9 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ### 7. Animación del ecualizador a menor velocidad
 
-**Problema.** `SoundWaveBarsView` se redibuja en cada cuadro (`postInvalidateOnAnimation`, unos 60 por segundo) mientras suena música. En una CPU débil eso compite con la interfaz y con el GPS. El spinner de búsqueda hace lo mismo (`postInvalidateDelayed(16)`), aunque solo mientras busca.
+**Estado (2.4.0).** `SoundWaveBarsView` ya no se usa. El haz láser, la cápsula y la marquesina se redibujan a unos 30 cuadros por segundo (`postInvalidateDelayed(33)`) y solo mientras hace falta. Queda el spinner de búsqueda, que sigue a 60 por segundo (`postInvalidateDelayed(16)`) mientras busca, y falta detener las animaciones cuando la app no está visible.
+
+**Problema original.** `SoundWaveBarsView` se redibujaba en cada cuadro (`postInvalidateOnAnimation`, unos 60 por segundo) mientras sonaba música. En una CPU débil eso compite con la interfaz y con el GPS.
 
 **Propuesta.** Limitar la animación a 15–20 cuadros por segundo, donde se ve igual, o agregar una opción para apagarla. Detenerla cuando la app no está visible.
 
@@ -175,6 +177,13 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ### 12. Mezcla automática entre canciones
 
+**Estado (2.4.0).** Implementada como **Automix** (botón arriba a la derecha del reproductor), antes de #3 y #4:
+- Fase 1: mezcla de igual potencia de 5 s, con precarga.
+- Fase 2: análisis del audio para mezclar donde la canción se apaga y saltar silencios.
+- Fase 3: igualar el volumen entre canciones.
+
+Faltan el modo **sin pausas** (fase 4) y la pantalla de **ajustes** (duración, mezcla inteligente, igualar volumen). Detalle en [06 · Investigación del mezclador](06-investigacion-mezclador.md#13-estado-de-la-implementación). Lo que sigue es la propuesta original.
+
 **Problema.** Al terminar una canción, la siguiente arranca recién cuando la anterior se detuvo del todo (`OnCompletionListener` → `playNextTrack()` → `prepare()`). Queda un silencio, más largo con un pendrive lento, que corta el ambiente, sobre todo con mixes y música bailable.
 
 **Propuesta: dos modos, elegibles en ajustes.**
@@ -217,6 +226,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 - **Muchos radios chinos ya tienen ecualizador o DSP propio** en el sistema. Si se usan los dos, los efectos se suman: graves excesivos o distorsión. Conviene un aviso en la pantalla del ecualizador: "Si tu radio tiene ecualizador propio, usa solo uno".
 - **Algunos firmwares ignoran `audiofx`.** Hay que verificar al abrir si el efecto se pudo crear (`Equalizer` lanza excepción si no) y, si no, ocultar la función.
 - **No pasar de ~+10 dB por banda:** en parlantes de auto y amplificadores básicos se distorsiona fácil.
+- **Convivir con Automix:** el igualado de volumen ya usa `LoudnessEnhancer` en cada reproductor (`LoudnessLeveler`). Un control de realce aparte debe sumarse a esa corrección, no crear un segundo efecto sobre la misma sesión.
 
 **Costo en gama baja:** bajo. El ecualizador corre en el procesamiento de audio del sistema.
 
@@ -230,7 +240,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 |---|---|
 | Recientes / Más escuchadas | Pestaña o chip con lo último y lo más reproducido |
 | Fundido al pausar o reanudar | Bajada o subida suave en lugar de un corte seco (reutiliza la lógica de la mezcla #12) |
-| Volumen normalizado | Igualar el volumen entre canciones; las descargas de YouTube suelen tener volúmenes muy distintos |
+| Volumen normalizado | **Hecho en 2.4.0** dentro de Automix (fase 3 del mezclador). Pendiente: poder usarlo sin la mezcla |
 | Reproducción automática al encender | Retomar la música sola al prender el radio (complementa la #1) |
 
 ---
@@ -242,6 +252,6 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 1 | #2 Foco de audio, #4 errores y `prepareAsync`, #5 carátulas | Corrigen fallos que hoy pueden pasar manejando; poco código |
 | 2 | #1 Retomar sesión | Mejora inmediata en el uso diario |
 | 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones |
-| 4 | #12 Mezcla automática, #13 Ecualizador | Se apoyan en el servicio de reproducción del paso 3 |
+| 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 |
 | 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad |
 | 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones |

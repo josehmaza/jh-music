@@ -69,6 +69,19 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- + : agregar la carpeta entera a Mi Mix (solo si tiene canciones directas) -->
+    <ImageButton
+        android:id="@+id/btnTreeAddMix"
+        android:layout_width="40dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/bg_folder_addmix"
+        android:src="@drawable/ic_mix_add"
+        android:scaleType="center"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:contentDescription="Agregar carpeta a Mi Mix" />
+
     <!-- Botón Reproducir Carpeta [ N ▶ ] (Solo si tiene canciones directas) -->
     <LinearLayout
         android:id="@+id/btnFolderPlay"

@@ -19,14 +19,22 @@ public class FolderAdapter extends BaseAdapter {
         void onFolderClick(FolderItem folder, int position);
     }
 
+    /** + : agregar la carpeta entera a Mi Mix. */
+    public interface OnFolderAddMixListener {
+        void onFolderAddMix(FolderItem folder, int position);
+    }
+
     private Context context;
     private List<FolderItem> folders;
     private OnFolderClickListener folderClickListener;
+    private OnFolderAddMixListener addMixListener;
 
-    public FolderAdapter(Context context, List<FolderItem> folders, OnFolderClickListener listener) {
+    public FolderAdapter(Context context, List<FolderItem> folders, OnFolderClickListener listener,
+                         OnFolderAddMixListener addMixListener) {
         this.context = context;
         this.folders = folders != null ? folders : new ArrayList<>();
         this.folderClickListener = listener;
+        this.addMixListener = addMixListener;
     }
 
     public void setFolders(List<FolderItem> folders) {
@@ -57,6 +65,7 @@ public class FolderAdapter extends BaseAdapter {
         TextView tvPath;
         TextView tvUsbBadge;
         TextView tvTrackCount;
+        View btnAddMix;
     }
 
     @Override
@@ -69,6 +78,7 @@ public class FolderAdapter extends BaseAdapter {
             holder.tvPath = convertView.findViewById(R.id.tvFolderPath);
             holder.tvUsbBadge = convertView.findViewById(R.id.tvFolderUsbBadge);
             holder.tvTrackCount = convertView.findViewById(R.id.tvFolderTrackCount);
+            holder.btnAddMix = convertView.findViewById(R.id.btnFolderAddMix);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -119,6 +129,13 @@ public class FolderAdapter extends BaseAdapter {
 
             // Solo número limpio sin la palabra "pistas"
             holder.tvTrackCount.setText(String.valueOf(folder.getTrackCount()));
+
+            holder.btnAddMix.setVisibility(folder.getTrackCount() > 0 ? View.VISIBLE : View.GONE);
+            holder.btnAddMix.setOnClickListener(v -> {
+                if (addMixListener != null) {
+                    addMixListener.onFolderAddMix(folder, position);
+                }
+            });
 
             // Click directo en la fila
             convertView.setOnClickListener(v -> {

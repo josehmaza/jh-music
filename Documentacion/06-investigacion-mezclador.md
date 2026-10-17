@@ -119,7 +119,7 @@ Las descargas de YouTube tienen volúmenes muy distintos. Si la siguiente canci�
 **Recomendación:** usar el nivel del análisis y aplicar una corrección de **±6 dB como máximo**:
 - **Bajar** las canciones fuertes con `setVolume()` (como mucho 1,0).
 - **Subir** las suaves requiere `LoudnessEnhancer`. Hay que usarlo con cuidado: en parlantes de auto, subir mucho distorsiona.
-- Ofrecerlo como opción aparte: "Igualar volumen entre canciones".
+- Ofrecerlo como opción aparte: "Igualar volumen entre canciones". (Por ahora va incluido en Automix; la opción aparte llegará con la pantalla de ajustes, §11.)
 
 ## 8. Formatos, bitrate y frecuencia de muestreo
 
@@ -183,7 +183,7 @@ Transición entre canciones
 
 ## 13. Estado de la implementación
 
-**Fase 1 implementada** en `AutoMixer.java`, activada con el botón Automix bajo la lupa.
+**Fase 1 implementada** en `AutoMixer.java`, activada con el botón Automix (desde 2.3.1, arriba a la derecha del reproductor).
 
 | Punto | Cómo quedó |
 |---|---|
@@ -211,7 +211,19 @@ Transición entre canciones
 
 Los umbrales (`SILENCE_DB`, `FADE_DROP_DB`, `FADE_MIN_MS`, `ABRUPT_MIX_MS`) están en `AudioAnalyzer` y `AutoMixer` para ajustarlos al probar con música real. Un efecto a vigilar: una canción con un final tranquilo intencional (por ejemplo, un piano suave) se mezclaría desde que empieza esa parte tranquila.
 
-Pendiente: pantalla de ajustes (§11), igualar volumen (fase 3, ya se mide `referenceDb`), modo sin pausas (fase 4) y regla de "mismo álbum". Esta última necesita etiquetas reales de álbum y número de pista; hoy las pistas encontradas recorriendo carpetas usan el nombre de la carpeta como álbum.
+**Fase 3 implementada** en `LoudnessLeveler.java` (v2.4.0): igualar volumen entre canciones, incluido en Automix.
+
+| Aspecto | Decisión |
+|---|---|
+| Medida | Sonoridad aproximada en LUFS: ponderación K de ITU-R BS.1770 y compuertas de EBU R128 (−70 absoluta, −10 relativa), sobre los primeros 10 s, 10 s del medio y los últimos 25 s |
+| Objetivo | **−12 LUFS** (`TARGET_LUFS`) |
+| Corrección | Como máximo **bajar 6 dB** (con `setVolume`) y **subir 4 dB** (con `LoudnessEnhancer`, que trae limitador). Si el radio no soporta `LoudnessEnhancer`, las canciones suaves no se suben |
+| Al mezclar | La que entra ya llega con su corrección (se aplica mientras está en silencio) |
+| Análisis tardío | Si la canción empezó a mano y su análisis llega en los primeros 20 s, se corrige con una rampa de 2 s; más tarde no se toca, para no cambiar el volumen a mitad de canción |
+| Al desactivar Automix | La canción vuelve a su volumen original con la misma rampa |
+| Costo | Unos 10 s más de decodificación por canción en segundo plano (una sola vez, queda en memoria) y dos filtros simples por muestra. Al reproducir, bajar el volumen no cuesta nada; subirlo usa el efecto de Android solo en esa canción |
+
+Pendiente: pantalla de ajustes (§11), modo sin pausas (fase 4) y regla de "mismo álbum". Esta última necesita etiquetas reales de álbum y número de pista; hoy las pistas encontradas recorriendo carpetas usan el nombre de la carpeta como álbum.
 
 ## 14. Plan por fases
 
@@ -219,7 +231,7 @@ Pendiente: pantalla de ajustes (§11), igualar volumen (fase 3, ya se mide `refe
 |---|---|---|
 | 1 | Mezcla de igual potencia con duración fija, precarga, casos de la §3 y respaldo con `OnCompletionListener` | Medio |
 | 2 | Análisis bajo demanda (§5): recorte de silencios, detección de fade-out y de final abrupto | Medio |
-| 3 | Igualar volumen (§7) | Bajo, sobre la fase 2 |
+| 3 | Igualar volumen (§7) | Bajo, sobre la fase 2 — **hecha** |
 | 4 | Modo sin pausas con `setNextMediaPlayer`, probando su comportamiento en el radio | Bajo |
 | — | Sincronizar el ritmo | **No recomendado** (§6) |
 

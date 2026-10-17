@@ -23,14 +23,26 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         void onTrackClick(Track track, int position);
     }
 
-    public interface OnFavoriteClickListener {
-        void onFavoriteClick(Track track, int position);
+    /** Botón de Mi Mix de cada fila: + agregar, ✓ ya está (quitar) o ✕ quitar (dentro de Mi Mix). */
+    public interface OnMixButtonClickListener {
+        void onMixButtonClick(Track track, int position);
+    }
+
+    /** Estado de Mi Mix que la lista necesita para dibujar cada fila. */
+    public interface MixState {
+        boolean isInMix(Track track);
+
+        /** Ya sonó en esta sesión de Mi Mix (se muestra apagada con ✓). */
+        boolean isPlayed(Track track);
+
+        /** Suena, pero ya no está en Mi Mix (se quitó o se vació la lista). */
+        boolean isOrphan(Track track);
     }
 
     private Context context;
     private List<Track> tracks;
     // Canción que suena, identificada por su archivo (no por posición): así no queda marcada
-    // otra fila al mostrar otra carpeta, una búsqueda o Favoritos
+    // otra fila al mostrar otra carpeta, una búsqueda o Mi Mix
     private String currentPlayingPath = null;
     private int selectedMarqueeIndex = -1;
     private final Handler clickHandler = new Handler(Looper.getMainLooper());
@@ -39,16 +51,20 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
     private int lastClickedPosition = -1;
     private static final long DOUBLE_TAP_TIMEOUT = 280; // ms para confirmar si fue 1 solo toque o doble toque
     private OnTrackClickListener trackClickListener;
-    private OnFavoriteClickListener favoriteClickListener;
+    private OnMixButtonClickListener mixButtonListener;
+    private final MixState mixState;
+    private boolean mixMode = false; // mostrando la pestaña Mi Mix
 
     private String[] sections = new String[0];
     private int[] sectionPositions = new int[0];
 
-    public TrackAdapter(Context context, List<Track> tracks, OnTrackClickListener trackListener, OnFavoriteClickListener favListener) {
+    public TrackAdapter(Context context, List<Track> tracks, OnTrackClickListener trackListener,
+                        OnMixButtonClickListener mixListener, MixState mixState) {
         this.context = context;
         this.tracks = tracks != null ? tracks : new ArrayList<>();
         this.trackClickListener = trackListener;
-        this.favoriteClickListener = favListener;
+        this.mixButtonListener = mixListener;
+        this.mixState = mixState;
         buildSections();
     }
 
@@ -120,6 +136,13 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         notifyDataSetChanged();
     }
 
+    /** En la pestaña Mi Mix las filas se numeran por su orden en la lista y el botón es ✕ (quitar). */
+    public void setMixMode(boolean mixMode) {
+        if (this.mixMode == mixMode) return;
+        this.mixMode = mixMode;
+        notifyDataSetChanged();
+    }
+
     public void setSelectedMarqueeIndex(int index) {
         this.selectedMarqueeIndex = index;
         notifyDataSetChanged();
@@ -149,7 +172,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         TextView tvArtist;
         TextView tvUsbBadge;
         TextView tvDuration;
-        ImageButton btnFav;
+        ImageButton btnMix;
     }
 
     @Override
@@ -163,7 +186,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
             holder.tvArtist = convertView.findViewById(R.id.tvItemArtist);
             holder.tvUsbBadge = convertView.findViewById(R.id.tvItemUsbBadge);
             holder.tvDuration = convertView.findViewById(R.id.tvItemDuration);
-            holder.btnFav = convertView.findViewById(R.id.btnItemFav);
+            holder.btnMix = convertView.findViewById(R.id.btnItemMix);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -173,14 +196,26 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         if (track != null) {
             boolean isPlaying = currentPlayingPath != null && currentPlayingPath.equals(track.getFilePath());
             boolean isSelectedForMarquee = (position == selectedMarqueeIndex) || isPlaying;
+            // Mi Mix: la que suena fuera de la lista va primero; las que ya sonaron quedan apagadas con ✓
+            boolean isOrphan = mixMode && mixState != null && mixState.isOrphan(track);
+            boolean wasPlayed = mixMode && !isPlaying && mixState != null && mixState.isPlayed(track);
+            convertView.setAlpha(wasPlayed ? 0.5f : 1f);
 
             if (isPlaying) {
                 holder.tvIndex.setText("▶");
                 holder.tvIndex.setTextColor(Color.parseColor("#38bdf8"));
                 holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
                 convertView.setBackgroundColor(Color.parseColor("#172030"));
+            } else if (wasPlayed) {
+                holder.tvIndex.setText("✓");
+                holder.tvIndex.setTextColor(Color.parseColor("#22c55e"));
+                holder.tvTitle.setTextColor(Color.parseColor("#94a3b8"));
+                convertView.setBackgroundColor(Color.TRANSPARENT);
             } else {
-                holder.tvIndex.setText(String.format("%02d", position + 1));
+                // En Mi Mix el número es la posición en la lista (sin contar la que suena fuera de ella)
+                int number = position + 1;
+                if (mixMode && position > 0 && mixState != null && mixState.isOrphan(getItem(0))) number--;
+                holder.tvIndex.setText(String.format("%02d", number));
                 holder.tvIndex.setTextColor(Color.parseColor("#94a3b8"));
                 holder.tvTitle.setTextColor(isSelectedForMarquee ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
                 convertView.setBackgroundColor(isSelectedForMarquee ? Color.parseColor("#131a26") : Color.TRANSPARENT);
@@ -200,17 +235,25 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvTitle.setSingleLine(true);
                 holder.tvTitle.setMaxLines(1);
                 holder.tvTitle.setCarMarqueeEnabled(isPlaying);
-                holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
+                holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8")
+                        : (wasPlayed ? Color.parseColor("#94a3b8") : Color.parseColor("#f1f5f9")));
                 convertView.setBackgroundColor(isPlaying ? Color.parseColor("#172030") : Color.TRANSPARENT);
             }
 
             String artist = track.getArtist();
             String album = track.getAlbum();
+            String subtitle;
             if (artist != null && !artist.trim().isEmpty() && !"Pendrive".equalsIgnoreCase(artist.trim())) {
-                holder.tvArtist.setText(artist + " • " + album);
+                subtitle = artist + " • " + album;
             } else {
-                holder.tvArtist.setText(album != null ? album : "");
+                subtitle = album != null ? album : "";
             }
+            if (isOrphan) {
+                subtitle = "Sonando · ya no está en Mi Mix";
+            } else if (wasPlayed) {
+                subtitle = "Ya sonó • " + subtitle;
+            }
+            holder.tvArtist.setText(subtitle);
 
             // Badge de almacenamiento con icono USB vectorial y número
             String source = track.getUsbSource();
@@ -241,15 +284,24 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
             holder.tvDuration.setText(track.getFormattedDuration());
 
-            if (track.isFavorite()) {
-                holder.btnFav.setImageResource(android.R.drawable.star_on);
+            // Botón de Mi Mix: ✕ dentro de la lista, ✓ si ya está, + si no
+            if (mixMode && !isOrphan) {
+                holder.btnMix.setImageResource(R.drawable.ic_mix_remove);
+                holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                holder.btnMix.setContentDescription("Quitar de Mi Mix");
+            } else if (mixState != null && mixState.isInMix(track)) {
+                holder.btnMix.setImageResource(R.drawable.ic_mix_check);
+                holder.btnMix.setBackgroundResource(R.drawable.bg_mix_btn_active);
+                holder.btnMix.setContentDescription("En Mi Mix (toca para quitar)");
             } else {
-                holder.btnFav.setImageResource(android.R.drawable.star_off);
+                holder.btnMix.setImageResource(R.drawable.ic_mix_add);
+                holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                holder.btnMix.setContentDescription("Agregar a Mi Mix");
             }
 
-            holder.btnFav.setOnClickListener(v -> {
-                if (favoriteClickListener != null) {
-                    favoriteClickListener.onFavoriteClick(track, position);
+            holder.btnMix.setOnClickListener(v -> {
+                if (mixButtonListener != null) {
+                    mixButtonListener.onMixButtonClick(track, position);
                     notifyDataSetChanged();
                 }
             });
