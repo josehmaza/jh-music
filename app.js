@@ -444,10 +444,19 @@ function initApp() {
 
   function updateAutoMixButton() {
     const artBox = document.getElementById('albumContainer');
-    if (artBox) artBox.classList.toggle('is-mixing', isMixing); // borde neón en la carátula durante la mezcla
+    if (artBox) artBox.classList.toggle('is-mixing', isMixing); // activa el segundo haz láser magenta en la carátula
+    const pillStatusText = document.getElementById('pillStatusText');
+    if (pillStatusText) {
+      if (isMixing) {
+        pillStatusText.textContent = "MIXING ⇄";
+      } else if (isPlaying) {
+        pillStatusText.textContent = "PLAYING";
+      } else {
+        pillStatusText.textContent = "PAUSED";
+      }
+    }
     if (!btnAutoMix) return;
     btnAutoMix.classList.toggle('is-active', isAutoMix);
-    btnAutoMix.classList.toggle('is-mixing', isMixing);
     btnAutoMix.title = isAutoMix ? "Automix activado: toca para desactivar" : "Automix: mezcla automática entre canciones";
   }
 
@@ -468,13 +477,6 @@ function initApp() {
     return index;
   }
 
-  // Fundido de los datos en pantalla al empezar una mezcla: lo de la canción que sale se apaga
-  // y lo de la que entra aparece (igual que en la app)
-  const NOW_PLAYING_FADE_MS = 600;
-  // Solo los textos. El cuadro de la carátula queda siempre visible con su borde neón; su imagen
-  // (si la canción la trae) cambia con fundido cruzado aparte (crossfadeAlbumArt).
-  const NOW_PLAYING_FADE_SELECTORS = ['#trackTitle', '.track-details',
-    '#prevTrackTitle', '#nextTrackTitle', '#currentTime', '#totalDuration'];
   const ALBUM_ART_FADE_MS = 700;
 
   /** Carátula vieja → nueva: la vieja (copia encima) se desvanece mientras la nueva queda debajo. */
@@ -495,18 +497,9 @@ function initApp() {
       setTimeout(() => img.classList.remove('np-hidden'), 30);
     }
   }
-  let nowPlayingSwapTimer = null;
-
-  function nowPlayingElements() {
-    return NOW_PLAYING_FADE_SELECTORS.map(s => document.querySelector(s)).filter(Boolean);
-  }
-
-  function showNowPlaying() {
-    nowPlayingElements().forEach(el => el.classList.remove('np-hidden'));
-  }
 
   function startAutoMix(nextIndex, mixSec) {
-    // El neón se enciende al empezar la mezcla y dura toda la mezcla
+    // Activa la mezcla visual en la carátula (Doble Láser Magenta + Cápsula MIXING ⇄)
     isMixing = true;
     clearTimeout(mixEndTimer);
     mixEndTimer = setTimeout(() => {
@@ -517,28 +510,20 @@ function initApp() {
     updateAutoMixButton();
     updatePlayStateUI();
 
-    // Los datos de la canción que sale se apagan; ya apagados, se cambia a la nueva y aparece
-    const elements = nowPlayingElements();
-    elements.forEach(el => el.classList.add('np-fade', 'np-hidden'));
-    clearTimeout(nowPlayingSwapTimer);
-    nowPlayingSwapTimer = setTimeout(() => {
-      const artImg = document.getElementById('albumArt');
-      const oldArtVisible = !!artImg && !artImg.classList.contains('hidden');
-      const oldArtSrc = artImg ? artImg.src : '';
-      loadTrack(nextIndex, true);
-      crossfadeAlbumArt(oldArtVisible, oldArtSrc);
-      // Un instante después del cambio, para que el navegador aplique la transición de aparición
-      nowPlayingSwapTimer = setTimeout(showNowPlaying, 30);
-    }, NOW_PLAYING_FADE_MS);
+    // Cambio instantáneo y limpio de datos: sin vacíos negros ni parpadeos de textos
+    const artImg = document.getElementById('albumArt');
+    const oldArtVisible = !!artImg && !artImg.classList.contains('hidden');
+    const oldArtSrc = artImg ? artImg.src : '';
+    loadTrack(nextIndex, true);
+    crossfadeAlbumArt(oldArtVisible, oldArtSrc);
   }
 
   function cancelAutoMix() {
-    clearTimeout(nowPlayingSwapTimer);
-    showNowPlaying();
     if (!isMixing) return;
     clearTimeout(mixEndTimer);
     isMixing = false;
     updateAutoMixButton();
+    updatePlayStateUI();
   }
 
   if (btnAutoMix) {
@@ -781,10 +766,14 @@ function initApp() {
   }
 
   function updatePlayStateUI() {
+    const pillStatusText = document.getElementById('pillStatusText');
     if (isPlaying) {
       playIcon.classList.add('hidden');
       pauseIcon.classList.remove('hidden');
       albumContainer.classList.add('is-playing');
+      if (pillStatusText) {
+        pillStatusText.textContent = isMixing ? "MIXING ⇄" : "PLAYING";
+      }
       if (driverModeBadge) {
         driverModeBadge.classList.add('is-playing');
         driverModeBadge.classList.remove('is-paused');
@@ -797,6 +786,9 @@ function initApp() {
       playIcon.classList.remove('hidden');
       pauseIcon.classList.add('hidden');
       albumContainer.classList.remove('is-playing');
+      if (pillStatusText) {
+        pillStatusText.textContent = "PAUSED";
+      }
       if (driverModeBadge) {
         driverModeBadge.classList.remove('is-playing');
         driverModeBadge.classList.add('is-paused');
@@ -1034,22 +1026,154 @@ function initApp() {
     albumContainer.addEventListener('click', togglePlayPause);
   }
 
-  btnNext.addEventListener('click', nextTrack);
-  btnPrev.addEventListener('click', prevTrack);
+  // Feedback visual de adelanto/retroceso centrado en el reproductor
+  let seekToastTimer = null;
+  function showSeekFeedback(text) {
+    let toast = document.getElementById('seekFeedbackToast');
+    const container = document.getElementById('playerPanel') || document.body;
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'seekFeedbackToast';
+      toast.style.cssText = 'position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);background:rgba(12,16,24,0.92);border:1px solid rgba(0,210,255,0.45);box-shadow:0 8px 24px rgba(0,0,0,0.8),0 0 16px rgba(0,210,255,0.3);color:#00d2ff;padding:10px 22px;border-radius:14px;font-size:1.15rem;font-weight:800;font-family:var(--font-mono);z-index:999;pointer-events:none;transition:opacity 0.25s,transform 0.25s;backdrop-filter:blur(8px);white-space:nowrap;';
+      container.appendChild(toast);
+    } else if (toast.parentElement !== container) {
+      container.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translate(-50%,-50%) scale(1.05)';
+    clearTimeout(seekToastTimer);
+    seekToastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translate(-50%,-50%) scale(0.95)';
+    }, 800);
+  }
 
-  // Clicks directos en las tarjetas de canción anterior y siguiente
+  function seekRelative(deltaSec, consecutiveHits = 1) {
+    const track = currentPlaylist[currentTrackIndex];
+    if (!track) return;
+    if (isMixing) cancelAutoMix();
+
+    let curSec = 0;
+    let totalSec = track.durationSec || 0;
+
+    if (window.AndroidBridge && window.AndroidBridge.seekNativeAudio && track.filePath) {
+      const durMs = window.AndroidBridge.getNativeAudioDuration() || (totalSec * 1000);
+      const curMs = (window.AndroidBridge.getNativeAudioPosition ? window.AndroidBridge.getNativeAudioPosition() : 0);
+      let targetMs = curMs + (deltaSec * 1000);
+      if (targetMs < 0) targetMs = 0;
+      if (durMs > 0 && targetMs > durMs) targetMs = Math.max(0, durMs - 1000);
+      window.AndroidBridge.seekNativeAudio(Math.floor(targetMs));
+      curSec = Math.floor(targetMs / 1000);
+      totalSec = Math.floor(durMs / 1000);
+    } else if (audio.src && audio.duration) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration - 1, audio.currentTime + deltaSec));
+      curSec = Math.floor(audio.currentTime);
+      totalSec = Math.floor(audio.duration);
+    } else {
+      simCurrentSec = Math.max(0, Math.min(track.durationSec - 1, simCurrentSec + deltaSec));
+      curSec = simCurrentSec;
+    }
+
+    if (totalSec > 0) {
+      const ratio = Math.max(0, Math.min(1, curSec / totalSec));
+      progressCurrent.style.width = `${ratio * 100}%`;
+      currentTimeEl.textContent = formatTime(curSec);
+    }
+
+    const totalSecSkipped = (deltaSec > 0 ? 10 : -10) * Math.max(1, consecutiveHits);
+    const label = totalSecSkipped > 0 ? `+${totalSecSkipped}s` : `${totalSecSkipped}s`; // solo texto, sin ícono
+    showSeekFeedback(label);
+  }
+
+  // 1 Touch = Siguiente / Anterior pista
+  // 2 Touch (Doble toque en 280ms) = Adelanta / Retrocede 10 segundos
+  const DOUBLE_TAP_TIMEOUT_MS = 280;
+  let nextTapTimer = null;
+  let prevTapTimer = null;
+  let nextTapHits = 0;
+  let prevTapHits = 0;
+  let resetNextHitsTimer = null;
+  let resetPrevHitsTimer = null;
+
+  function handleNextTouch() {
+    if (nextTapTimer) {
+      clearTimeout(nextTapTimer);
+      nextTapTimer = null;
+    }
+    nextTapHits++;
+    if (nextTapHits === 1) {
+      nextTapTimer = setTimeout(() => {
+        nextTapHits = 0;
+        nextTapTimer = null;
+        nextTrack();
+      }, DOUBLE_TAP_TIMEOUT_MS);
+    } else {
+      seekRelative(10, nextTapHits - 1);
+      clearTimeout(resetNextHitsTimer);
+      resetNextHitsTimer = setTimeout(() => { nextTapHits = 0; }, 450);
+    }
+  }
+
+  function handlePrevTouch() {
+    if (prevTapTimer) {
+      clearTimeout(prevTapTimer);
+      prevTapTimer = null;
+    }
+    prevTapHits++;
+    if (prevTapHits === 1) {
+      prevTapTimer = setTimeout(() => {
+        prevTapHits = 0;
+        prevTapTimer = null;
+        prevTrack();
+      }, DOUBLE_TAP_TIMEOUT_MS);
+    } else {
+      seekRelative(-10, prevTapHits - 1);
+      clearTimeout(resetPrevHitsTimer);
+      resetPrevHitsTimer = setTimeout(() => { prevTapHits = 0; }, 450);
+    }
+  }
+
+  btnNext.addEventListener('click', handleNextTouch);
+  btnPrev.addEventListener('click', handlePrevTouch);
+
+  // Clicks directos en las tarjetas flotantes
   if (adjPrevCard) {
-    adjPrevCard.addEventListener('click', prevTrack);
+    adjPrevCard.addEventListener('click', handlePrevTouch);
   }
   if (adjNextCard) {
-    adjNextCard.addEventListener('click', nextTrack);
+    adjNextCard.addEventListener('click', handleNextTouch);
   }
 
   // Alternador de Buscador de Música y Archivos / Modo Reproductor Completo
   let isPlayerExpanded = false;
-  // El botón ya no alterna con click directo; se maneja exclusivamente por gesto de arrastre táctil
+
+  function setPlayerExpanded(expanded) {
+    if (!dashboardGrid || !btnToggleExpand) return;
+    isPlayerExpanded = expanded;
+    if (isPlayerExpanded) {
+      dashboardGrid.classList.add('is-expanded');
+      btnToggleExpand.classList.add('is-active');
+      btnToggleExpand.title = "Mostrar explorador de música y carpetas";
+    } else {
+      dashboardGrid.classList.remove('is-expanded');
+      btnToggleExpand.classList.remove('is-active');
+      btnToggleExpand.title = "Ocultar explorador (reproductor a pantalla completa)";
+    }
+    setTimeout(refreshAllMarquees, 320);
+  }
+
+  function toggleExplorer() {
+    setPlayerExpanded(!isPlayerExpanded);
+  }
+
+  // Soporta tanto click/toque directo como gesto de arrastre
   if (btnToggleExpand) {
-    btnToggleExpand.style.cursor = "grab";
+    btnToggleExpand.style.cursor = "pointer";
+    btnToggleExpand.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleExplorer();
+    });
   }
 
   // =================== ZONA EXCLUSIVA DE GESTOS TÁCTILES / ARRASTRE ===================
@@ -1083,23 +1207,11 @@ function initApp() {
     // Con el explorador en la izquierda:
     // Si el explorador está ABIERTO: arrastrar hacia la izquierda (<-) lo CIERRA (expande reproductor)
     if (!isPlayerExpanded && dx < -35) {
-      if (dashboardGrid && btnToggleExpand) {
-        isPlayerExpanded = true;
-        dashboardGrid.classList.add('is-expanded');
-        btnToggleExpand.classList.remove('is-active');
-        btnToggleExpand.title = "Abrir buscador de archivos y pistas";
-        setTimeout(refreshAllMarquees, 320);
-      }
+      setPlayerExpanded(true);
     }
     // Si el explorador está CERRADO: arrastrar hacia la derecha (->) lo ABRE
     else if (isPlayerExpanded && dx > 35) {
-      if (dashboardGrid && btnToggleExpand) {
-        isPlayerExpanded = false;
-        dashboardGrid.classList.remove('is-expanded');
-        btnToggleExpand.classList.add('is-active');
-        btnToggleExpand.title = "Ocultar buscador (reproductor a pantalla completa)";
-        setTimeout(refreshAllMarquees, 320);
-      }
+      setPlayerExpanded(false);
     }
   }
 

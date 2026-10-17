@@ -2,6 +2,26 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.3.0 — 2026-10-16
+
+- **Cuadro de la carátula como la web:** un haz láser cian gira por el borde mientras suena; al mezclar se suma un haz magenta en sentido contrario. Abajo, una cápsula `PAUSED / PLAYING / MIXING ⇄` con ecualizador.
+- **Doble toque en Siguiente/Anterior** (y en sus tarjetas): adelanta o retrocede 10 s, con un aviso `+10s` / `-10s` centrado en el reproductor.
+- **Tarjetas Anterior/Siguiente:** íconos ⏮ ⏭ en los extremos y nombre más grande, en gris claro.
+- **Título largo:** se desplaza como en la web (inicio, deslizamiento, final y vuelta), también en las tarjetas.
+- **Tiempos** de la canción más grandes y en blanco.
+- **Automix** al lado de la lupa; la lupa queda resaltada con el explorador oculto.
+- Al mezclar, los datos de la canción nueva aparecen al instante y solo la carátula hace fundido.
+
+## 2.2.0 — 2026-10-16 (`eeba62b`)
+
+- **Automix inteligente:** analiza dónde se apaga cada canción para mezclar ahí, ignora los silencios y adapta la duración (final seco → 3 s).
+- Siguiente y Anterior con fundido de 0,5 s y uso de la canción ya precargada.
+
+## 2.1.0 — 2026-10-16 (`c8f9063`)
+
+- **Automix** (fase 1): mezcla de 5 s entre canciones con un botón bajo la lupa.
+- **Favoritos** guardados en el radio; **duración real** en la lista.
+
 ## 2.0.1 — 2026-10-16 (`f2707d6`)
 
 - **Siguiente y Anterior en Favoritos** recorren los favoritos, no la carpeta de la canción.

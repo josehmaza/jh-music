@@ -51,7 +51,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.2.0"
+                android:text="v2.3.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -621,7 +621,8 @@
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Carátula / Vinyl Card centrada con Badge de Formato y Ecualizador Animado (durante una mezcla de Automix: borde neón que late) -->
+                    <!-- Carátula (igual que la web): cuadro con relleno de 2,5dp donde gira el borde láser,
+                         carátula o disco, cápsula de estado con ecualizador y badge de formato -->
                     <FrameLayout
                         android:id="@+id/layoutAlbumArtCard"
                         android:layout_width="150dp"
@@ -629,60 +630,82 @@
                         android:layout_below="@id/tvPlaybackStatus"
                         android:layout_centerHorizontal="true"
                         android:layout_marginTop="2dp"
+                        android:padding="2.5dp"
                         android:clickable="true"
                         android:focusable="true"
                         android:foreground="?android:attr/selectableItemBackground"
                         android:background="@drawable/bg_album_card">
 
-                        <!-- Portada Real si existe en el archivo de audio -->
-                        <ImageView
-                            android:id="@+id/ivAlbumArt"
+                        <!-- Interior (.album-art-inner): fondo oscuro con esquinas de 17,5dp -->
+                        <FrameLayout
+                            android:id="@+id/layoutAlbumArtInner"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:visibility="gone" />
+                            android:background="@drawable/bg_album_inner">
 
-                        <!-- Contenedor Placeholder: Vinilo concéntrico + Ecualizador animado -->
-                        <LinearLayout
-                            android:id="@+id/layoutAlbumPlaceholder"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:orientation="vertical"
-                            android:gravity="center"
-                            android:paddingTop="8dp">
-
-                            <!-- Disco de Vinilo (3 círculos concéntricos); se oculta cuando hay carátula -->
+                            <!-- Portada Real si existe en el archivo de audio -->
                             <ImageView
-                                android:id="@+id/ivVinylDisc"
-                                android:layout_width="68dp"
-                                android:layout_height="68dp"
-                                android:src="@drawable/ic_vinyl_disc" />
+                                android:id="@+id/ivAlbumArt"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone" />
 
-                            <!-- Barras de ecualizador animadas estilo web (5 barras cyan) -->
-                            <com.jh.caraudio.SoundWaveBarsView
-                                android:id="@+id/soundWaveBars"
-                                android:layout_width="60dp"
-                                android:layout_height="20dp"
-                                android:layout_marginTop="6dp" />
-                        </LinearLayout>
+                            <!-- Placeholder: disco de vinilo (se oculta cuando hay carátula) -->
+                            <LinearLayout
+                                android:id="@+id/layoutAlbumPlaceholder"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:paddingBottom="14dp">
 
-                        <!-- Badge de Formato / Calidad MP3 320K -->
-                        <TextView
-                            android:id="@+id/tvFormatBadge"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="top|end"
-                            android:layout_margin="8dp"
-                            android:background="@drawable/bg_pill"
-                            android:paddingStart="8dp"
-                            android:paddingEnd="8dp"
-                            android:paddingTop="3dp"
-                            android:paddingBottom="3dp"
-                            android:text="MP3 320K"
-                            android:textColor="@color/accent_cyan"
-                            android:textSize="11sp"
-                            android:textStyle="bold" />
+                                <ImageView
+                                    android:id="@+id/ivVinylDisc"
+                                    android:layout_width="68dp"
+                                    android:layout_height="68dp"
+                                    android:src="@drawable/ic_vinyl_disc" />
+                            </LinearLayout>
+
+                            <!-- Cápsula de estado PAUSED / PLAYING / MIXING ⇄ con ecualizador (.now-playing-pill) -->
+                            <com.jh.caraudio.NowPlayingPillView
+                                android:id="@+id/nowPlayingPill"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="bottom|center_horizontal"
+                                android:layout_marginBottom="10dp" />
+
+                            <!-- Badge de Formato / Calidad MP3 320K (.audio-badge) -->
+                            <TextView
+                                android:id="@+id/tvFormatBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top|end"
+                                android:layout_margin="8dp"
+                                android:background="@drawable/bg_audio_badge"
+                                android:fontFamily="monospace"
+                                android:paddingStart="7dp"
+                                android:paddingEnd="7dp"
+                                android:paddingTop="3dp"
+                                android:paddingBottom="3dp"
+                                android:text="MP3 320K"
+                                android:textColor="#e2e8f0"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </FrameLayout>
                     </FrameLayout>
+
+                    <!-- Borde láser giratorio (.laser-spinner): cian al reproducir, + magenta al mezclar.
+                         Encima del cuadro y del mismo tamaño; no recibe toques -->
+                    <com.jh.caraudio.LaserRingView
+                        android:id="@+id/laserRing"
+                        android:layout_width="150dp"
+                        android:layout_height="150dp"
+                        android:layout_alignTop="@id/layoutAlbumArtCard"
+                        android:layout_alignStart="@id/layoutAlbumArtCard"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:importantForAccessibility="no" />
 
                     <!-- Zona Táctil Ergonómica (Área libre marcada en cuadro rojo + botón de búsqueda) -->
                     <!-- Permite tocar, mantener y jalar hacia la izquierda para ocultar o hacia la derecha para mostrar -->
@@ -702,28 +725,35 @@
                         android:focusable="false"
                         android:contentDescription="Área de gesto para alternar explorador">
 
-                        <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
-                        <ImageButton
-                            android:id="@+id/btnToggleExplorer"
-                            android:layout_width="54dp"
-                            android:layout_height="48dp"
-                            android:background="@drawable/bg_btn_action"
-                            android:src="@android:drawable/ic_menu_search"
-                            android:tint="@color/accent_cyan"
-                            android:padding="8dp"
-                            android:contentDescription="Mostrar u Ocultar Explorador" />
+                        <!-- Lupa y Automix lado a lado (igual que la web) -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
 
-                        <!-- Botón Automix: mezcla automática entre canciones (mismo tamaño que la lupa) -->
-                        <ImageButton
-                            android:id="@+id/btnAutoMix"
-                            android:layout_width="54dp"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="12dp"
-                            android:background="@drawable/bg_btn_action"
-                            android:src="@drawable/ic_automix"
-                            android:padding="11dp"
-                            android:scaleType="fitCenter"
-                            android:contentDescription="Activar o desactivar Automix" />
+                            <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
+                            <ImageButton
+                                android:id="@+id/btnToggleExplorer"
+                                android:layout_width="54dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/bg_btn_action"
+                                android:src="@android:drawable/ic_menu_search"
+                                android:tint="@color/accent_cyan"
+                                android:padding="8dp"
+                                android:contentDescription="Mostrar u Ocultar Explorador" />
+
+                            <!-- Botón Automix: mezcla automática entre canciones (mismo tamaño que la lupa) -->
+                            <ImageButton
+                                android:id="@+id/btnAutoMix"
+                                android:layout_width="54dp"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="12dp"
+                                android:background="@drawable/bg_btn_action"
+                                android:src="@drawable/ic_automix"
+                                android:padding="11dp"
+                                android:scaleType="fitCenter"
+                                android:contentDescription="Activar o desactivar Automix" />
+                        </LinearLayout>
 
                         <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
                         <View
@@ -734,18 +764,13 @@
                 </RelativeLayout>
 
                 <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA -->
-                <TextView
+                <com.jh.caraudio.CarMarqueeTextView
                     android:id="@+id/tvTrackTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:singleLine="true"
-                    android:ellipsize="marquee"
-                    android:marqueeRepeatLimit="marquee_forever"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:scrollHorizontally="true"
                     android:text="Selecciona una canción"
                     android:textColor="@color/text_primary"
                     android:textSize="25sp"
@@ -787,94 +812,90 @@
                         android:textSize="15sp" />
                 </LinearLayout>
 
-                <!-- Tarjetas Flotantes: Pista Anterior y Posterior (Sleek 38dp) -->
+                <!-- Tarjetas Anterior / Siguiente: íconos grandes en los extremos y nombre grande para leer manejando -->
                 <LinearLayout
                     android:id="@+id/layoutAdjacentPreviews"
                     android:layout_width="match_parent"
-                    android:layout_height="38dp"
+                    android:layout_height="46dp"
                     android:layout_marginTop="4dp"
                     android:orientation="horizontal"
                     android:background="@drawable/bg_search"
                     android:gravity="center_vertical"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp">
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
 
-                    <!-- Tarjeta Anterior -->
+                    <!-- Tarjeta Anterior: ⏮ al inicio -->
                     <LinearLayout
                         android:id="@+id/layoutPrevCard"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?android:attr/selectableItemBackground">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:text="⏮ ANTERIOR"
-                            android:textColor="@color/accent_cyan"
-                            android:textSize="11sp"
-                            android:textStyle="bold" />
+                        <ImageView
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:src="@android:drawable/ic_media_previous"
+                            android:tint="@color/accent_cyan"
+                            android:contentDescription="Anterior" />
 
-                        <TextView
+                        <com.jh.caraudio.CarMarqueeTextView
                             android:id="@+id/tvPrevTrackPreview"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:gravity="center"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            android:gravity="start|center_vertical"
                             android:singleLine="true"
-                            android:ellipsize="marquee"
-                            android:marqueeRepeatLimit="marquee_forever"
                             android:text="Cargando..."
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp"
+                            android:textColor="#cbd5e1"
+                            android:textSize="17sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Divisor -->
                     <View
                         android:layout_width="1dp"
-                        android:layout_height="22dp"
+                        android:layout_height="26dp"
                         android:layout_marginStart="8dp"
                         android:layout_marginEnd="8dp"
                         android:background="@color/border_panel" />
 
-                    <!-- Tarjeta Siguiente -->
+                    <!-- Tarjeta Siguiente: ⏭ al final -->
                     <LinearLayout
                         android:id="@+id/layoutNextCard"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?android:attr/selectableItemBackground">
 
-                        <TextView
-                            android:layout_width="match_parent"
+                        <com.jh.caraudio.CarMarqueeTextView
+                            android:id="@+id/tvNextTrackPreview"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:text="SIGUIENTE ⏭"
-                            android:textColor="@color/accent_cyan"
-                            android:textSize="11sp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:gravity="end|center_vertical"
+                            android:singleLine="true"
+                            android:text="Cargando..."
+                            android:textColor="#cbd5e1"
+                            android:textSize="17sp"
                             android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvNextTrackPreview"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:singleLine="true"
-                            android:ellipsize="marquee"
-                            android:marqueeRepeatLimit="marquee_forever"
-                            android:text="Cargando..."
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                        <ImageView
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:src="@android:drawable/ic_media_next"
+                            android:tint="@color/accent_cyan"
+                            android:contentDescription="Siguiente" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -920,8 +941,9 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentStart="true"
                             android:text="00:00"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="15sp"
+                            android:textColor="@color/text_primary"
+                            android:fontFamily="monospace"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -930,8 +952,9 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:text="00:00"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="15sp"
+                            android:textColor="@color/text_primary"
+                            android:fontFamily="monospace"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
                     </RelativeLayout>
                 </LinearLayout>

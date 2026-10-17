@@ -37,6 +37,7 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 import android.text.style.ImageSpan;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -100,7 +101,8 @@ public class MainActivity extends Activity {
     private View layoutExplorerToggleZone;
     private View layoutAlbumArtCard;
     private ImageView ivAlbumArt;
-    private SoundWaveBarsView soundWaveBars;
+    private NowPlayingPillView nowPlayingPill; // cápsula PAUSED / PLAYING / MIXING ⇄ con ecualizador
+    private LaserRingView laserRing;           // borde láser giratorio de la carátula
     private TextView tvFormatBadge;
     private TextView tvTrackTitle, tvTrackArtist, tvTrackArtistDot, tvTrackAlbum;
     private View layoutPrevCard, layoutNextCard;
@@ -117,8 +119,9 @@ public class MainActivity extends Activity {
     private TextView tvTimeCurrent, tvTimeTotal;
     private ImageButton btnShuffle, btnPrev, btnPlayPause, btnNext, btnRepeat;
 
-    // Explorador Derecho
+    // Explorador y Reproductor
     private LinearLayout layoutExplorerPanel;
+    private View layoutPlayerPanel;
     private Button tabFolders, tabTracks, tabFavorites;
     private EditText etSearch;
     private ImageButton btnSearchClear;
@@ -138,6 +141,17 @@ public class MainActivity extends Activity {
     private LinearLayout layoutSearchLoading;
     private final Handler fastScrollHandler = new Handler(Looper.getMainLooper());
     private Runnable hideBubbleRunnable;
+
+    // Detección de 1 toque (cambio de pista) vs 2 toques (adelantar/retroceder 10s)
+    private static final int SEEK_SKIP_MS = 10000;
+    private static final int DOUBLE_TAP_TIMEOUT_MS = 280;
+    private final Handler navTapHandler = new Handler(Looper.getMainLooper());
+    private Runnable nextTapRunnable = null;
+    private Runnable prevTapRunnable = null;
+    private int nextTapHits = 0;
+    private int prevTapHits = 0;
+    private final Runnable resetNextTapHitsRunnable = () -> nextTapHits = 0;
+    private final Runnable resetPrevTapHitsRunnable = () -> prevTapHits = 0;
 
     // Adaptadores
     private TrackAdapter trackAdapter;
@@ -240,7 +254,6 @@ public class MainActivity extends Activity {
         setupClock();
         setupVolumeControls();
         setupPlayerControls();
-        setupMixGlow();
         // Automix recuerda si quedó activado
         autoMixer.setEnabled(getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_AUTOMIX, false));
         updateAutoMixButton();
@@ -295,7 +308,11 @@ public class MainActivity extends Activity {
         layoutExplorerToggleZone = findViewById(R.id.layoutExplorerToggleZone);
         layoutAlbumArtCard = findViewById(R.id.layoutAlbumArtCard);
         ivAlbumArt = findViewById(R.id.ivAlbumArt);
-        soundWaveBars = findViewById(R.id.soundWaveBars);
+        nowPlayingPill = findViewById(R.id.nowPlayingPill);
+        laserRing = findViewById(R.id.laserRing);
+        // La carátula se recorta con las esquinas redondeadas del interior (como overflow:hidden en la web)
+        View albumInner = findViewById(R.id.layoutAlbumArtInner);
+        if (albumInner != null) albumInner.setClipToOutline(true);
         tvFormatBadge = findViewById(R.id.tvFormatBadge);
         tvTrackTitle = findViewById(R.id.tvTrackTitle);
         tvTrackArtist = findViewById(R.id.tvTrackArtist);
@@ -314,8 +331,9 @@ public class MainActivity extends Activity {
         btnNext = findViewById(R.id.btnNext);
         btnRepeat = findViewById(R.id.btnRepeat);
 
-        // Explorador derecho
+        // Explorador y reproductor
         layoutExplorerPanel = findViewById(R.id.layoutExplorerPanel);
+        layoutPlayerPanel = findViewById(R.id.layoutPlayerPanel);
         tabFolders = findViewById(R.id.tabFolders);
         tabTracks = findViewById(R.id.tabTracks);
         tabFavorites = findViewById(R.id.tabFavorites);
@@ -621,7 +639,7 @@ public class MainActivity extends Activity {
                     if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
                         if (dx > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
-                            layoutExplorerPanel.setVisibility(View.VISIBLE);
+                            setExplorerVisible(true);
                             return true;
                         }
                     }
@@ -630,7 +648,7 @@ public class MainActivity extends Activity {
                         if (dx < -35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
-                            layoutExplorerPanel.setVisibility(View.GONE);
+                            setExplorerVisible(false);
                             return true;
                         }
                     }
@@ -649,14 +667,14 @@ public class MainActivity extends Activity {
                     if (layoutExplorerPanel.getVisibility() != View.VISIBLE) {
                         if (dx > 35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
-                            layoutExplorerPanel.setVisibility(View.VISIBLE);
+                            setExplorerVisible(true);
                             return true;
                         }
                     } else {
                         if (dx < -35 && Math.abs(dx) > Math.abs(dy) * 1.1f) {
                             globalGestureHandled = true;
                             hideKeyboard();
-                            layoutExplorerPanel.setVisibility(View.GONE);
+                            setExplorerVisible(false);
                             return true;
                         }
                     }
@@ -812,12 +830,12 @@ public class MainActivity extends Activity {
         if (layoutAlbumArtCard != null) {
             layoutAlbumArtCard.setOnClickListener(v -> togglePlayPause());
         }
-        btnNext.setOnClickListener(v -> playNextTrack());
-        btnPrev.setOnClickListener(v -> playPreviousTrack());
+        btnNext.setOnClickListener(v -> handleNextButtonClick());
+        btnPrev.setOnClickListener(v -> handlePrevButtonClick());
 
         // Tarjetas flotantes anterior y siguiente
-        if (layoutPrevCard != null) layoutPrevCard.setOnClickListener(v -> playPreviousTrack());
-        if (layoutNextCard != null) layoutNextCard.setOnClickListener(v -> playNextTrack());
+        if (layoutPrevCard != null) layoutPrevCard.setOnClickListener(v -> handlePrevButtonClick());
+        if (layoutNextCard != null) layoutNextCard.setOnClickListener(v -> handleNextButtonClick());
 
         // Botón y Zona Táctil Ergonómica para alternar o deslizar el explorador de música
         setupExplorerToggleGestures();
@@ -873,12 +891,14 @@ public class MainActivity extends Activity {
             btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
             tvPlaybackStatus.setText(autoMixer.isEnabled() ? "● REPRODUCIENDO · AUTOMIX" : "● REPRODUCIENDO");
             tvPlaybackStatus.setTextColor(Color.parseColor("#38bdf8"));
-            if (soundWaveBars != null) soundWaveBars.setPlaying(true);
+            if (nowPlayingPill != null) nowPlayingPill.setPlaying(true);
+            if (laserRing != null) laserRing.setPlaying(true);
         } else {
             btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
             tvPlaybackStatus.setText("● EN PAUSA");
             tvPlaybackStatus.setTextColor(Color.parseColor("#f59e0b"));
-            if (soundWaveBars != null) soundWaveBars.setPlaying(false);
+            if (nowPlayingPill != null) nowPlayingPill.setPlaying(false);
+            if (laserRing != null) laserRing.setPlaying(false);
         }
         // Activar marquesina en el título
         tvTrackTitle.setSelected(isPlaying);
@@ -929,13 +949,13 @@ public class MainActivity extends Activity {
                                     if (dx < -35 && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
                                         gestureHandled = true;
                                         hideKeyboard();
-                                        layoutExplorerPanel.setVisibility(View.GONE);
+                                        setExplorerVisible(false);
                                         return true;
                                     }
                                     // Jalar hacia la DERECHA (->) muestra el explorador
                                     else if (dx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
                                         gestureHandled = true;
-                                        layoutExplorerPanel.setVisibility(View.VISIBLE);
+                                        setExplorerVisible(true);
                                         return true;
                                     }
                                 }
@@ -951,9 +971,9 @@ public class MainActivity extends Activity {
                                 if (Math.abs(totalDx) > 35 && Math.abs(totalDx) > Math.abs(totalDy) * 1.1f) {
                                     if (totalDx < -35 && layoutExplorerPanel.getVisibility() == View.VISIBLE) {
                                         hideKeyboard();
-                                        layoutExplorerPanel.setVisibility(View.GONE);
+                                        setExplorerVisible(false);
                                     } else if (totalDx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
-                                        layoutExplorerPanel.setVisibility(View.VISIBLE);
+                                        setExplorerVisible(true);
                                     }
                                 } else if (Math.abs(totalDx) <= 35 && Math.abs(totalDy) <= 35
                                         && btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
@@ -990,12 +1010,15 @@ public class MainActivity extends Activity {
     private void toggleExplorerVisibility() {
         hideKeyboard();
         if (layoutExplorerPanel != null) {
-            if (layoutExplorerPanel.getVisibility() == View.VISIBLE) {
-                layoutExplorerPanel.setVisibility(View.GONE);
-            } else {
-                layoutExplorerPanel.setVisibility(View.VISIBLE);
-            }
+            setExplorerVisible(layoutExplorerPanel.getVisibility() != View.VISIBLE);
         }
+    }
+
+    /** Muestra u oculta el explorador; igual que la web, la lupa queda resaltada mientras está oculto. */
+    private void setExplorerVisible(boolean visible) {
+        if (layoutExplorerPanel == null) return;
+        layoutExplorerPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (btnToggleExplorer != null) btnToggleExplorer.setSelected(!visible);
     }
 
     // ==========================================
@@ -2394,7 +2417,10 @@ public class MainActivity extends Activity {
         onTrackStarted(track, false);
     }
 
-    /** smoothUi: mezcla automática; los datos de la canción cambian con un fundido en vez de saltar. */
+    /**
+     * smoothUi: mezcla automática. Igual que la web: los datos cambian al instante (sin vacíos ni
+     * parpadeos) y solo la carátula cambia con fundido cruzado.
+     */
     private void onTrackStarted(Track track, boolean smoothUi) {
         // Automix analiza en segundo plano dónde se apaga esta canción
         autoMixer.onTrackStarted(track);
@@ -2402,12 +2428,8 @@ public class MainActivity extends Activity {
         int durationMs = mediaPlayer.getDuration();
         if (durationMs > 0) track.setDurationSec(durationMs / 1000);
 
-        if (smoothUi) {
-            startNowPlayingCrossfade(track);
-        } else {
-            cancelNowPlayingCrossfade();
-            showTrackOnScreen(track);
-        }
+        albumArtFadeForPath = smoothUi ? track.getFilePath() : null;
+        showTrackOnScreen(track);
     }
 
     /** Pone en pantalla los datos de la canción que suena. */
@@ -2434,43 +2456,6 @@ public class MainActivity extends Activity {
         updatePreviews();
     }
 
-    // Fundido de los datos en pantalla al empezar una mezcla: lo de la canción que sale se apaga
-    // y lo de la que entra aparece. Con Handler (no Animator): en radios con animaciones
-    // desactivadas los Animator saltan al final sin animar.
-    private static final int NOW_PLAYING_FADE_OUT_MS = 600;
-    private static final int NOW_PLAYING_FADE_IN_MS = 700;
-    private View[] nowPlayingViews;
-    private Track nowPlayingFadeTarget;
-    private boolean nowPlayingSwapped;
-    private long nowPlayingFadeStartMs;
-
-    private final Runnable nowPlayingFadeRunnable = new Runnable() {
-        @Override
-        public void run() {
-            long elapsed = SystemClock.uptimeMillis() - nowPlayingFadeStartMs;
-            if (!nowPlayingSwapped) {
-                float alpha = 1f - elapsed / (float) NOW_PLAYING_FADE_OUT_MS;
-                if (alpha <= 0f) {
-                    // Totalmente apagado: cambiar a los datos de la canción nueva
-                    nowPlayingSwapped = true;
-                    setNowPlayingAlpha(0f);
-                    showTrackOnScreen(nowPlayingFadeTarget);
-                } else {
-                    setNowPlayingAlpha(alpha);
-                }
-            } else {
-                float alpha = (elapsed - NOW_PLAYING_FADE_OUT_MS) / (float) NOW_PLAYING_FADE_IN_MS;
-                if (alpha >= 1f) {
-                    setNowPlayingAlpha(1f);
-                    nowPlayingFadeTarget = null;
-                    return;
-                }
-                setNowPlayingAlpha(Math.max(0f, alpha));
-            }
-            handler.postDelayed(this, 30);
-        }
-    };
-
     // Carátula real (detrás del disco y las barras): en la mezcla automática cambia con fundido cruzado
     private static final int ALBUM_ART_FADE_MS = 700;
     private String albumArtFadeForPath;   // canción cuya carátula debe entrar con fundido
@@ -2478,18 +2463,13 @@ public class MainActivity extends Activity {
     private int albumArtFadeToken = 0;    // cada cambio de carátula invalida el fundido anterior
 
     /**
-     * Con carátula: se ve la imagen completa y las barras animadas quedan encima, abajo, sobre una
-     * sombra suave; el disco (dibujo de "sin carátula") se oculta. Sin carátula: disco y barras centrados.
+     * Con carátula: se ve la imagen completa y el disco (dibujo de "sin carátula") se oculta.
+     * Sin carátula: se ve el disco. La cápsula de estado queda siempre abajo.
      */
     private void setCoverMode(boolean hasCover) {
+        // Igual que la web: con carátula se oculta el disco; la cápsula con el ecualizador queda siempre abajo
         View vinyl = findViewById(R.id.ivVinylDisc);
-        LinearLayout placeholder = findViewById(R.id.layoutAlbumPlaceholder);
-        if (vinyl == null || placeholder == null) return;
-        float density = getResources().getDisplayMetrics().density;
-        vinyl.setVisibility(hasCover ? View.GONE : View.VISIBLE);
-        placeholder.setGravity(hasCover ? (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL) : Gravity.CENTER);
-        placeholder.setBackgroundResource(hasCover ? R.drawable.bg_cover_scrim : 0);
-        placeholder.setPadding(0, Math.round(8 * density), 0, hasCover ? Math.round(12 * density) : 0);
+        if (vinyl != null) vinyl.setVisibility(hasCover ? View.GONE : View.VISIBLE);
     }
 
     private void showAlbumArt(Bitmap art, boolean smooth) {
@@ -2554,37 +2534,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void startNowPlayingCrossfade(Track track) {
-        albumArtFadeForPath = track.getFilePath();
-        if (nowPlayingViews == null) {
-            // Solo los textos: el cuadro de la carátula (disco, barras, formato) queda siempre visible con su borde neón
-            nowPlayingViews = new View[]{tvTrackTitle, tvTrackArtist, tvTrackArtistDot, tvTrackAlbum,
-                    tvTimeCurrent, tvTimeTotal, tvPrevTrackPreview, tvNextTrackPreview};
-        }
-        handler.removeCallbacks(nowPlayingFadeRunnable);
-        nowPlayingFadeTarget = track;
-        nowPlayingSwapped = false;
-        nowPlayingFadeStartMs = SystemClock.uptimeMillis();
-        handler.post(nowPlayingFadeRunnable);
-    }
-
-    /** Un cambio a mano durante el fundido manda: se cancela y la pantalla queda visible. */
-    private void cancelNowPlayingCrossfade() {
-        handler.removeCallbacks(nowPlayingFadeRunnable);
-        albumArtFadeForPath = null;
-        if (nowPlayingFadeTarget != null) {
-            nowPlayingFadeTarget = null;
-            setNowPlayingAlpha(1f);
-        }
-    }
-
-    private void setNowPlayingAlpha(float alpha) {
-        if (nowPlayingViews == null) return;
-        for (View v : nowPlayingViews) {
-            if (v != null) v.setAlpha(alpha);
-        }
-    }
-
     // ==========================================
     // AUTOMIX: mezcla automática entre canciones
     // ==========================================
@@ -2639,66 +2588,11 @@ public class MainActivity extends Activity {
 
         @Override
         public void onMixVisualChanged(boolean mixing) {
-            showMixGlow(mixing);
+            // Igual que la web: segundo haz láser magenta + cápsula MIXING ⇄ mientras dura la mezcla
+            if (laserRing != null) laserRing.setMixing(mixing);
+            if (nowPlayingPill != null) nowPlayingPill.setMixing(mixing);
         }
     };
-
-    // Borde neón que late alrededor del reproductor mientras dura una mezcla.
-    // Se anima con Handler (no con Animator): en radios con animaciones desactivadas los Animator no se mueven.
-    private GradientDrawable mixGlowHalo;
-    private GradientDrawable mixGlowLine;
-    private long mixGlowStartMs;
-    private static final int MIX_GLOW_PERIOD_MS = 1400;
-
-    private final Runnable mixGlowRunnable = new Runnable() {
-        @Override
-        public void run() {
-            float phase = ((SystemClock.uptimeMillis() - mixGlowStartMs) % MIX_GLOW_PERIOD_MS) / (float) MIX_GLOW_PERIOD_MS;
-            float pulse = 0.55f + 0.45f * (0.5f + 0.5f * (float) Math.sin(phase * 2 * Math.PI));
-            mixGlowLine.setAlpha(Math.round(255 * pulse));
-            mixGlowHalo.setAlpha(Math.round(150 * pulse));
-            handler.postDelayed(this, 50);
-        }
-    };
-
-    private void setupMixGlow() {
-        // El borde neón va en el cuadro de la carátula
-        View card = layoutAlbumArtCard;
-        if (card == null) return;
-        float density = getResources().getDisplayMetrics().density;
-        // Halo ancho y suave + línea fina brillante = efecto neón
-        mixGlowHalo = new GradientDrawable();
-        mixGlowHalo.setCornerRadius(18 * density);
-        mixGlowHalo.setColor(Color.TRANSPARENT);
-        mixGlowHalo.setStroke(Math.round(8 * density), Color.parseColor("#38bdf8"));
-        mixGlowHalo.setAlpha(0);
-        mixGlowLine = new GradientDrawable();
-        mixGlowLine.setCornerRadius(18 * density);
-        mixGlowLine.setColor(Color.TRANSPARENT);
-        mixGlowLine.setStroke(Math.round(3 * density), Color.parseColor("#7dd3fc"));
-        mixGlowLine.setAlpha(0);
-        // En primer plano (foreground) para que quede ENCIMA de la carátula, que ocupa todo el cuadro;
-        // se conserva el efecto de toque que ya tenía el cuadro
-        if (card instanceof FrameLayout) {
-            FrameLayout frame = (FrameLayout) card;
-            Drawable touchEffect = frame.getForeground();
-            frame.setForeground(touchEffect != null
-                    ? new LayerDrawable(new Drawable[]{mixGlowHalo, mixGlowLine, touchEffect})
-                    : new LayerDrawable(new Drawable[]{mixGlowHalo, mixGlowLine}));
-        }
-    }
-
-    private void showMixGlow(boolean on) {
-        if (mixGlowLine == null) return;
-        handler.removeCallbacks(mixGlowRunnable);
-        if (on) {
-            mixGlowStartMs = SystemClock.uptimeMillis();
-            handler.post(mixGlowRunnable);
-        } else {
-            mixGlowLine.setAlpha(0);
-            mixGlowHalo.setAlpha(0);
-        }
-    }
 
     private void toggleAutoMix() {
         boolean on = !autoMixer.isEnabled();
@@ -2940,6 +2834,160 @@ public class MainActivity extends Activity {
         if (queue.isEmpty()) return;
         int prevIndex = (currentTrackIndex - 1 + queue.size()) % queue.size();
         playTrackFromQueue(queue, prevIndex, true);
+    }
+
+    /** 1 toque = siguiente canción; 2 toques (doble touch) = adelanta 10 segundos */
+    private void handleNextButtonClick() {
+        if (nextTapRunnable != null) {
+            navTapHandler.removeCallbacks(nextTapRunnable);
+            nextTapRunnable = null;
+        }
+        nextTapHits++;
+        if (nextTapHits == 1) {
+            nextTapRunnable = () -> {
+                nextTapHits = 0;
+                nextTapRunnable = null;
+                playNextTrack();
+            };
+            navTapHandler.postDelayed(nextTapRunnable, DOUBLE_TAP_TIMEOUT_MS);
+        } else {
+            // Doble toque (o toques adicionales seguidos): avanza 10s
+            seekRelative(SEEK_SKIP_MS, nextTapHits - 1);
+            navTapHandler.removeCallbacks(resetNextTapHitsRunnable);
+            navTapHandler.postDelayed(resetNextTapHitsRunnable, 450);
+        }
+    }
+
+    /** 1 toque = canción anterior; 2 toques (doble touch) = retrocede 10 segundos */
+    private void handlePrevButtonClick() {
+        if (prevTapRunnable != null) {
+            navTapHandler.removeCallbacks(prevTapRunnable);
+            prevTapRunnable = null;
+        }
+        prevTapHits++;
+        if (prevTapHits == 1) {
+            prevTapRunnable = () -> {
+                prevTapHits = 0;
+                prevTapRunnable = null;
+                playPreviousTrack();
+            };
+            navTapHandler.postDelayed(prevTapRunnable, DOUBLE_TAP_TIMEOUT_MS);
+        } else {
+            // Doble toque (o toques adicionales seguidos): retrocede 10s
+            seekRelative(-SEEK_SKIP_MS, prevTapHits - 1);
+            navTapHandler.removeCallbacks(resetPrevTapHitsRunnable);
+            navTapHandler.postDelayed(resetPrevTapHitsRunnable, 450);
+        }
+    }
+
+    // Aviso +10s / -10s igual que la web (#seekFeedbackToast): recuadro oscuro con borde cian,
+    // centrado en el reproductor al 45% de su alto; aparece con un leve agrandado y se apaga a los 0,8 s.
+    // Animado con Handler (no con Animator) por los radios con animaciones desactivadas.
+    private static final int SEEK_FEEDBACK_SHOW_MS = 800;
+    private static final int SEEK_FEEDBACK_FADE_MS = 250;
+    private TextView seekFeedbackView;
+    private long seekFeedbackStartMs;
+    private boolean seekFeedbackHiding;
+
+    private final Runnable seekFeedbackRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long elapsed = SystemClock.uptimeMillis() - seekFeedbackStartMs;
+            float t;
+            if (!seekFeedbackHiding) {
+                t = Math.min(1f, elapsed / (float) SEEK_FEEDBACK_FADE_MS);
+                seekFeedbackView.setAlpha(t);
+                float scale = 1f + 0.05f * t;               // crece hasta 1,05
+                seekFeedbackView.setScaleX(scale);
+                seekFeedbackView.setScaleY(scale);
+                if (elapsed >= SEEK_FEEDBACK_SHOW_MS) {
+                    seekFeedbackHiding = true;
+                    seekFeedbackStartMs = SystemClock.uptimeMillis();
+                }
+            } else {
+                t = Math.min(1f, elapsed / (float) SEEK_FEEDBACK_FADE_MS);
+                seekFeedbackView.setAlpha(1f - t);
+                float scale = 1.05f - 0.1f * t;              // se achica hasta 0,95
+                seekFeedbackView.setScaleX(scale);
+                seekFeedbackView.setScaleY(scale);
+                if (t >= 1f) {
+                    seekFeedbackView.setVisibility(View.GONE);
+                    return;
+                }
+            }
+            handler.postDelayed(this, 30);
+        }
+    };
+
+    private void showSeekFeedback(String text) {
+        FrameLayout root = findViewById(android.R.id.content);
+        if (root == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        if (seekFeedbackView == null) {
+            seekFeedbackView = new TextView(this);
+            seekFeedbackView.setTextColor(Color.rgb(0, 210, 255));
+            seekFeedbackView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+            seekFeedbackView.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            seekFeedbackView.setPadding(Math.round(22 * density), Math.round(10 * density),
+                    Math.round(22 * density), Math.round(10 * density));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(14 * density);
+            bg.setColor(Color.argb(235, 12, 16, 24));
+            bg.setStroke(Math.max(1, Math.round(density)), Color.argb(115, 0, 210, 255));
+            seekFeedbackView.setBackground(bg);
+            seekFeedbackView.setClickable(false);
+            seekFeedbackView.setVisibility(View.GONE);
+            root.addView(seekFeedbackView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+        }
+        seekFeedbackView.setText(text);
+        seekFeedbackView.setVisibility(View.VISIBLE);
+        seekFeedbackView.bringToFront();
+
+        // Centrar en el reproductor (como en la web: left 50%, top 45%)
+        seekFeedbackView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        View anchor = layoutPlayerPanel != null && layoutPlayerPanel.getWidth() > 0 ? layoutPlayerPanel : root;
+        int[] anchorLoc = new int[2];
+        int[] rootLoc = new int[2];
+        anchor.getLocationInWindow(anchorLoc);
+        root.getLocationInWindow(rootLoc);
+        float centerX = anchorLoc[0] - rootLoc[0] + anchor.getWidth() / 2f;
+        float centerY = anchorLoc[1] - rootLoc[1] + anchor.getHeight() * 0.45f;
+        seekFeedbackView.setX(centerX - seekFeedbackView.getMeasuredWidth() / 2f);
+        seekFeedbackView.setY(centerY - seekFeedbackView.getMeasuredHeight() / 2f);
+
+        // Reiniciar la animación (toques seguidos actualizan el texto: +10s, +20s...)
+        handler.removeCallbacks(seekFeedbackRunnable);
+        seekFeedbackHiding = false;
+        seekFeedbackStartMs = SystemClock.uptimeMillis() - (seekFeedbackView.getAlpha() > 0.5f ? SEEK_FEEDBACK_FADE_MS : 0);
+        handler.post(seekFeedbackRunnable);
+    }
+
+    /** Adelanta o retrocede deltaMs milisegundos con feedback visual */
+    private void seekRelative(int deltaMs, int consecutiveHits) {
+        if (mediaPlayer == null) return;
+        try {
+            autoMixer.finishMixNow();
+            int current = mediaPlayer.getCurrentPosition();
+            int duration = mediaPlayer.getDuration();
+            int target = current + deltaMs;
+            if (target < 0) target = 0;
+            if (duration > 0 && target > duration) target = Math.max(0, duration - 1000);
+            mediaPlayer.seekTo(target);
+
+            // Reflejar cambio inmediato en barra de progreso y reloj
+            if (duration > 0) {
+                int progress = (int) (((float) target / duration) * 100);
+                seekTrackProgress.setProgress(progress);
+                tvTimeCurrent.setText(formatMs(target));
+            }
+
+            // Aviso breve centrado en el reproductor (solo texto: +10s / -10s)
+            int totalSec = (deltaMs > 0 ? 10 : -10) * Math.max(1, consecutiveHits);
+            showSeekFeedback(totalSec > 0 ? ("+" + totalSec + "s") : (totalSec + "s"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void updatePreviews() {
@@ -3447,6 +3495,7 @@ public class MainActivity extends Activity {
             searchDebounceHandler.removeCallbacks(searchRunnable);
         }
         handler.removeCallbacks(usbRescanRunnable);
+        handler.removeCallbacks(seekFeedbackRunnable);
         try {
             unregisterReceiver(usbMountReceiver);
         } catch (Exception ignored) {}
@@ -3454,8 +3503,6 @@ public class MainActivity extends Activity {
         durationExecutor.shutdownNow();
         autoMixer.release();
         audioAnalyzer.shutdown();
-        handler.removeCallbacks(mixGlowRunnable);
-        handler.removeCallbacks(nowPlayingFadeRunnable);
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();

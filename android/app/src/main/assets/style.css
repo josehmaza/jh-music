@@ -240,42 +240,71 @@ body {
 .dashboard-grid.is-expanded .player-panel {
   border-left: none;
   border-right: none;
-  padding: 16px 50px 14px 50px;
+  padding: 4px 24px 6px 24px;
   align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  height: 100%;
 }
 
 .dashboard-grid.is-expanded .now-playing-card {
-  max-width: 640px;
-  gap: 12px;
+  max-width: 560px;
+  gap: 4px;
+  flex: 1;
+  justify-content: space-evenly;
 }
 
 .dashboard-grid.is-expanded .album-art-container {
-  width: 205px;
-  height: 205px;
-  border-radius: 22px;
+  width: 155px;
+  height: 155px;
+  border-radius: 18px;
+}
+
+.dashboard-grid.is-expanded .track-meta {
+  margin-top: 0;
 }
 
 .dashboard-grid.is-expanded .track-title {
-  font-size: 1.6rem;
+  font-size: 1.35rem;
 }
 
 .dashboard-grid.is-expanded .track-details {
-  font-size: 0.95rem;
+  font-size: 0.86rem;
 }
 
 .dashboard-grid.is-expanded .adjacent-tracks-preview {
-  max-width: 640px;
-  padding: 8px 16px;
+  max-width: 540px;
+  padding: 4px 12px;
+  margin: 0 auto;
+}
+
+.dashboard-grid.is-expanded .progress-section {
+  max-width: 540px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.dashboard-grid.is-expanded .playback-controls {
+  max-width: 420px;
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  gap: 12px;
 }
 
 .dashboard-grid.is-expanded .btn-play-main {
-  width: 78px;
-  height: 78px;
+  width: 62px;
+  height: 62px;
 }
 
 .dashboard-grid.is-expanded .btn-nav {
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
+}
+
+.dashboard-grid.is-expanded .btn-ctrl.btn-secondary {
+  width: 42px;
+  height: 42px;
 }
 
 /* ================= COLUMNA 1: TIRA LATERAL ULTRA-SLIM (54px) ================= */
@@ -583,36 +612,7 @@ body {
   box-shadow: 0 0 10px var(--accent-blue-glow);
 }
 
-/* Mientras dura una mezcla, el ícono late suavemente */
-.btn-toggle-expand.btn-automix.is-mixing svg {
-  animation: pulse-glow 1s infinite;
-}
-
-/* Borde neón que late en el cuadro de la carátula mientras se mezclan dos canciones */
-.album-art-container.is-mixing {
-  animation: art-mix-halo 1.4s ease-in-out infinite;
-}
-
-.album-art-container.is-mixing::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 3;
-  border: 3px solid #38bdf8;
-  box-shadow:
-    inset 0 0 6px rgba(125, 211, 252, 0.9),
-    inset 0 0 22px rgba(56, 189, 248, 0.6);
-  animation: mix-glow 1.4s ease-in-out infinite;
-}
-
-@keyframes mix-glow {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-/* Fundido de los datos de la canción al empezar una mezcla (título, artista, carátula, tiempos) */
+/* Fundido de carátula */
 .np-fade {
   transition: opacity 0.6s ease;
 }
@@ -630,12 +630,6 @@ body {
   transition: opacity 0.7s ease;
 }
 
-/* Halo exterior del cuadro, al mismo ritmo que el borde */
-@keyframes art-mix-halo {
-  0%, 100% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 10px rgba(56, 189, 248, 0.35); }
-  50% { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 26px rgba(56, 189, 248, 0.8); }
-}
-
 .now-playing-card {
   display: flex;
   flex-direction: column;
@@ -648,7 +642,7 @@ body {
 .album-art-container {
   width: 175px;
   height: 175px;
-  border-radius: 18px;
+  border-radius: 20px;
   background: #11141a;
   position: relative;
   display: flex;
@@ -658,7 +652,8 @@ body {
   overflow: hidden;
   cursor: pointer;
   user-select: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 2.5px;
+  transition: transform 0.15s ease, box-shadow 0.25s ease;
 }
 
 .album-art-container:active {
@@ -666,11 +661,67 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
+/* Spinner de haz láser que gira alrededor en el borde (Opción 4) */
+.laser-spinner {
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 0deg, transparent 0deg 280deg, rgba(0, 210, 255, 0.3) 320deg, #00d2ff 350deg, #ffffff 360deg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+.album-art-container.is-playing .laser-spinner {
+  opacity: 1;
+  animation: rotateLaser 2.2s linear infinite;
+}
+
+@keyframes rotateLaser {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Segundo haz láser Deck B (Magenta Neón) que entra en mezcla Automix */
+.laser-spinner-mix {
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 180deg, transparent 0deg 280deg, rgba(244, 63, 94, 0.3) 320deg, #f43f5e 350deg, #ffffff 360deg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+.album-art-container.is-mixing .laser-spinner-mix {
+  opacity: 1;
+  animation: rotateLaserReverse 1.5s linear infinite;
+}
+
+@keyframes rotateLaserReverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Contenedor interior que oculta el centro del láser y sostiene la carátula */
+.album-art-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 17px;
+  background: #11141a;
+  overflow: hidden;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .album-art-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 18px;
+  border-radius: 17px;
 }
 
 .album-glow {
@@ -696,27 +747,102 @@ body {
   color: var(--text-muted);
 }
 
-/* Con carátula: la imagen ocupa el cuadro y las barras animadas quedan encima, abajo,
-   sobre una sombra suave para que se distingan sobre cualquier color */
+/* Con carátula: la imagen ocupa el cuadro */
 .album-art-container.has-cover .album-art-img {
   position: absolute;
   inset: 0;
-}
-
-.album-art-container.has-cover .album-placeholder {
-  position: absolute;
-  inset: 0;
-  justify-content: flex-end;
-  padding-bottom: 14px;
-  border-radius: inherit;
-  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
-  z-index: 2;
 }
 
 .album-art-container.has-cover .vinyl-icon {
   display: none;
 }
 
+/* Cápsula Glassmorphism Neón (Opción 2) */
+.now-playing-pill {
+  position: absolute;
+  bottom: 10px;
+  background: rgba(10, 14, 22, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4.5px 12px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+  transition: all 0.3s ease;
+}
+
+.album-art-container.is-playing .now-playing-pill {
+  border-color: rgba(0, 210, 255, 0.45);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 14px rgba(0, 210, 255, 0.3);
+}
+
+.pill-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-right: 3px;
+  font-family: var(--font-mono);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.album-art-container.is-playing .pill-label {
+  color: var(--accent-blue);
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.5);
+}
+
+.pill-eq-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+
+.pill-eq-bars span {
+  width: 3.5px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  height: 3px;
+  transition: height 0.2s, background 0.3s;
+}
+
+.album-art-container.is-playing .pill-eq-bars span {
+  background: linear-gradient(to top, var(--accent-blue), #a5f3fc);
+  box-shadow: 0 0 6px rgba(0, 210, 255, 0.6);
+}
+
+.album-art-container.is-playing .pill-eq-bars span:nth-child(1) { animation: pillWave 0.7s infinite alternate ease-in-out; }
+.album-art-container.is-playing .pill-eq-bars span:nth-child(2) { animation: pillWave 0.5s 0.15s infinite alternate ease-in-out; }
+.album-art-container.is-playing .pill-eq-bars span:nth-child(3) { animation: pillWave 0.8s 0.3s infinite alternate ease-in-out; }
+.album-art-container.is-playing .pill-eq-bars span:nth-child(4) { animation: pillWave 0.6s 0.2s infinite alternate ease-in-out; }
+.album-art-container.is-playing .pill-eq-bars span:nth-child(5) { animation: pillWave 0.75s 0.05s infinite alternate ease-in-out; }
+
+@keyframes pillWave {
+  0%   { height: 3px; }
+  100% { height: 14px; }
+}
+
+/* Cápsula en mezcla Automix: conmuta a Magenta Neón */
+.album-art-container.is-mixing .now-playing-pill {
+  border-color: rgba(244, 63, 94, 0.65);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 16px rgba(244, 63, 94, 0.45);
+}
+
+.album-art-container.is-mixing .pill-label {
+  color: #f43f5e;
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.75);
+}
+
+.album-art-container.is-mixing .pill-eq-bars span {
+  background: linear-gradient(to top, #f43f5e, #fbcfe8);
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.7);
+}
+
+/* Sound-wave bars para items de la lista (mantiene compatibilidad) */
 .sound-wave-bars {
   display: flex;
   align-items: flex-end;
@@ -828,9 +954,12 @@ body {
   backdrop-filter: blur(8px);
 }
 
+/* Ícono grande en el extremo + nombre grande en una línea, para leer manejando */
 .adj-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   cursor: pointer;
   padding: 2px 6px;
@@ -869,23 +998,29 @@ body {
 }
 
 .adj-icon {
-  font-size: 0.76rem;
+  font-size: 1.35rem;
   line-height: 1;
+  color: var(--accent-blue);
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .adj-title-wrap {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   position: relative;
-  text-align: center;
 }
 
-.adj-prev .adj-title-wrap,
+/* Anterior alineado hacia su ícono (izquierda); Siguiente hacia el suyo (derecha) */
+.adj-prev .adj-title-wrap {
+  text-align: left;
+}
+
 .adj-next .adj-title-wrap {
-  text-align: center;
+  text-align: right;
 }
 
 .adj-prev .adj-title-wrap.has-overflow,
@@ -894,9 +1029,9 @@ body {
 }
 
 .adj-title {
-  font-size: 0.88rem;
+  font-size: 1.08rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #cbd5e1; /* gris casi blanco: menos destacado que el título actual */
   white-space: nowrap;
   display: inline-block;
   transition: color 0.15s;
@@ -973,8 +1108,8 @@ body {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 1.02rem;
-  color: var(--text-secondary);
+  font-size: 1.35rem; /* más grande para leer manejando */
+  color: var(--text-primary);
   font-weight: 800;
   letter-spacing: 0.5px;
 }

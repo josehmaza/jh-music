@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.2.0</span>
+        <span class="version-badge" id="appVersionBadge">v2.3.0</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -215,17 +215,29 @@
         <div class="now-playing-card">
           <!-- Carátula / Portada -->
           <div class="album-art-container" id="albumContainer">
-            <div class="album-glow" id="albumGlow"></div>
-            <img id="albumArt" src="" alt="Portada del Álbum" class="album-art-img hidden">
-            
-            <div class="album-placeholder" id="albumPlaceholder">
-              <svg class="vinyl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/></svg>
-              <div class="sound-wave-bars">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
-            </div>
+            <!-- Borde Láser Giratorio Deck A (Cian) -->
+            <div class="laser-spinner" id="laserSpinner"></div>
+            <!-- Borde Láser Secundario Deck B (Magenta para mezcla Automix) -->
+            <div class="laser-spinner-mix" id="laserSpinnerMix"></div>
 
-            <div class="audio-badge" id="formatBadge">MP3 320K</div>
+            <div class="album-art-inner">
+              <div class="album-glow" id="albumGlow"></div>
+              <img id="albumArt" src="" alt="Portada del Álbum" class="album-art-img hidden">
+              
+              <div class="album-placeholder" id="albumPlaceholder">
+                <svg class="vinyl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/></svg>
+              </div>
+
+              <!-- Cápsula Glassmorphism con EQ y estado (Opción 2) -->
+              <div class="now-playing-pill" id="nowPlayingPill">
+                <span class="pill-label" id="pillStatusText">PAUSED</span>
+                <div class="pill-eq-bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+
+              <div class="audio-badge" id="formatBadge">MP3 320K</div>
+            </div>
           </div>
 
           <!-- Metadatos de la canción -->
@@ -243,11 +255,9 @@
           <!-- Previsualización de Canción Anterior y Posterior (Siguiente) -->
           <div class="adjacent-tracks-preview" id="adjacentTracksPreview">
             <!-- Pista Anterior -->
+            <!-- Ícono grande al inicio y nombre grande para leer manejando -->
             <div class="adj-card adj-prev" id="adjPrevCard" title="Toca para ir a la anterior">
-              <div class="adj-badge">
-                <span class="adj-icon">⏮</span>
-                <span>ANTERIOR</span>
-              </div>
+              <span class="adj-icon">⏮</span>
               <div class="adj-title-wrap">
                 <span class="adj-title" id="prevTrackTitle">Cargando...</span>
               </div>
@@ -257,14 +267,12 @@
             <div class="adj-divider"></div>
 
             <!-- Pista Siguiente -->
+            <!-- Nombre grande y ícono grande al final -->
             <div class="adj-card adj-next" id="adjNextCard" title="Toca para ir a la siguiente">
-              <div class="adj-badge">
-                <span>SIGUIENTE</span>
-                <span class="adj-icon">⏭</span>
-              </div>
               <div class="adj-title-wrap">
                 <span class="adj-title" id="nextTrackTitle">Cargando...</span>
               </div>
+              <span class="adj-icon">⏭</span>
             </div>
           </div>
 

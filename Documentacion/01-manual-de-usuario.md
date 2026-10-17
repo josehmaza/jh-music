@@ -88,8 +88,16 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 ### Cuadro de la carátula
 
-- **Si la canción trae carátula:** se ve la imagen completa, con las barras animadas abajo sobre una sombra suave y la etiqueta de formato (`MP3 320K`) arriba.
-- **Si no trae:** se muestra el disco con las barras animadas debajo.
+- **Si la canción trae carátula**, se ve la imagen completa. **Si no trae**, se muestra un disco.
+- **Arriba a la derecha**, la etiqueta de formato (`MP3 320K`).
+- **Abajo**, una cápsula con el estado y un ecualizador:
+
+  | Estado | Cápsula | Borde del cuadro |
+  |---|---|---|
+  | En pausa | `PAUSED`, barras grises quietas | Sin animación |
+  | Sonando | `PLAYING`, barras cian en movimiento | Un haz láser cian gira por el borde |
+  | Mezclando (Automix) | `MIXING ⇄`, barras magenta | Además, un haz magenta gira en sentido contrario |
+
 - **Tocar el cuadro** pausa o reanuda.
 
 ### Controles del reproductor
@@ -114,7 +122,7 @@ La app escucha el final de cada canción para mezclar en el lugar justo:
 - Si **termina de golpe**, la mezcla es corta (3 s) y no cuenta el silencio que pueda quedar al final.
 - La canción que entra **salta su silencio inicial**.
 
-Mientras dura la mezcla, el **cuadro de la carátula muestra un borde azul neón que late**. Al empezar la mezcla, el título, el artista y los tiempos de la canción que sale se apagan suavemente y aparecen los de la nueva; el cuadro de la carátula no se apaga. Desde ese momento la pantalla muestra la canción nueva, y la tarjeta "Siguiente" ya indica la que viene después: si tocas Siguiente durante la mezcla, pasas a esa.
+Mientras dura la mezcla, en el **cuadro de la carátula gira un segundo haz láser magenta** y la cápsula de abajo dice `MIXING ⇄`. Al empezar la mezcla, los datos de la canción nueva aparecen al instante y la carátula cambia con un fundido cruzado. Desde ese momento la pantalla muestra la canción nueva, y la tarjeta "Siguiente" ya indica la que viene después: si tocas Siguiente durante la mezcla, pasas a esa.
 
 Ese análisis tarda unos segundos al empezar cada canción. Si no alcanza a terminar, o falla con algún archivo, se mezclan simplemente los últimos 5 segundos.
 
