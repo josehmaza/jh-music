@@ -57,8 +57,12 @@ Una lista que armas cuando quieras y que después suena entera, seguida, con Aut
 **La pestaña `🎧 Mi Mix (N)`:**
 - Arriba, una cabecera con `MI MIX` (y `● SONANDO` si es lo que suena) y un resumen: "8 canciones · 30 min · 2 sonaron".
 - **▶** (botón cian, solo con el ícono): suena desde la primera y borra las marcas ✓.
+- **Reordenar `[ ⇅ ]`**: entra al modo para cambiar el orden de las canciones sin achicar el texto:
+  - El botón `✕` de la derecha se convierte temporalmente en la manija `≡`.
+  - Arrastra la manija verticalmente para mover la canción arriba o abajo.
+  - Toca **`[ ✓ Listo ]`** en la cabecera para terminar y guardar el nuevo orden.
 - **Vaciar** (papelera): pide confirmación ahí mismo ("¿Vaciar Mi Mix?" → *Sí, vaciar* / *No*).
-- Las canciones van **numeradas en el orden en que las agregaste**, que es el orden en que suenan. **✕** quita una.
+- Las canciones van **numeradas en el orden en que las agregaste** (o reordenaste), que es el orden en que suenan. **✕** quita una.
 - **Tocar el número** (o doble toque en la fila): suena Mi Mix desde esa canción.
 - Las que **ya sonaron** quedan en la lista, apagadas, con ✓ verde y "Ya sonó".
 

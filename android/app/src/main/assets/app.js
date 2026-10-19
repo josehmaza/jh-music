@@ -437,7 +437,29 @@ function initApp() {
   const mixPlayedIds = new Set();
   let playingFromMix = false;  // la cola que suena es Mi Mix
   let mixCurPos = 0;           // posición de la que suena dentro de Mi Mix
-  let mixConfirmClear = false; // mostrando "¿Vaciar Mi Mix?"
+  let isReorderingMix = false; // modo de reordenar canciones en Mi Mix (la ✕ pasa a ser ≡)
+  let justLandedMixId = null;
+
+  function animateMixFLIP(mutateDomFn) {
+    const items = Array.from(trackListContainer.querySelectorAll('.mix-item:not(.mix-orphan)'));
+    const firstRects = new Map();
+    items.forEach(el => firstRects.set(el, el.getBoundingClientRect().top));
+
+    mutateDomFn();
+
+    items.forEach(el => {
+      const firstTop = firstRects.get(el);
+      const lastTop = el.getBoundingClientRect().top;
+      const delta = firstTop - lastTop;
+      if (delta !== 0) {
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${delta}px)`;
+        el.offsetHeight; // reflow
+        el.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        el.style.transform = 'translateY(0)';
+      }
+    });
+  }
 
   // Audio HTML5 y Sintetizador Web Audio
   const audio = document.getElementById('audioPlayer');
@@ -885,6 +907,8 @@ function initApp() {
   const MIX_PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
   const MIX_CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17.5 19 7"/></svg>';
   const MIX_REMOVE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  const MIX_REORDER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
+  const MIX_HEADER_REORDER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="15" x2="7" y2="5"/><polyline points="4 8 7 5 10 8"/><line x1="17" y1="9" x2="17" y2="19"/><polyline points="14 16 17 19 20 16"/></svg>';
   const MIX_TAB_ICON = '<svg class="mix-source-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><line x1="18" y1="13" x2="18" y2="21"/><line x1="14" y1="17" x2="22" y2="17"/></svg>';
 
   function mixToggleButtonHtml(track) {
@@ -2741,7 +2765,7 @@ function initApp() {
     updateMixTabCount();
     crumbFolder.textContent = `Mi Mix (${list.length})`;
 
-    // Cabecera: resumen + Reproducir / Vaciar
+    // Cabecera: resumen + Reproducir / Reordenar / Vaciar
     const header = document.createElement('div');
     header.className = 'mix-header';
     const playingNowId = playingFromMix ? currentPlaylist[currentTrackIndex]?.id : null;
@@ -2755,6 +2779,16 @@ function initApp() {
         <div class="mix-header-actions">
           <button class="btn-mix-action is-danger" id="btnMixConfirmClear">Sí, vaciar</button>
           <button class="btn-mix-action" id="btnMixCancelClear">No</button>
+        </div>
+      `;
+    } else if (isReorderingMix) {
+      header.innerHTML = `
+        <div class="mix-header-info">
+          <span class="mix-header-title">REORDENAR MI MIX</span>
+          <span class="mix-header-sub">Arrastra la manija ≡ para cambiar el orden</span>
+        </div>
+        <div class="mix-header-actions">
+          <button class="btn-mix-action is-primary btn-mix-reorder-done" id="btnMixReorderDone" title="Terminar de ordenar">✓ Listo</button>
         </div>
       `;
     } else {
@@ -2771,6 +2805,9 @@ function initApp() {
           <button class="btn-mix-action is-primary btn-mix-play-icon" id="btnMixPlay" title="Reproducir Mi Mix" ${list.length === 0 ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.2-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg>
           </button>
+          <button class="btn-mix-action btn-mix-reorder" id="btnMixReorder" title="Reordenar canciones de Mi Mix" ${list.length <= 1 ? 'disabled' : ''}>
+            ${MIX_HEADER_REORDER_SVG}
+          </button>
           <button class="btn-mix-action" id="btnMixClear" title="Vaciar Mi Mix" ${list.length === 0 ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
@@ -2781,6 +2818,10 @@ function initApp() {
 
     const btnPlay = header.querySelector('#btnMixPlay');
     if (btnPlay) btnPlay.addEventListener('click', () => playMix(0, true));
+    const btnReorder = header.querySelector('#btnMixReorder');
+    if (btnReorder) btnReorder.addEventListener('click', () => { isReorderingMix = true; renderList(); });
+    const btnDone = header.querySelector('#btnMixReorderDone');
+    if (btnDone) btnDone.addEventListener('click', () => { isReorderingMix = false; showMixToast("Nuevo orden guardado"); renderList(); });
     const btnClear = header.querySelector('#btnMixClear');
     if (btnClear) btnClear.addEventListener('click', () => { mixConfirmClear = true; renderList(); });
     const btnConfirm = header.querySelector('#btnMixConfirmClear');
@@ -2855,7 +2896,7 @@ function initApp() {
       const isCurrent = playingFromMix && playingId === track.id;
       const wasPlayed = !isCurrent && mixPlayedIds.has(track.id);
       const itemEl = document.createElement('div');
-      itemEl.className = `list-item mix-item ${isCurrent ? 'is-playing' : ''} ${wasPlayed ? 'is-played' : ''}`;
+      itemEl.className = `list-item mix-item ${isCurrent ? 'is-playing' : ''} ${wasPlayed ? 'is-played' : ''} ${track.id === justLandedMixId ? 'pulse-landed' : ''}`;
 
       let iconHtml;
       if (isCurrent && isPlaying) {
@@ -2886,50 +2927,213 @@ function initApp() {
         </div>
         <div class="item-right">
           <span class="item-duration">${track.duration}</span>
-          <button class="btn-item-mix is-remove" title="Quitar de Mi Mix">${MIX_REMOVE_SVG}</button>
+          ${isReorderingMix
+            ? `<button class="btn-item-mix is-drag-handle" title="Arrastrar para mover">${MIX_REORDER_SVG}</button>`
+            : `<button class="btn-item-mix is-remove" title="Quitar de Mi Mix">${MIX_REMOVE_SVG}</button>`}
         </div>
       `;
 
-      // Número / ícono: reproducir Mi Mix desde esta canción
-      const playBtn = itemEl.querySelector('.item-icon-wrap');
-      playBtn.setAttribute('title', 'Reproducir Mi Mix desde aquí');
-      playBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchInput.blur();
-        playMix(position, false);
-      });
+      if (isReorderingMix) {
+        itemEl.classList.add('is-reordering');
+        const handle = itemEl.querySelector('.is-drag-handle');
 
-      // Texto: 1 toque ver nombre completo, 2 toques reproducir (igual que en Pistas)
-      const infoEl = itemEl.querySelector('.item-info');
-      let clickCount = 0;
-      let clickTimer = null;
-      infoEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        searchInput.blur();
-        clickCount++;
-        if (clickCount === 1) {
-          clickTimer = setTimeout(() => {
-            clickCount = 0;
+        let isDragging = false;
+        let floatingClone = null;
+        let placeholder = null;
+        let startPointerY = 0;
+        let pointerId = null;
+        let currentClientY = 0;
+        let autoScrollRaf = null;
+
+        const updatePlaceholderPosition = () => {
+          if (!isDragging || !floatingClone || !placeholder) return;
+          const floatingRect = floatingClone.getBoundingClientRect();
+          const floatingMiddleY = floatingRect.top + floatingRect.height / 2;
+
+          const siblings = Array.from(trackListContainer.querySelectorAll('.mix-item:not(.mix-orphan)')).filter(el => el !== placeholder && el.style.display !== 'none');
+
+          let targetSibling = null;
+          let insertBefore = false;
+
+          for (let sib of siblings) {
+            const rect = sib.getBoundingClientRect();
+            if (floatingMiddleY >= rect.top && floatingMiddleY <= rect.bottom) {
+              targetSibling = sib;
+              insertBefore = floatingMiddleY < (rect.top + rect.height / 2);
+              break;
+            }
+          }
+
+          if (targetSibling) {
+            const currentPlaceholderPos = Array.from(trackListContainer.children).indexOf(placeholder);
+            const newTargetPos = Array.from(trackListContainer.children).indexOf(targetSibling);
+
+            if (currentPlaceholderPos !== newTargetPos) {
+              animateMixFLIP(() => {
+                if (insertBefore) {
+                  trackListContainer.insertBefore(placeholder, targetSibling);
+                } else {
+                  trackListContainer.insertBefore(placeholder, targetSibling.nextSibling);
+                }
+                const allMixItems = Array.from(trackListContainer.querySelectorAll('.mix-item:not(.mix-orphan), .gap-placeholder'));
+                const newIdx = allMixItems.indexOf(placeholder) + 1;
+                placeholder.textContent = `[ Espacio disponible · Puesto ${newIdx} ]`;
+              });
+            }
+          }
+        };
+
+        const autoScrollLoop = () => {
+          if (!isDragging) return;
+          const containerRect = trackListContainer.getBoundingClientRect();
+          const topThreshold = containerRect.top + 70;
+          const bottomThreshold = containerRect.bottom - 70;
+
+          let scrollSpeed = 0;
+          if (currentClientY < topThreshold) {
+            const factor = Math.min(1, Math.max(0, (topThreshold - currentClientY) / 70));
+            scrollSpeed = -Math.round(4 + factor * 16);
+          } else if (currentClientY > bottomThreshold) {
+            const factor = Math.min(1, Math.max(0, (currentClientY - bottomThreshold) / 70));
+            scrollSpeed = Math.round(4 + factor * 16);
+          }
+
+          if (scrollSpeed !== 0) {
+            const oldScroll = trackListContainer.scrollTop;
+            trackListContainer.scrollTop += scrollSpeed;
+            if (trackListContainer.scrollTop !== oldScroll) {
+              updatePlaceholderPosition();
+            }
+          }
+
+          autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+        };
+
+        const onPointerDown = (e) => {
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          e.preventDefault();
+          pointerId = e.pointerId;
+          handle.setPointerCapture(pointerId);
+          isDragging = true;
+          startPointerY = e.clientY;
+          currentClientY = e.clientY;
+
+          const startRect = itemEl.getBoundingClientRect();
+
+          // 1. Tarjeta Flotante Sólida (Opaca, elevada con sombra 3D)
+          floatingClone = itemEl.cloneNode(true);
+          floatingClone.className = 'list-item mix-item floating-drag-clone';
+          floatingClone.style.width = `${startRect.width}px`;
+          floatingClone.style.top = `${startRect.top}px`;
+          floatingClone.style.left = `${startRect.left}px`;
+          document.body.appendChild(floatingClone);
+
+          // 2. Hueco Real en el DOM
+          placeholder = document.createElement('div');
+          placeholder.className = 'gap-placeholder';
+          placeholder.textContent = `[ Espacio disponible · Puesto ${position + 1} ]`;
+
+          itemEl.style.display = 'none';
+          trackListContainer.insertBefore(placeholder, itemEl);
+
+          // Iniciar bucle de auto-scroll
+          autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+        };
+
+        const onPointerMove = (e) => {
+          if (!isDragging || !floatingClone) return;
+          currentClientY = e.clientY;
+          const deltaY = e.clientY - startPointerY;
+          floatingClone.style.transform = `translateY(${deltaY}px) scale(1.02)`;
+
+          updatePlaceholderPosition();
+        };
+
+        const onPointerUp = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          if (autoScrollRaf) {
+            cancelAnimationFrame(autoScrollRaf);
+            autoScrollRaf = null;
+          }
+          try { handle.releasePointerCapture(pointerId); } catch (_) {}
+
+          const placeholderRect = placeholder.getBoundingClientRect();
+          const cloneRect = floatingClone.getBoundingClientRect();
+          const glideDeltaY = placeholderRect.top - cloneRect.top;
+
+          floatingClone.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)';
+          floatingClone.style.transform += ` translateY(${glideDeltaY}px) scale(1)`;
+
+          setTimeout(() => {
+            if (floatingClone) floatingClone.remove();
+
+            const allMixItems = Array.from(trackListContainer.querySelectorAll('.mix-item:not(.mix-orphan), .gap-placeholder'));
+            const newIndex = allMixItems.indexOf(placeholder);
+            if (placeholder) placeholder.remove();
+
+            if (newIndex >= 0 && newIndex !== position) {
+              const [movedId] = myMixIds.splice(position, 1);
+              myMixIds.splice(newIndex, 0, movedId);
+              justLandedMixId = movedId;
+              saveMix();
+              syncMixQueue();
+              renderList();
+              showMixToast(`✓ ${track.title.slice(0, 15)}... al puesto ${newIndex + 1}`);
+              setTimeout(() => { justLandedMixId = null; }, 900);
+            } else {
+              renderList();
+            }
+          }, 180);
+        };
+
+        handle.addEventListener('pointerdown', onPointerDown);
+        handle.addEventListener('pointermove', onPointerMove);
+        handle.addEventListener('pointerup', onPointerUp);
+        handle.addEventListener('pointercancel', onPointerUp);
+
+      } else {
+        // Número / ícono: reproducir Mi Mix desde esta canción
+        const playBtn = itemEl.querySelector('.item-icon-wrap');
+        playBtn.setAttribute('title', 'Reproducir Mi Mix desde aquí');
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          searchInput.blur();
+          playMix(position, false);
+        });
+
+        // Texto: 1 toque ver nombre completo, 2 toques reproducir (igual que en Pistas)
+        const infoEl = itemEl.querySelector('.item-info');
+        let clickCount = 0;
+        let clickTimer = null;
+        infoEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          searchInput.blur();
+          clickCount++;
+          if (clickCount === 1) {
+            clickTimer = setTimeout(() => {
+              clickCount = 0;
+              clickTimer = null;
+              const wasExpanded = itemEl.classList.contains('is-expanded');
+              trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => el.classList.remove('is-expanded'));
+              if (!wasExpanded) itemEl.classList.add('is-expanded');
+            }, 280);
+          } else {
+            if (clickTimer) clearTimeout(clickTimer);
             clickTimer = null;
-            const wasExpanded = itemEl.classList.contains('is-expanded');
-            trackListContainer.querySelectorAll('.list-item.is-expanded').forEach(el => el.classList.remove('is-expanded'));
-            if (!wasExpanded) itemEl.classList.add('is-expanded');
-          }, 280);
-        } else {
-          if (clickTimer) clearTimeout(clickTimer);
-          clickTimer = null;
-          clickCount = 0;
-          playBtn.click();
-        }
-      });
+            clickCount = 0;
+            playBtn.click();
+          }
+        });
 
-      // ✕: quitar de Mi Mix
-      itemEl.querySelector('.btn-item-mix').addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeFromMix(track);
-        showMixToast("Quitada de Mi Mix");
-        renderList();
-      });
+        // ✕: quitar de Mi Mix
+        itemEl.querySelector('.btn-item-mix').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeFromMix(track);
+          showMixToast("Quitada de Mi Mix");
+          renderList();
+        });
+      }
 
       trackListContainer.appendChild(itemEl);
     });

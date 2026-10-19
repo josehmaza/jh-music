@@ -41,6 +41,7 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
 import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
+import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -52,6 +53,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -63,6 +65,11 @@ import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -138,6 +145,9 @@ public class MainActivity extends Activity {
     private ImageButton btnMixPlay;
     private Button btnMixConfirmClear, btnMixCancelClear;
     private ImageButton btnMixClear;
+    private ImageButton btnMixReorder;
+    private Button btnMixReorderDone;
+    private boolean isReorderingMix = false;
     private EditText etSearch;
     private ImageButton btnSearchClear;
     private View pbSearchLoading;
@@ -172,6 +182,9 @@ public class MainActivity extends Activity {
     private TrackAdapter trackAdapter;
     private FolderAdapter folderAdapter;
     private FolderTreeAdapter folderTreeAdapter;
+    private RecyclerView recyclerMixContent;
+    private MixRecyclerAdapter mixRecyclerAdapter;
+    private ItemTouchHelper mixItemTouchHelper;
 
     // Listas de datos
     private List<Track> allTracks = new ArrayList<>();
@@ -373,6 +386,8 @@ public class MainActivity extends Activity {
         tvMixEmpty = findViewById(R.id.tvMixEmpty);
         btnMixPlay = findViewById(R.id.btnMixPlay);
         btnMixClear = findViewById(R.id.btnMixClear);
+        btnMixReorder = findViewById(R.id.btnMixReorder);
+        btnMixReorderDone = findViewById(R.id.btnMixReorderDone);
         btnMixConfirmClear = findViewById(R.id.btnMixConfirmClear);
         btnMixCancelClear = findViewById(R.id.btnMixCancelClear);
         setupMixHeader();
@@ -383,6 +398,59 @@ public class MainActivity extends Activity {
             listViewContent.setFastScrollEnabled(false);
             listViewContent.setFastScrollAlwaysVisible(false);
             listViewContent.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            listViewContent.setOnDragListener(new View.OnDragListener() {
+                private int dragFromPos = -1;
+
+                @Override
+                public boolean onDrag(View v, DragEvent event) {
+                    if (!isReorderingMix) return false;
+                    switch (event.getAction()) {
+                        case DragEvent.ACTION_DRAG_STARTED:
+                            if (event.getLocalState() instanceof Integer) {
+                                dragFromPos = (Integer) event.getLocalState();
+                                return true;
+                            }
+                            return false;
+
+                        case DragEvent.ACTION_DRAG_LOCATION:
+                            int y = (int) event.getY();
+                            int targetPos = listViewContent.pointToPosition((int) event.getX(), y);
+                            if (targetPos != AdapterView.INVALID_POSITION && dragFromPos != -1 && targetPos != dragFromPos
+                                    && targetPos >= 0 && targetPos < displayedTracks.size()) {
+                                Track targetTrack = displayedTracks.get(targetPos);
+                                if (!isMixOrphan(targetTrack)) {
+                                    moveMixTrack(dragFromPos, targetPos);
+                                    dragFromPos = targetPos;
+                                }
+                            }
+                            // Auto-scroll suave en bordes superior e inferior
+                            int h = listViewContent.getHeight();
+                            if (y < 60) {
+                                listViewContent.smoothScrollBy(-30, 60);
+                            } else if (y > h - 60) {
+                                listViewContent.smoothScrollBy(30, 60);
+                            }
+                            return true;
+
+                        case DragEvent.ACTION_DROP:
+                            int dropY = (int) event.getY();
+                            int finalPos = listViewContent.pointToPosition((int) event.getX(), dropY);
+                            if (finalPos != AdapterView.INVALID_POSITION && dragFromPos != -1 && finalPos != dragFromPos
+                                    && finalPos >= 0 && finalPos < displayedTracks.size()) {
+                                Track targetTrack = displayedTracks.get(finalPos);
+                                if (!isMixOrphan(targetTrack)) {
+                                    moveMixTrack(dragFromPos, finalPos);
+                                }
+                            }
+                            return true;
+
+                        case DragEvent.ACTION_DRAG_ENDED:
+                            dragFromPos = -1;
+                            return true;
+                    }
+                    return true;
+                }
+            });
         }
         btnCollapseAllTree = findViewById(R.id.btnCollapseAllTree);
         if (btnCollapseAllTree != null) {
@@ -439,6 +507,109 @@ public class MainActivity extends Activity {
         });
 
         listViewContent.setAdapter(folderTreeAdapter);
+
+        // RecyclerView para Mi Mix con apertura de hueco en vivo por hardware (GPU)
+        recyclerMixContent = findViewById(R.id.recyclerMixContent);
+        if (recyclerMixContent != null) {
+            recyclerMixContent.setLayoutManager(new LinearLayoutManager(this));
+            mixRecyclerAdapter = new MixRecyclerAdapter(this, displayedTracks, mixState,
+                    viewHolder -> {
+                        if (mixItemTouchHelper != null) {
+                            mixItemTouchHelper.startDrag(viewHolder);
+                        }
+                    },
+                    new MixRecyclerAdapter.OnMixActionListener() {
+                        @Override
+                        public void onTrackClick(Track track, int position) {
+                            hideKeyboard();
+                            playTrack(position);
+                        }
+
+                        @Override
+                        public void onRemoveTrack(Track track, int position) {
+                            onTrackMixButton(track);
+                        }
+
+                        @Override
+                        public void onItemMoved(int fromPos, int toPos) {
+                        }
+
+                        @Override
+                        public void onReorderDone() {
+                            saveReorderedMixFromDisplayedTracks();
+                        }
+                    }
+            );
+            recyclerMixContent.setAdapter(mixRecyclerAdapter);
+
+            ItemTouchHelper.SimpleCallback callback =
+                    new ItemTouchHelper.SimpleCallback(
+                            ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                        @Override
+                        public boolean onMove(@NonNull RecyclerView recyclerView,
+                                              @NonNull RecyclerView.ViewHolder viewHolder,
+                                              @NonNull RecyclerView.ViewHolder target) {
+                            int fromPos = viewHolder.getAdapterPosition();
+                            int toPos = target.getAdapterPosition();
+                            if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) {
+                                return false;
+                            }
+                            Track current = playingFromMix ? getCurrentTrack() : null;
+                            boolean orphan = current != null && !isInMix(current);
+                            if (orphan && (fromPos == 0 || toPos == 0)) {
+                                return false; // Proteger la fila huérfana de ser movida o sobrepasada
+                            }
+                            mixRecyclerAdapter.moveItem(fromPos, toPos);
+                            return true;
+                        }
+
+                        @Override
+                        public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                        }
+
+                        @Override
+                        public boolean isLongPressDragEnabled() {
+                            return false;
+                        }
+
+                        @Override
+                        public boolean isItemViewSwipeEnabled() {
+                            return false;
+                        }
+
+                        @Override
+                        public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                            super.onSelectedChanged(viewHolder, actionState);
+                            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                                viewHolder.itemView.setScaleX(1.025f);
+                                viewHolder.itemView.setScaleY(1.025f);
+                                viewHolder.itemView.setBackgroundColor(Color.parseColor("#1f293d"));
+                            }
+                        }
+
+                        @Override
+                        public void clearView(@NonNull RecyclerView recyclerView,
+                                              @NonNull RecyclerView.ViewHolder viewHolder) {
+                            super.clearView(recyclerView, viewHolder);
+                            viewHolder.itemView.setScaleX(1.0f);
+                            viewHolder.itemView.setScaleY(1.0f);
+                            viewHolder.itemView.setBackgroundColor(Color.TRANSPARENT);
+
+                            // Guardar el nuevo orden definitivo basado en la posición en pantalla
+                            saveReorderedMixFromDisplayedTracks();
+
+                            // Actualizar números de orden limpiamente después de que cae el elemento
+                            recyclerView.post(() -> {
+                                if (mixRecyclerAdapter != null) {
+                                    mixRecyclerAdapter.notifyDataSetChanged();
+                                }
+                            });
+                        }
+                    };
+
+            mixItemTouchHelper = new ItemTouchHelper(callback);
+            mixItemTouchHelper.attachToRecyclerView(recyclerMixContent);
+        }
     }
 
     // ==========================================
@@ -742,8 +913,13 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // 3. Si estamos en Mi Mix (tab 2), volver a Carpetas (tab 0)
+        // 3. Si estamos en Mi Mix (tab 2): si está reordenando, salir del modo reordenar primero; si no, volver a Carpetas (tab 0)
         if (currentTab == 2) {
+            if (isReorderingMix) {
+                isReorderingMix = false;
+                showMixTab();
+                return;
+            }
             selectTab(0);
             return;
         }
@@ -1257,6 +1433,12 @@ public class MainActivity extends Activity {
                 searchVersion++;
                 final int thisVersion = searchVersion;
 
+                if (isReorderingMix) {
+                    isReorderingMix = false;
+                    if (recyclerMixContent != null) recyclerMixContent.setVisibility(View.GONE);
+                    if (listViewContent != null) listViewContent.setVisibility(View.VISIBLE);
+                }
+
                 if (q.trim().isEmpty()) {
                     if (pbSearchLoading != null) pbSearchLoading.setVisibility(View.GONE);
                     if (layoutSearchLoading != null) layoutSearchLoading.setVisibility(View.GONE);
@@ -1654,6 +1836,12 @@ public class MainActivity extends Activity {
 
         // Mi Mix: cabecera propia (Reproducir / Vaciar), filas numeradas por la lista y botón ✕
         mixConfirmClear = false;
+        if (tabIndex != 2) {
+            isReorderingMix = false;
+            trackAdapter.setReorderMode(false);
+            if (recyclerMixContent != null) recyclerMixContent.setVisibility(View.GONE);
+            if (listViewContent != null) listViewContent.setVisibility(View.VISIBLE);
+        }
         trackAdapter.setMixMode(tabIndex == 2);
         if (layoutMixHeader != null) layoutMixHeader.setVisibility(tabIndex == 2 ? View.VISIBLE : View.GONE);
         if (tvMixEmpty != null && tabIndex != 2) tvMixEmpty.setVisibility(View.GONE);
@@ -2513,6 +2701,8 @@ public class MainActivity extends Activity {
 
         // Modo Normal por pestaña y filtro seleccionado
         if (currentTab == 0) {
+            if (recyclerMixContent != null) recyclerMixContent.setVisibility(View.GONE);
+            listViewContent.setVisibility(View.VISIBLE);
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.VISIBLE);
             if (currentSearchFilter == FILTER_USB1) {
                 tvCurrentPath.setText("Carpetas USB 1 (Árbol)");
@@ -2528,6 +2718,8 @@ public class MainActivity extends Activity {
             }
 
         } else if (currentTab == 1) {
+            if (recyclerMixContent != null) recyclerMixContent.setVisibility(View.GONE);
+            listViewContent.setVisibility(View.VISIBLE);
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
             displayedTracks.clear();
 
@@ -2747,6 +2939,7 @@ public class MainActivity extends Activity {
     private void showTrackOnScreen(Track track) {
         // Marcar la canción en la lista mostrada (si está en ella)
         trackAdapter.setCurrentPlayingTrack(track);
+        if (mixRecyclerAdapter != null) mixRecyclerAdapter.setCurrentPlayingTrack(track);
         updatePlaybackStateUI();
 
         // Actualizar información en pantalla con tipografía grande y clara
@@ -3250,10 +3443,19 @@ public class MainActivity extends Activity {
         if (orphan) displayedTracks.add(current);
         displayedTracks.addAll(list);
         showDisplayedTracks();
-        if (listViewContent.getAdapter() != trackAdapter) {
-            listViewContent.setAdapter(trackAdapter);
+        if (recyclerMixContent != null) {
+            listViewContent.setVisibility(View.GONE);
+            recyclerMixContent.setVisibility(View.VISIBLE);
+            mixRecyclerAdapter.setCurrentPlayingTrack(getCurrentTrack());
+            mixRecyclerAdapter.setReorderMode(isReorderingMix);
+            mixRecyclerAdapter.notifyDataSetChanged();
+        } else {
+            if (listViewContent.getAdapter() != trackAdapter) {
+                listViewContent.setAdapter(trackAdapter);
+            }
+            trackAdapter.setCurrentPlayingTrack(getCurrentTrack());
+            trackAdapter.setReorderMode(isReorderingMix);
         }
-        trackAdapter.setCurrentPlayingTrack(getCurrentTrack());
         tvCurrentPath.setText("🎧 Mi Mix (" + list.size() + ")");
         updateMixHeader(list);
 
@@ -3272,6 +3474,21 @@ public class MainActivity extends Activity {
         if (mixConfirmClear) {
             tvMixHeaderTitle.setText("¿Vaciar Mi Mix?");
             tvMixHeaderSub.setText("Se quitan las " + list.size() + ". Lo que suena sigue.");
+            btnMixPlay.setVisibility(View.GONE);
+            btnMixClear.setVisibility(View.GONE);
+            if (btnMixReorder != null) btnMixReorder.setVisibility(View.GONE);
+            if (btnMixReorderDone != null) btnMixReorderDone.setVisibility(View.GONE);
+            btnMixConfirmClear.setVisibility(View.VISIBLE);
+            btnMixCancelClear.setVisibility(View.VISIBLE);
+        } else if (isReorderingMix) {
+            tvMixHeaderTitle.setText("REORDENAR MI MIX");
+            tvMixHeaderSub.setText("Arrastra la manija ≡ para cambiar el orden");
+            btnMixPlay.setVisibility(View.GONE);
+            btnMixClear.setVisibility(View.GONE);
+            if (btnMixReorder != null) btnMixReorder.setVisibility(View.GONE);
+            btnMixConfirmClear.setVisibility(View.GONE);
+            btnMixCancelClear.setVisibility(View.GONE);
+            if (btnMixReorderDone != null) btnMixReorderDone.setVisibility(View.VISIBLE);
         } else {
             SpannableStringBuilder title = new SpannableStringBuilder("MI MIX");
             if (playingFromMix) {
@@ -3296,15 +3513,23 @@ public class MainActivity extends Activity {
                 tvMixHeaderSub.setText(list.size() + (list.size() == 1 ? " canción" : " canciones") + " · " + length
                         + (played > 0 ? " · " + played + " sonaron" : ""));
             }
+            btnMixPlay.setVisibility(View.VISIBLE);
+            btnMixClear.setVisibility(View.VISIBLE);
+            if (btnMixReorder != null) {
+                boolean hasSearch = etSearch != null && !etSearch.getText().toString().trim().isEmpty();
+                btnMixReorder.setVisibility(hasSearch ? View.GONE : View.VISIBLE);
+                btnMixReorder.setEnabled(list.size() > 1 && !hasSearch);
+                btnMixReorder.setAlpha(list.size() > 1 && !hasSearch ? 1f : 0.4f);
+            }
+            if (btnMixReorderDone != null) btnMixReorderDone.setVisibility(View.GONE);
+            btnMixConfirmClear.setVisibility(View.GONE);
+            btnMixCancelClear.setVisibility(View.GONE);
+
+            btnMixPlay.setEnabled(!list.isEmpty());
+            btnMixPlay.setAlpha(list.isEmpty() ? 0.4f : 1f);
+            btnMixClear.setEnabled(!list.isEmpty());
+            btnMixClear.setAlpha(list.isEmpty() ? 0.4f : 1f);
         }
-        btnMixPlay.setVisibility(mixConfirmClear ? View.GONE : View.VISIBLE);
-        btnMixClear.setVisibility(mixConfirmClear ? View.GONE : View.VISIBLE);
-        btnMixConfirmClear.setVisibility(mixConfirmClear ? View.VISIBLE : View.GONE);
-        btnMixCancelClear.setVisibility(mixConfirmClear ? View.VISIBLE : View.GONE);
-        btnMixPlay.setEnabled(!list.isEmpty());
-        btnMixPlay.setAlpha(list.isEmpty() ? 0.4f : 1f);
-        btnMixClear.setEnabled(!list.isEmpty());
-        btnMixClear.setAlpha(list.isEmpty() ? 0.4f : 1f);
     }
 
     private void setupMixHeader() {
@@ -3313,6 +3538,26 @@ public class MainActivity extends Activity {
             hideKeyboard();
             playMix(0, true);
         });
+        if (btnMixReorder != null) {
+            btnMixReorder.setOnClickListener(v -> {
+                hideKeyboard();
+                isReorderingMix = true;
+                showMixTab();
+                updateMixHeader(mixTracks());
+            });
+        }
+        if (btnMixReorderDone != null) {
+            btnMixReorderDone.setTextColor(Color.parseColor("#0c0e12"));
+            btnMixReorderDone.setText("✓ Listo");
+            btnMixReorderDone.setOnClickListener(v -> {
+                hideKeyboard();
+                isReorderingMix = false;
+                saveReorderedMixFromDisplayedTracks();
+                showMixTab();
+                updateMixHeader(mixTracks());
+                showMixToast("Nuevo orden guardado");
+            });
+        }
         btnMixClear.setOnClickListener(v -> {
             mixConfirmClear = true;
             updateMixHeader(mixTracks());
@@ -3326,6 +3571,57 @@ public class MainActivity extends Activity {
             mixConfirmClear = false;
             updateMixHeader(mixTracks());
         });
+    }
+
+    /**
+     * Reordena una canción de Mi Mix de una posición a otra al arrastrar.
+     * Sincroniza la lista y persiste el nuevo orden atómicamente.
+     */
+    private void moveMixTrack(int fromAdapterPos, int toAdapterPos) {
+        if (fromAdapterPos == toAdapterPos) return;
+        if (fromAdapterPos < 0 || fromAdapterPos >= displayedTracks.size() ||
+                toAdapterPos < 0 || toAdapterPos >= displayedTracks.size()) return;
+
+        Track moved = displayedTracks.remove(fromAdapterPos);
+        displayedTracks.add(toAdapterPos, moved);
+        trackAdapter.notifyDataSetChanged();
+        saveReorderedMixFromDisplayedTracks();
+    }
+
+    /**
+     * Guarda el nuevo orden de Mi Mix en base a la lista mostrada en pantalla tras arrastrar y soltar.
+     * Sincroniza myMixKeys, SharedPreferences y la cola de reproducción de forma atómica y segura.
+     */
+    private void saveReorderedMixFromDisplayedTracks() {
+        if (displayedTracks == null || displayedTracks.isEmpty()) return;
+
+        Track current = playingFromMix ? getCurrentTrack() : null;
+        boolean orphan = current != null && !isInMix(current);
+        int startIndex = orphan ? 1 : 0;
+
+        List<String> newOrderKeys = new ArrayList<>();
+        for (int i = startIndex; i < displayedTracks.size(); i++) {
+            Track t = displayedTracks.get(i);
+            if (t != null) {
+                String key = favoriteKey(t);
+                if (key != null && !key.isEmpty() && !newOrderKeys.contains(key)) {
+                    newOrderKeys.add(key);
+                }
+            }
+        }
+
+        // Conservar al final las canciones de pendrives que no estén conectados ahora
+        for (String oldKey : myMixKeys) {
+            if (!newOrderKeys.contains(oldKey)) {
+                newOrderKeys.add(oldKey);
+            }
+        }
+
+        myMixKeys.clear();
+        myMixKeys.addAll(newOrderKeys);
+        saveMyMix();
+        syncMixQueue();
+        updateMixHeader(mixTracks());
     }
 
     // Aviso corto al pie del explorador ("+1 a Mi Mix", "Fin de Mi Mix"...)
@@ -3431,11 +3727,17 @@ public class MainActivity extends Activity {
                 lastRefresh = now;
                 visibleChanged = false;
                 // handler.post publica en el hilo de UI los valores escritos aquí
-                handler.post(() -> trackAdapter.notifyDataSetChanged());
+                handler.post(() -> {
+                    trackAdapter.notifyDataSetChanged();
+                    if (mixRecyclerAdapter != null) mixRecyclerAdapter.notifyDataSetChanged();
+                });
             }
         }
         if (visibleChanged && generation == durationGeneration) {
-            handler.post(() -> trackAdapter.notifyDataSetChanged());
+            handler.post(() -> {
+                trackAdapter.notifyDataSetChanged();
+                if (mixRecyclerAdapter != null) mixRecyclerAdapter.notifyDataSetChanged();
+            });
         }
     }
 

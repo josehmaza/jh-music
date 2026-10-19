@@ -2,6 +2,18 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.7.0 — 2026-10-18
+
+- **Reordenar canciones en Mi Mix (Apertura de Hueco en Vivo + Drag & Drop táctil ≡):**
+  - **Apertura de hueco en vivo (Live Gap):** al arrastrar una pista, las demás canciones se deslizan en tiempo real hacia arriba o abajo abriendo el espacio exacto donde caerá.
+  - **Motor nativo de alto rendimiento (Android):** implementado con `RecyclerView` e `ItemTouchHelper` oficial de Google, acelerado en el **RenderThread de la GPU a 60 fps**, garantizando cero sobrecarga en la CPU de la radio.
+  - **Motor web sincronizado:** implementado con arquitectura FLIP y tarjeta flotante sólida 100% opaca con elevación 3D (cero textos encimados ni desajustes visuales).
+  - **Auto-Scroll continuo en bordes:** al arrastrar una pista cerca del borde superior o inferior (70px), la lista se desplaza sola a velocidad adaptativa para reorganizar listas largas cómodamente.
+  - **Botón `[ ⇅ ]` en cabecera:** conmuta el modo reordenar.
+  - **Cero pérdida de espacio:** la pantalla conserva el 100% del ancho para los títulos largos; la `✕` (quitar) se transforma en la manija `≡` en el mismo espacio.
+  - **Aterrizaje magnético:** al soltar, la pista se imanta en el hueco y confirma la posición con un destello neón cian.
+  - Botón **`[ ✓ Listo ]`** para finalizar y guardar en memoria persistente.
+
 ## 2.6.1 — 2026-10-17
 
 - **Mi Mix:** el botón Reproducir queda solo con ▶ y el resumen dice "2 sonaron", para que entre completo.

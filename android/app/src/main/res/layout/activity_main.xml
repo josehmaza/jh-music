@@ -53,7 +53,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.6.1"
+                android:text="v2.7.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -491,6 +491,16 @@
                         android:contentDescription="Reproducir Mi Mix" />
 
                     <ImageButton
+                        android:id="@+id/btnMixReorder"
+                        android:layout_width="46dp"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_btn_action"
+                        android:src="@drawable/ic_reorder"
+                        android:scaleType="center"
+                        android:contentDescription="Reordenar Mi Mix" />
+
+                    <ImageButton
                         android:id="@+id/btnMixClear"
                         android:layout_width="46dp"
                         android:layout_height="42dp"
@@ -499,6 +509,22 @@
                         android:src="@drawable/ic_trash"
                         android:scaleType="center"
                         android:contentDescription="Vaciar Mi Mix" />
+
+                    <!-- Botón Listo para terminar de reordenar -->
+                    <Button
+                        android:id="@+id/btnMixReorderDone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_tab_selected"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:text="✓ Listo"
+                        android:textAllCaps="false"
+                        android:textColor="#0c0e12"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
 
                     <!-- Confirmación de vaciar -->
                     <Button
@@ -556,6 +582,15 @@
                             android:fastScrollAlwaysVisible="false"
                             android:scrollbars="none"
                             android:scrollbarSize="0dp"
+                            android:overScrollMode="never" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerMixContent"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:visibility="gone"
+                            android:scrollbars="none"
                             android:overScrollMode="never" />
 
                         <!-- Deslizador Rápido Táctil Ergonómico Lateral Separado (26dp de ancho, nunca superpuesto) -->

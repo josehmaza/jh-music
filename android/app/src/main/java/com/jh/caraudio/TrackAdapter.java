@@ -1,12 +1,15 @@
 package com.jh.caraudio;
 
+import android.content.ClipData;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -54,6 +57,7 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
     private OnMixButtonClickListener mixButtonListener;
     private final MixState mixState;
     private boolean mixMode = false; // mostrando la pestaña Mi Mix
+    private boolean reorderMode = false; // modo reordenar canciones en Mi Mix
 
     private String[] sections = new String[0];
     private int[] sectionPositions = new int[0];
@@ -141,6 +145,17 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
         if (this.mixMode == mixMode) return;
         this.mixMode = mixMode;
         notifyDataSetChanged();
+    }
+
+    /** Activa o desactiva el modo de reordenar canciones en Mi Mix (la ✕ pasa a ser ≡ para arrastrar). */
+    public void setReorderMode(boolean reorderMode) {
+        if (this.reorderMode == reorderMode) return;
+        this.reorderMode = reorderMode;
+        notifyDataSetChanged();
+    }
+
+    public boolean isReorderMode() {
+        return reorderMode;
     }
 
     public void setSelectedMarqueeIndex(int index) {
@@ -284,79 +299,107 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
             holder.tvDuration.setText(track.getFormattedDuration());
 
-            // Botón de Mi Mix: ✕ dentro de la lista, ✓ si ya está, + si no
-            if (mixMode && !isOrphan) {
-                holder.btnMix.setImageResource(R.drawable.ic_mix_remove);
+            // Botón de Mi Mix: en modo reordenar es ≡ (manija para arrastrar), en normal es ✕ (quitar), ✓ si ya está, + si no
+            final View rowView = convertView;
+            if (mixMode && reorderMode && !isOrphan) {
+                holder.btnMix.setImageResource(R.drawable.ic_mix_reorder);
                 holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
-                holder.btnMix.setContentDescription("Quitar de Mi Mix");
-            } else if (mixState != null && mixState.isInMix(track)) {
-                holder.btnMix.setImageResource(R.drawable.ic_mix_check);
-                holder.btnMix.setBackgroundResource(R.drawable.bg_mix_btn_active);
-                holder.btnMix.setContentDescription("En Mi Mix (toca para quitar)");
-            } else {
-                holder.btnMix.setImageResource(R.drawable.ic_mix_add);
-                holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
-                holder.btnMix.setContentDescription("Agregar a Mi Mix");
-            }
-
-            holder.btnMix.setOnClickListener(v -> {
-                if (mixButtonListener != null) {
-                    mixButtonListener.onMixButtonClick(track, position);
-                    notifyDataSetChanged();
-                }
-            });
-
-            // 1. Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO (1 toque)
-            holder.tvIndex.setOnClickListener(v -> {
-                if (trackClickListener != null) {
-                    trackClickListener.onTrackClick(track, position);
-                }
-            });
-
-            // 2. Click en la fila o en el texto:
-            // 1 toque: Muestra el nombre completo (espera 280ms para confirmar que no fue doble toque)
-            // 2 toques: Cancela la apertura del nombre y reproduce directamente la canción
-            View.OnClickListener rowClickListener = v -> {
-                if (position != lastClickedPosition) {
-                    if (singleClickRunnable != null) {
-                        clickHandler.removeCallbacks(singleClickRunnable);
-                        singleClickRunnable = null;
-                    }
-                    clickCount = 0;
-                    lastClickedPosition = position;
-                }
-
-                clickCount++;
-
-                if (clickCount == 1) {
-                    singleClickRunnable = () -> {
-                        // Confirmado 1 solo toque: Expandir o contraer para leer todo
-                        clickCount = 0;
-                        singleClickRunnable = null;
-                        if (selectedMarqueeIndex == position) {
-                            selectedMarqueeIndex = -1; // Toggle para contraer
+                holder.btnMix.setContentDescription("Arrastrar para reordenar");
+                holder.btnMix.setOnClickListener(null);
+                holder.btnMix.setOnTouchListener((v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        ClipData data = ClipData.newPlainText("position", String.valueOf(position));
+                        View.DragShadowBuilder shadow = new View.DragShadowBuilder(rowView);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            rowView.startDragAndDrop(data, shadow, position, 0);
                         } else {
-                            selectedMarqueeIndex = position; // Expandir para leer todo
+                            rowView.startDrag(data, shadow, position, 0);
                         }
-                        notifyDataSetChanged();
-                    };
-                    clickHandler.postDelayed(singleClickRunnable, DOUBLE_TAP_TIMEOUT);
-                } else if (clickCount >= 2) {
-                    // Confirmado 2 toques (doble toque): CANCELAR la apertura del nombre y reproducir de inmediato
-                    if (singleClickRunnable != null) {
-                        clickHandler.removeCallbacks(singleClickRunnable);
-                        singleClickRunnable = null;
+                        return true;
                     }
-                    clickCount = 0;
-                    lastClickedPosition = -1;
+                    return false;
+                });
+
+                // En modo reordenar desactivar clics en la fila para evitar reproducción accidental al arrastrar
+                holder.tvIndex.setOnClickListener(null);
+                rowView.setOnClickListener(null);
+                holder.tvTitle.setOnClickListener(null);
+            } else {
+                holder.btnMix.setOnTouchListener(null);
+
+                if (mixMode && !isOrphan) {
+                    holder.btnMix.setImageResource(R.drawable.ic_mix_remove);
+                    holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                    holder.btnMix.setContentDescription("Quitar de Mi Mix");
+                } else if (mixState != null && mixState.isInMix(track)) {
+                    holder.btnMix.setImageResource(R.drawable.ic_mix_check);
+                    holder.btnMix.setBackgroundResource(R.drawable.bg_mix_btn_active);
+                    holder.btnMix.setContentDescription("En Mi Mix (toca para quitar)");
+                } else {
+                    holder.btnMix.setImageResource(R.drawable.ic_mix_add);
+                    holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                    holder.btnMix.setContentDescription("Agregar a Mi Mix");
+                }
+
+                holder.btnMix.setOnClickListener(v -> {
+                    if (mixButtonListener != null) {
+                        mixButtonListener.onMixButtonClick(track, position);
+                        notifyDataSetChanged();
+                    }
+                });
+
+                // 1. Click en el icono de la izquierda (tvIndex): REPRODUCIR DE INMEDIATO (1 toque)
+                holder.tvIndex.setOnClickListener(v -> {
                     if (trackClickListener != null) {
                         trackClickListener.onTrackClick(track, position);
                     }
-                }
-            };
+                });
 
-            convertView.setOnClickListener(rowClickListener);
-            holder.tvTitle.setOnClickListener(rowClickListener);
+                // 2. Click en la fila o en el texto:
+                // 1 toque: Muestra el nombre completo (espera 280ms para confirmar que no fue doble toque)
+                // 2 toques: Cancela la apertura del nombre y reproduce directamente la canción
+                View.OnClickListener rowClickListener = v -> {
+                    if (position != lastClickedPosition) {
+                        if (singleClickRunnable != null) {
+                            clickHandler.removeCallbacks(singleClickRunnable);
+                            singleClickRunnable = null;
+                        }
+                        clickCount = 0;
+                        lastClickedPosition = position;
+                    }
+
+                    clickCount++;
+
+                    if (clickCount == 1) {
+                        singleClickRunnable = () -> {
+                            // Confirmado 1 solo toque: Expandir o contraer para leer todo
+                            clickCount = 0;
+                            singleClickRunnable = null;
+                            if (selectedMarqueeIndex == position) {
+                                selectedMarqueeIndex = -1; // Toggle para contraer
+                            } else {
+                                selectedMarqueeIndex = position; // Expandir para leer todo
+                            }
+                            notifyDataSetChanged();
+                        };
+                        clickHandler.postDelayed(singleClickRunnable, DOUBLE_TAP_TIMEOUT);
+                    } else if (clickCount >= 2) {
+                        // Confirmado 2 toques (doble toque): CANCELAR la apertura del nombre y reproducir de inmediato
+                        if (singleClickRunnable != null) {
+                            clickHandler.removeCallbacks(singleClickRunnable);
+                            singleClickRunnable = null;
+                        }
+                        clickCount = 0;
+                        lastClickedPosition = -1;
+                        if (trackClickListener != null) {
+                            trackClickListener.onTrackClick(track, position);
+                        }
+                    }
+                };
+
+                convertView.setOnClickListener(rowClickListener);
+                holder.tvTitle.setOnClickListener(rowClickListener);
+            }
         }
 
         return convertView;
