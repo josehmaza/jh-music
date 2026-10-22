@@ -219,7 +219,8 @@
         </div>
 
         <div class="now-playing-card">
-          <!-- Carátula / Portada -->
+          <!-- Carátula / Portada. La cápsula va fuera del cuadro para quedar montada sobre su borde de abajo -->
+          <div class="album-art-wrap">
           <div class="album-art-container" id="albumContainer">
             <!-- Borde Láser Giratorio Deck A (Cian) -->
             <div class="laser-spinner" id="laserSpinner"></div>
@@ -234,16 +235,17 @@
                 <svg class="vinyl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/></svg>
               </div>
 
-              <!-- Cápsula Glassmorphism con EQ y estado (Opción 2) -->
-              <div class="now-playing-pill" id="nowPlayingPill">
-                <span class="pill-label" id="pillStatusText">PAUSED</span>
-                <div class="pill-eq-bars">
-                  <span></span><span></span><span></span><span></span><span></span>
-                </div>
-              </div>
-
               <div class="audio-badge" id="formatBadge">MP3 320K</div>
             </div>
+          </div>
+
+          <!-- Cápsula Glassmorphism con EQ y estado: mitad sobre la carátula, mitad fuera (no tapa su contenido) -->
+          <div class="now-playing-pill" id="nowPlayingPill">
+            <span class="pill-label" id="pillStatusText">PAUSED</span>
+            <div class="pill-eq-bars">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
           </div>
 
           <!-- Metadatos de la canción -->

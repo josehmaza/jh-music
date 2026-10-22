@@ -71,6 +71,9 @@ public class Track {
         public final String[] artistWords;
         public final String haystack;
         public final String haystackDedup;
+        // Con ñ y tildes, para premiar la escritura exacta
+        public final String exactTitle;
+        public final String exactHaystack;
 
         SearchKey(Track t) {
             title = SearchText.normalize(t.title);
@@ -82,6 +85,9 @@ public class Track {
             String relPath = SearchText.normalize(SearchText.stripExtension(SearchText.relativeUsbPath(t.filePath)));
             haystack = title + " " + artist + " " + album + " " + folder + " " + relPath;
             haystackDedup = SearchText.dedup(haystack);
+            exactTitle = SearchText.exactLower(t.title);
+            exactHaystack = exactTitle + " " + SearchText.exactLower(t.artist) + " " + SearchText.exactLower(t.album) + " "
+                    + SearchText.exactLower(t.folder) + " " + SearchText.exactLower(SearchText.relativeUsbPath(t.filePath));
         }
     }
 }

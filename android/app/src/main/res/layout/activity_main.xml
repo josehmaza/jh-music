@@ -881,27 +881,21 @@
                                     android:src="@drawable/ic_vinyl_disc" />
                             </LinearLayout>
 
-                            <!-- Cápsula de estado PAUSED / PLAYING / MIXING ⇄ con ecualizador (.now-playing-pill) -->
-                            <com.jh.caraudio.NowPlayingPillView
-                                android:id="@+id/nowPlayingPill"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="bottom|center_horizontal"
-                                android:layout_marginBottom="10dp" />
-
-                            <!-- Badge de Formato / Calidad MP3 320K (.audio-badge) -->
+                            <!-- Badge de Formato / Calidad MP3 320K (.audio-badge): pegado a la esquina de arriba
+                                 a la derecha (1dp de más tapa el borde suavizado de la carátula en la curva) -->
                             <TextView
                                 android:id="@+id/tvFormatBadge"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="top|end"
-                                android:layout_margin="8dp"
-                                android:background="@drawable/bg_audio_badge"
+                                android:layout_marginTop="-1dp"
+                                android:layout_marginEnd="-1dp"
+                                android:background="@drawable/bg_audio_badge_corner"
                                 android:fontFamily="monospace"
-                                android:paddingStart="7dp"
-                                android:paddingEnd="7dp"
-                                android:paddingTop="3dp"
-                                android:paddingBottom="3dp"
+                                android:paddingStart="8dp"
+                                android:paddingEnd="10dp"
+                                android:paddingTop="4dp"
+                                android:paddingBottom="4dp"
                                 android:text="MP3 320K"
                                 android:textColor="#e2e8f0"
                                 android:textSize="10sp"
@@ -922,6 +916,17 @@
                         android:clickable="false"
                         android:focusable="false"
                         android:importantForAccessibility="no" />
+
+                    <!-- Cápsula de estado PAUSED / PLAYING / MIXING ⇄ con ecualizador (.now-playing-pill):
+                         montada sobre el borde de abajo de la carátula (mide 38dp: la mitad queda fuera),
+                         así no tapa el contenido de la carátula. El título deja ese espacio libre -->
+                    <com.jh.caraudio.NowPlayingPillView
+                        android:id="@+id/nowPlayingPill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignBottom="@id/layoutAlbumArtCard"
+                        android:layout_centerHorizontal="true"
+                        android:layout_marginBottom="-19dp" />
 
                     <!-- Zona Táctil Ergonómica (Área libre marcada en cuadro rojo + botón de búsqueda) -->
                     <!-- Permite tocar, mantener y jalar hacia la izquierda para ocultar o hacia la derecha para mostrar -->
@@ -960,12 +965,13 @@
                     </LinearLayout>
                 </RelativeLayout>
 
-                <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA -->
+                <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA.
+                     25dp arriba = 6dp de siempre + 19dp de la cápsula que sobresale de la carátula -->
                 <com.jh.caraudio.CarMarqueeTextView
                     android:id="@+id/tvTrackTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="25dp"
                     android:gravity="center"
                     android:singleLine="true"
                     android:text="Selecciona una canción"

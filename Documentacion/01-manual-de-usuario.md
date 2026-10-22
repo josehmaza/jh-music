@@ -87,6 +87,7 @@ Mi Mix **se guarda en el radio**: se conserva al cerrar la app, al re-escanear y
 - Escribe y la búsqueda arranca sola: espera 0,5 s si hay 1–2 letras y 0,25 s si hay más. El botón Buscar del teclado busca de inmediato.
 - No importan tildes ni mayúsculas, y tolera letras repetidas (`holaaa` encuentra `hola`).
 - Los resultados se ordenan por relevancia: primero los títulos que coinciden exacto o empiezan igual.
+- **Si escribes con ñ o tildes, primero sale lo escrito igual.** `ñaña` encuentra también `nana`, pero pone primero "Las Ñañas" y después "didi nana". Sin ñ ni tildes (`nana`, `corazon`) se ordena como siempre.
 - La **X** borra el texto. El chip elegido se mantiene y la lista vuelve a mostrar la carpeta activa.
 
 ### Chips de filtro (solo en Pistas)
@@ -129,8 +130,8 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 - **Si la canción trae carátula**, se ve la imagen completa. **Si no trae**, se muestra un disco.
 - El cuadro ocupa la parte de arriba del reproductor, entre la lupa y Automix. Su tamaño se ajusta solo al espacio libre de la pantalla.
-- **Arriba a la derecha**, la etiqueta de formato (`MP3 320K`).
-- **Abajo**, una cápsula con el estado y un ecualizador:
+- **Pegada a la esquina de arriba a la derecha**, la etiqueta de formato (`MP3 320K`), con la misma curva de la esquina: tapa lo mínimo de la carátula.
+- **Sobre el borde de abajo** (mitad sobre la carátula y mitad fuera), una cápsula con el estado y un ecualizador. Así no tapa el contenido de la carátula; el título queda debajo, en su lugar de siempre:
 
   | Estado | Cápsula | Borde del cuadro |
   |---|---|---|

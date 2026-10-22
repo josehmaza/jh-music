@@ -2,7 +2,17 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## 2.7.0 — 2026-10-18
+## Sin publicar (próxima 2.7.1) — 2026-10-19, pendiente de probar en el auto
+
+- **Buscador con ñ y tildes:** si escribes `ñaña`, primero salen las canciones que lo tienen escrito igual ("Las Ñañas") y después las que solo se parecen ("didi nana"). Antes salía primero "didi nana", porque al quitar tildes la ñ quedaba como n. Sin ñ ni tildes en la búsqueda, el orden es el de siempre. En la app y en la maqueta web.
+- **Nada tapa la carátula** (las carátulas oficiales no se editan; cambia solo dónde va lo que la app pone encima):
+  - La **cápsula PLAYING / MIXING** queda **montada sobre el borde de abajo** (mitad dentro, mitad fuera). Mismo tamaño (164 × 38 dp) y misma animación.
+  - La etiqueta **MP3 320K** queda **pegada a la esquina** de arriba a la derecha, con la misma curva de la carátula y fondo sólido (antes estaba a 8 dp del borde y dejaba ver la carátula por su esquina).
+  - El **título y todo lo de abajo no se mueven**: la carátula se achica 19 dp para dejar lugar a la mitad de la cápsula que sobresale.
+- **Arreglo:** al volver a la pestaña **Mi Mix**, la lista otra vez se ubica en la canción que suena (desde la 2.7.0 solo lo hacía en Pistas, porque Mi Mix pasó a otra lista).
+- `bg_audio_badge.xml` reemplazado por `bg_audio_badge_corner.xml`.
+
+## 2.7.0 — 2026-10-18 (`e1d8b0b`)
 
 - **Reordenar canciones en Mi Mix (Apertura de Hueco en Vivo + Drag & Drop táctil ≡):**
   - **Apertura de hueco en vivo (Live Gap):** al arrastrar una pista, las demás canciones se deslizan en tiempo real hacia arriba o abajo abriendo el espacio exacto donde caerá.
@@ -14,7 +24,7 @@ Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de gi
   - **Aterrizaje magnético:** al soltar, la pista se imanta en el hueco y confirma la posición con un destello neón cian.
   - Botón **`[ ✓ Listo ]`** para finalizar y guardar en memoria persistente.
 
-## 2.6.1 — 2026-10-17
+## 2.6.1 — 2026-10-17 (`5254a2f`)
 
 - **Mi Mix:** el botón Reproducir queda solo con ▶ y el resumen dice "2 sonaron", para que entre completo.
 - **Se sabe cuándo suena Mi Mix:** la pestaña Mi Mix muestra un punto cian que late mientras suena (quieto en pausa), y debajo del título dice "Mi Mix · 2 de 4" en lugar de la carpeta.
@@ -33,7 +43,7 @@ Solo diseño, sin cambios de funcionamiento. La app queda igual que la maqueta w
 - **Íconos propios iguales a los de la web** en lugar de los del sistema Android: controles, tarjetas Anterior/Siguiente, lupa, pestañas (carpeta, lista, lista con +), silencio (rojo cuando está activo), buscador y su ×, y carpetas en la búsqueda.
 - **Pestaña elegida en cian lleno** con texto oscuro, como la web.
 
-## 2.5.0 — 2026-10-17 (pendiente de commit)
+## 2.5.0 — 2026-10-17 (`8c56920`)
 
 - **Mi Mix reemplaza a Favoritos:** una lista que armas con **+** (en cada canción o en una carpeta entera) y que suena seguida, en su orden, con Automix, como la lista de Automix de Virtual DJ.
   - Lo que agregas mientras suena entra al final de la cola en vivo.
@@ -42,7 +52,7 @@ Solo diseño, sin cambios de funcionamiento. La app queda igual que la maqueta w
   - Cabecera con resumen, **▶ Reproducir** y **Vaciar** con confirmación. Al vaciar o quitar la que suena, esa canción sigue hasta el final.
   - Las estrellas de Favoritos pasan a Mi Mix la primera vez.
 
-## 2.4.0 — 2026-10-17 (pendiente de commit)
+## 2.4.0 — 2026-10-17 (`8c56920`)
 
 - **Automix iguala el volumen entre canciones** (fase 3): mide qué tan fuerte suena cada canción y la acerca a un mismo nivel. Baja las fuertes hasta 6 dB y sube las suaves hasta 4 dB. La que entra en una mezcla ya llega corregida; si el análisis llega tarde, se ajusta con una rampa de 2 s en los primeros segundos.
 - El análisis de cada canción suma 10 s del medio para medir la sonoridad.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Compila el APK de JH MUSIC.
-# Gradle (tarea copyApkToRoot) copia solo el APK a la raíz como JH-MUSIC-v<versión>.apk
+# Gradle (tarea copyApkToRoot) copia solo el APK a jh-music/ como JH-MUSIC-v<versión>.apk
 # y borra el de la versión anterior, así que aquí no hace falta copiarlo a mano.
 set -e
 export JAVA_HOME="/c/Program Files/Java/jdk-11.0.30"

@@ -36,12 +36,17 @@ public class FolderItem {
         public final String[] words;
         public final String haystack;
         public final String haystackDedup;
+        // Con ñ y tildes, para premiar la escritura exacta
+        public final String exactName;
+        public final String exactHaystack;
 
         SearchKey(FolderItem f) {
             name = SearchText.normalize(f.name);
             words = SearchText.words(name);
             haystack = name + " " + SearchText.normalize(SearchText.relativeUsbPath(f.path));
             haystackDedup = SearchText.dedup(haystack);
+            exactName = SearchText.exactLower(f.name);
+            exactHaystack = exactName + " " + SearchText.exactLower(SearchText.relativeUsbPath(f.path));
         }
     }
 }

@@ -1715,6 +1715,31 @@ function initApp() {
       .trim();
   }
 
+  // Minúsculas conservando ñ y tildes: para premiar la escritura exacta ("ñaña" antes que "nana")
+  function exactLower(text) {
+    if (!text) return '';
+    return text.toString().normalize('NFC').toLowerCase().trim();
+  }
+
+  // Términos tal como se escribieron; null si la consulta no trae ñ ni tildes (no hay nada que premiar)
+  function exactTokens(rawQuery, normQuery) {
+    const raw = exactLower(rawQuery);
+    if (raw === normQuery) return null;
+    return raw.split(/\s+/).filter(t => t.length > 0);
+  }
+
+  function exactSpellingBonus(titleText, fullText, rawTokens) {
+    if (!rawTokens) return 0;
+    const title = exactLower(titleText);
+    const full = exactLower(fullText);
+    let bonus = 0;
+    rawTokens.forEach(token => {
+      if (title.includes(token)) bonus += 20000;
+      else if (full.includes(token)) bonus += 12000;
+    });
+    return bonus;
+  }
+
   function dedupChars(s) {
     return s.replace(/([a-z])\1+/g, '$1');
   }
@@ -1825,6 +1850,11 @@ function initApp() {
       }
     });
 
+    // 3. Escritura exacta con ñ/tildes: "ñaña" va antes que "nana"
+    score += exactSpellingBonus(track.title,
+      `${track.title} ${track.artist} ${track.album || ''} ${track.folder || ''} ${track.path || ''}`,
+      exactTokens(rawQuery, normQuery));
+
     // Desempate fino: títulos más concisos y directos ganan prioridad
     score -= Math.min(titleNorm.length, 60);
     return score;
@@ -1848,6 +1878,8 @@ function initApp() {
       else if (words.some(w => w.startsWith(token))) score += 3000;
       else if (nameNorm.includes(token)) score += 1000;
     });
+
+    score += exactSpellingBonus(folder.name, `${folder.name} ${folder.path || ''}`, exactTokens(rawQuery, normQuery));
 
     score -= Math.min(nameNorm.length, 50);
     return score;

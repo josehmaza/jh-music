@@ -40,7 +40,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.0'
 }
 
-// Al terminar assembleDebug, copia el APK a la raíz del repositorio
+// Al terminar assembleDebug, copia el APK a la carpeta jh-music/ (al lado del simulador web)
 // reemplazando el de la versión anterior (el historial de git conserva los viejos)
 tasks.register('copyApkToRoot') {
     doLast {

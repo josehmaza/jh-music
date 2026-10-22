@@ -1,12 +1,12 @@
 # Arquitectura técnica — JH MUSIC
 
-App Android nativa en Java, sin librerías externas: una sola `Activity`, adapters de `ListView` y vistas propias dibujadas con `Canvas`. El audio se reproduce con `MediaPlayer` del sistema; Automix usa dos a la vez durante la mezcla.
+App Android nativa en Java: una sola `Activity`, adapters de `ListView` (y un `RecyclerView` para Mi Mix) y vistas propias dibujadas con `Canvas`. El audio se reproduce con `MediaPlayer` del sistema; Automix usa dos a la vez durante la mezcla.
 
 | Dato | Valor |
 |---|---|
 | Lenguaje | Java 8 |
 | `minSdk` / `targetSdk` / `compileSdk` | 21 / 28 / 33 |
-| Dependencias | Ninguna (`dependencies {}` vacío) |
+| Dependencias | Solo `androidx.recyclerview:recyclerview:1.3.0` (desde 2.7.0, para reordenar Mi Mix) |
 | Paquete | `com.jh.caraudio` |
 
 ## 1. Clases
@@ -24,12 +24,13 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | `AudioAnalyzer` | Analiza inicio, medio y final de cada canción: silencios, fade-out y sonoridad (LUFS aprox.) |
 | `LoudnessLeveler` | Igualar volumen: corrección por reproductor, con `setVolume` para bajar y `LoudnessEnhancer` para subir |
 | `TrackAdapter` | Lista de canciones: resaltado de la que suena, toque / doble toque, botón de Mi Mix (+ / ✓ / ✕), marcas "ya sonó", índice A-Z |
+| `MixRecyclerAdapter` | Lista de la pestaña Mi Mix (`RecyclerView`): mismas filas que `TrackAdapter` y, en modo reordenar, la manija `≡` que arrastra la fila con `ItemTouchHelper` |
 | `FolderTreeAdapter` | Filas del árbol de Carpetas con el botón `[N ▶]` |
 | `FolderAdapter` | Lista plana de carpetas (resultados de búsqueda en Carpetas) |
 | `VerticalVolumeBar` | Barra de volumen vertical dibujada a mano |
 | `SearchSpinnerView` | Spinner de "Buscando…" que no depende de las animaciones del sistema |
 | `LaserRingView` | Haz láser que gira por el borde de la carátula: cian al sonar, más uno magenta al mezclar |
-| `NowPlayingPillView` | Cápsula `PAUSED / PLAYING / MIXING ⇄` con 5 barras de ecualizador, al pie de la carátula |
+| `NowPlayingPillView` | Cápsula `PAUSED / PLAYING / MIXING ⇄` con 5 barras de ecualizador, montada sobre el borde de abajo de la carátula |
 | `CarMarqueeTextView` | Texto de una línea que se desplaza como la marquesina de la web (título, tarjetas y fila que suena) |
 | `AmbientTheme` | Fondo de toda la app con el color de la carátula (degradados sobre la raíz) y fundido entre canciones; también da el color al resplandor |
 | `AlbumGlowView` | Sombra y resplandor detrás de la carátula (el box-shadow de la web), con BlurMaskFilter en software |
@@ -107,7 +108,9 @@ La pestaña (`showMixTab()`) tiene una cabecera propia (`layoutMixHeader`: resum
 
 **Indicar que suena Mi Mix:** `refreshTabLabels()` agrega a la pestaña Mi Mix un punto cian (`addMixLiveDot`, un `GradientDrawable` de 11dp dentro de un `CenteredImageSpan`) mientras `playingFromMix`; con música sonando, `mixLiveDotPulse` le cambia la opacidad cada 60 ms (late). Se refresca en `updatePlaybackStateUI()` y en `onTrackStarted()`. `updateTrackSource()` pone debajo del título "Mi Mix · N de M" (posición en `playQueue`) en lugar del álbum; se actualiza al empezar cada canción y en `syncMixQueue()`.
 
-**Ubicar la canción que suena en la lista:** `scrollToPlayingTrack()` busca la canción en `displayedTracks` y hace `setSelectionFromTop(índice - 1, 0)`: queda una canción antes arriba. Se llama al volver a Pistas o Mi Mix (`selectTab`) y al tocar el chip de la carpeta actual; si hay búsqueda, después de que llegan los resultados (`scrollToPlayingAfterSearch`). En la maqueta web lo mismo hace `scrollListToPlaying()`, y `renderList()` conserva el desplazamiento cuando se vuelve a dibujar la misma lista. La web mueve solo la lista (`scrollListToRow`), no `scrollIntoView`, que también desplazaba toda la pantalla.
+**Reordenar (2.7.0):** sin búsqueda, `showMixTab()` muestra Mi Mix en `recyclerMixContent` (un `RecyclerView` con `MixRecyclerAdapter`) y oculta `listViewContent`. El botón `btnMixReorder` (⇅) activa `isReorderingMix`: la `✕` de cada fila pasa a ser la manija `≡`, y tocarla llama a `ItemTouchHelper.startDrag()` (sin pulsación larga ni deslizar). `onMove` mueve la fila en vivo (las demás abren el hueco) y no deja mover ni pasar la fila "Sonando · ya no está en Mi Mix" (posición 0). Al soltar (`clearView`) y con **✓ Listo** (`btnMixReorderDone`), `saveReorderedMixFromDisplayedTracks()` rearma `myMixKeys` en el orden de la pantalla (las de pendrives no conectados quedan al final), guarda (`saveMyMix`) y llama a `syncMixQueue()`.
+
+**Ubicar la canción que suena en la lista:** `scrollToPlayingTrack()` busca la canción en `displayedTracks` y la deja con una canción antes arriba: en Pistas con `setSelectionFromTop(índice - 1, 0)` y en Mi Mix (que está en `recyclerMixContent`) con `LinearLayoutManager.scrollToPositionWithOffset(índice - 1, 0)`. Se llama al volver a Pistas o Mi Mix (`selectTab`) y al tocar el chip de la carpeta actual; si hay búsqueda, después de que llegan los resultados (`scrollToPlayingAfterSearch`). En la maqueta web lo mismo hace `scrollListToPlaying()`, y `renderList()` conserva el desplazamiento cuando se vuelve a dibujar la misma lista. La web mueve solo la lista (`scrollListToRow`), no `scrollIntoView`, que también desplazaba toda la pantalla.
 
 ### `reconcileListsAfterRescan()`
 
@@ -141,6 +144,16 @@ Cada `Track` guarda un `SearchKey` inmutable con título, artista, álbum y carp
 6. Publica en el hilo de UI solo si `searchVersion` no cambió.
 
 `searchVersion` sube con cada tecla: si llega una búsqueda nueva, la anterior se abandona en su siguiente vuelta del bucle.
+
+### Escritura exacta (ñ y tildes)
+
+`SearchText.normalize()` quita las tildes con NFD, y la **ñ cuenta como tilde** (es `n` + `◌̃`): `ñaña` y `nana` quedan iguales. Por eso coinciden, pero para ordenar se premia la escritura exacta:
+
+- `SearchKey` guarda también `exactTitle` y `exactHaystack`: el mismo texto en minúsculas y en NFC, **conservando ñ y tildes** (`SearchText.exactLower()`). `FolderItem.SearchKey` tiene `exactName` y `exactHaystack`.
+- `exactTokens(rawQuery, norm)` devuelve las palabras tal como se escribieron, o `null` si la consulta no trae ñ ni tildes (en ese caso no hay nada que premiar y el orden es el de siempre).
+- `exactSpellingBonus()` suma **+20000** por cada palabra que aparece con la misma escritura en el título (o nombre de carpeta) y **+12000** si aparece en el resto. Se aplica al final de `calculateTrackRelevance` y `calculateFolderRelevance`; los demás puntajes no cambian.
+
+La maqueta web hace lo mismo con `exactLower`, `exactTokens` y `exactSpellingBonus` en `app.js`.
 
 ### Reglas de la pestaña Pistas
 
@@ -218,7 +231,11 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 - **`dispatchTouchEvent`:** detecta el gesto de jalar en la zona de la lupa (más de 35 px en horizontal) para mostrar u ocultar el explorador, y protege las barras de progreso y de volumen.
 - **Lupa:** está dentro de esa zona y no es clicable por sí misma; un toque simple sobre ella se detecta en el `OnTouchListener` de la zona (`isTouchOnView`). `setExplorerVisible()` la deja resaltada (`setSelected`) mientras el explorador está oculto.
 - **Automix:** botón normal (`btnAutoMix`, arriba a la derecha del reproductor) que llama a `toggleAutoMix()`.
-- **Tamaño de la carátula:** el cuadro mide 150 dp en el layout. `setupAlbumArtAutoSize()` espera al primer layout y lo agranda con el espacio que sobra en la fila de controles (`layoutTransportControls`), con un máximo de 260 dp y sin tocar la lupa ni Automix.
+- **Tamaño de la carátula:** el cuadro mide 150 dp en el layout. `setupAlbumArtAutoSize()` espera al primer layout y lo agranda con el espacio que sobra en la fila de controles (`layoutTransportControls`, dejando 8 dp arriba y abajo de los botones), con un máximo de 260 dp y sin tocar la lupa ni Automix.
+- **Cápsula y etiqueta sobre la carátula (para no tapar su contenido):**
+  - `NowPlayingPillView` (38 dp de alto) **no** está dentro del cuadro: es hija del `RelativeLayout` de arriba, alineada al borde de abajo de `layoutAlbumArtCard` con `marginBottom="-19dp"`, así queda mitad dentro y mitad fuera. Va después de `LaserRingView` para dibujarse encima. Está fuera del cuadro porque `layoutAlbumArtInner` recorta su contenido con `setClipToOutline(true)`.
+  - Para que esa mitad no tape el título, `tvTrackTitle` tiene `marginTop="25dp"` (6 dp de siempre + 19 dp). Ese espacio sale de la carátula: como `setupAlbumArtAutoSize()` reparte lo que sobra, el cuadro queda 19 dp más chico y **el título y todo lo de abajo quedan donde estaban**.
+  - `tvFormatBadge` (MP3 320K) va dentro del cuadro, arriba a la derecha, con márgenes de −1 dp (tapa el borde suavizado de la imagen en la curva) y fondo `bg_audio_badge_corner`: sólido, con curva propia de 18,5 dp arriba a la derecha (la del cuadro es 17,5 dp) y borde solo a la izquierda y abajo. Un fondo translúcido o sin curva propia dejaba ver la carátula por la esquina.
 - **Animaciones propias:** `LaserRingView`, `NowPlayingPillView` y `CarMarqueeTextView` se redibujan con `postInvalidateDelayed(33 ms)` (unos 30 cuadros por segundo) y no con `Animator`, porque el radio puede tener las animaciones del sistema desactivadas. Solo se animan mientras hace falta (sonando, mezclando o con texto que no entra).
 - **Marquesina (`CarMarqueeTextView`):** el ciclo dura entre 6 y 16 s según cuánto sobra el texto: quieto al inicio (0–20 %), se desliza al final (20–65 %), quieto (65–82 %) y vuelve (82–100 %). Antes de dibujar compensa el `scrollX` interno de `TextView`; sin eso, los textos centrados que no entraban salían vacíos. En la lista solo se desplaza la fila que suena; las demás se cortan con "…".
 - **`TrackAdapter`:** un toque en la fila espera 280 ms para distinguirlo de un doble toque. Uno expande el nombre; dos reproducen.
@@ -232,7 +249,7 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 | `res/layout/activity_main.xml` | Pantalla completa |
 | `res/layout/item_track.xml`, `item_folder.xml`, `item_tree_folder.xml` | Filas de las listas |
 | `res/drawable/bg_album_card.xml`, `bg_album_inner.xml` | Marco y fondo redondeados del cuadro de la carátula |
-| `res/drawable/bg_audio_badge.xml` | Etiqueta de formato (`MP3 320K`) |
+| `res/drawable/bg_audio_badge_corner.xml` | Etiqueta de formato (`MP3 320K`) pegada a la esquina de la carátula |
 | `res/drawable/ic_automix.xml` | Ícono de Automix (dos curvas cruzadas) |
 | `res/drawable/ic_launcher.xml` | Ícono para Android 7 o anterior |
 | `res/drawable-v26/ic_launcher.xml` | Ícono adaptativo (Android 8+), con `ic_launcher_background` y `ic_launcher_foreground` |
@@ -241,8 +258,8 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
 
 ## 10. Simulador web
 
-`index.html`, `app.js` y `style.css` (raíz) son una maqueta de la interfaz en navegador, con lógica propia en JavaScript y audio simulado. Se mantiene sincronizada a mano con la app nativa y se copia en `android/app/src/main/assets/`. La app nativa **no** la carga (no usa `WebView`).
+`index.html`, `app.js` y `style.css` (en `jh-music/`) son una maqueta de la interfaz en navegador, con lógica propia en JavaScript y audio simulado. Se mantiene sincronizada a mano con la app nativa y se copia en `android/app/src/main/assets/`. La app nativa **no** la carga (no usa `WebView`).
 
-La maqueta es la referencia de diseño: la app nativa debe verse igual. Muestra canciones de ejemplo con carátula (Colegiala, Cumbia del Sol, Guaracadita), el haz láser, la cápsula, la mezcla de Automix y el doble toque ±10 s. En la parte superior del reproductor, la lupa y Automix flotan sobre la carátula (`.player-top-bar` con `position: absolute`), y la carátula mide 240 px.
+La maqueta es la referencia de diseño: la app nativa debe verse igual. Muestra canciones de ejemplo con carátula (Colegiala, Cumbia del Sol, Guaracadita), el haz láser, la cápsula, la mezcla de Automix y el doble toque ±10 s. En la parte superior del reproductor, la lupa y Automix flotan sobre la carátula (`.player-top-bar` con `position: absolute`), y la carátula mide 221 px. La cápsula (`#nowPlayingPill`) está fuera de `.album-art-container` (que recorta con `overflow: hidden`), dentro de `.album-art-wrap`, con `bottom: -19px`; el `margin-bottom: 19px` de ese envoltorio le reserva espacio. Como la carátula mide 240 − 19 px, el título queda en el mismo lugar. Sus estilos de estado usan el selector hermano (`.album-art-container.is-playing ~ .now-playing-pill`). La etiqueta `.audio-badge` va pegada a la esquina (`top/right: -1px`, `border-radius: 0 18px 0 10px`, fondo sólido sin `backdrop-filter`, que no se recortaba bien en la curva).
 
 `demo-animaciones.html` y `demo-mezcla.html` son muestrarios de diseño con variantes de la animación de la carátula y de las transiciones de Automix. Sirvieron para elegir el diseño y no forman parte de la app.

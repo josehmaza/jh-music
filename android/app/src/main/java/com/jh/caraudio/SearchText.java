@@ -1,6 +1,7 @@
 package com.jh.caraudio;
 
 import java.text.Normalizer;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -24,6 +25,12 @@ final class SearchText {
         if (text == null) return "";
         String n = Normalizer.normalize(text, Normalizer.Form.NFD);
         return DIACRITICS.matcher(n).replaceAll("").toLowerCase().trim();
+    }
+
+    /** Minúsculas conservando ñ y tildes, para premiar la escritura exacta ("ñaña" antes que "nana"). */
+    static String exactLower(String text) {
+        if (text == null) return "";
+        return Normalizer.normalize(text, Normalizer.Form.NFC).toLowerCase(Locale.ROOT).trim();
     }
 
     /** Colapsa letras repetidas: "holaaa" → "hola". */

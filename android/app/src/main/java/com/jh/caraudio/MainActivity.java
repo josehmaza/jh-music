@@ -1307,7 +1307,9 @@ public class MainActivity extends Activity {
                 controls.getViewTreeObserver().removeOnGlobalLayoutListener(this);
 
                 float density = getResources().getDisplayMetrics().density;
-                // Dejar una separación cómoda (8 dp arriba y abajo de los botones)
+                // Dejar una separación cómoda (8 dp arriba y abajo de los botones). La carátula se agranda con lo
+                // que sobra: como el título deja 19 dp para la cápsula PLAYING que sobresale, la carátula queda
+                // 19 dp más chica y el título y lo de abajo no se mueven
                 int spare = controls.getHeight() - rowHeight - Math.round(16 * density);
                 ViewGroup.LayoutParams lp = layoutAlbumArtCard.getLayoutParams();
                 View parent = (View) layoutAlbumArtCard.getParent();
@@ -1904,7 +1906,9 @@ public class MainActivity extends Activity {
      * antes, luego la que suena y luego las demás. Al volver a la pestaña o al tocar la carpeta actual.
      */
     private void scrollToPlayingTrack() {
-        if (listViewContent == null || listViewContent.getAdapter() != trackAdapter) return;
+        // Mi Mix se muestra en su RecyclerView (desde 2.7.0); Pistas y búsquedas, en el ListView
+        boolean inMixList = recyclerMixContent != null && recyclerMixContent.getVisibility() == View.VISIBLE;
+        if (!inMixList && (listViewContent == null || listViewContent.getAdapter() != trackAdapter)) return;
         Track playing = getCurrentTrack();
         if (playing == null) return;
         int index = -1;
@@ -1915,8 +1919,13 @@ public class MainActivity extends Activity {
             }
         }
         if (index < 0) return;
-        final int target = index;
-        listViewContent.post(() -> listViewContent.setSelectionFromTop(Math.max(0, target - 1), 0));
+        final int target = Math.max(0, index - 1);
+        if (inMixList) {
+            final LinearLayoutManager lm = (LinearLayoutManager) recyclerMixContent.getLayoutManager();
+            if (lm != null) recyclerMixContent.post(() -> lm.scrollToPositionWithOffset(target, 0));
+            return;
+        }
+        listViewContent.post(() -> listViewContent.setSelectionFromTop(target, 0));
     }
 
     private void openFolder(String folderName, String usbSource) {
@@ -2402,7 +2411,25 @@ public class MainActivity extends Activity {
         return true;
     }
 
-    private int calculateTrackRelevance(Track track, String normQuery, String[] tokens) {
+    /** Términos tal como se escribieron; null si la consulta no trae ñ ni tildes (no hay nada que premiar). */
+    private static String[] exactTokens(String rawQuery, String normQuery) {
+        String exact = SearchText.exactLower(rawQuery);
+        return exact.equals(normQuery) ? null : SearchText.tokens(exact);
+    }
+
+    /** "ñaña" escrito así va antes que "nana": premio por cada término con la misma escritura. */
+    private static int exactSpellingBonus(String exactTitle, String exactHaystack, String[] exactTokens) {
+        if (exactTokens == null) return 0;
+        int bonus = 0;
+        for (String token : exactTokens) {
+            if (token.isEmpty()) continue;
+            if (exactTitle.contains(token)) bonus += 20000;
+            else if (exactHaystack.contains(token)) bonus += 12000;
+        }
+        return bonus;
+    }
+
+    private int calculateTrackRelevance(Track track, String normQuery, String[] tokens, String[] exactTokens) {
         int score = 0;
         Track.SearchKey key = track.getSearchKey();
         String titleNorm = key.title;
@@ -2462,11 +2489,12 @@ public class MainActivity extends Activity {
             }
         }
 
+        score += exactSpellingBonus(key.exactTitle, key.exactHaystack, exactTokens);
         score -= Math.min(titleNorm.length(), 60);
         return score;
     }
 
-    private int calculateFolderRelevance(FolderItem folder, String normQuery, String[] tokens) {
+    private int calculateFolderRelevance(FolderItem folder, String normQuery, String[] tokens, String[] exactTokens) {
         int score = 0;
         FolderItem.SearchKey key = folder.getSearchKey();
         String nameNorm = key.name;
@@ -2493,6 +2521,7 @@ public class MainActivity extends Activity {
             else if (nameNorm.contains(token)) score += 2000;
         }
 
+        score += exactSpellingBonus(key.exactName, key.exactHaystack, exactTokens);
         score -= Math.min(nameNorm.length(), 50);
         return score;
     }
@@ -2521,6 +2550,7 @@ public class MainActivity extends Activity {
             String norm = normalizeText(rawQuery);
             String[] tokens = SearchText.tokens(norm);
             String[] tokensDedup = dedupTokens(tokens);
+            String[] exact = exactTokens(rawQuery, norm);
 
             if (tab == 0) {
                 // PESTAÑA CARPETAS: Buscar con filtro USB 1 / USB 2 / TODO
@@ -2546,7 +2576,7 @@ public class MainActivity extends Activity {
                             break;
                         }
                     }
-                    if (match) scoredFolders.add(new Scored<>(f, calculateFolderRelevance(f, norm, tokens)));
+                    if (match) scoredFolders.add(new Scored<>(f, calculateFolderRelevance(f, norm, tokens, exact)));
                 }
 
                 List<FolderItem> matchedFolders = sortByScore(scoredFolders);
@@ -2609,7 +2639,7 @@ public class MainActivity extends Activity {
                 for (Track t : sourceTracks) {
                     if (targetVersion != searchVersion) return;
                     if (fastTrackMatches(t, tokens, tokensDedup)) {
-                        scoredTracks.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens)));
+                        scoredTracks.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens, exact)));
                     }
                 }
 
@@ -2649,7 +2679,7 @@ public class MainActivity extends Activity {
                 for (Track t : mixPool) {
                     if (targetVersion != searchVersion) return;
                     if (fastTrackMatches(t, tokens, tokensDedup)) {
-                        scoredFavs.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens)));
+                        scoredFavs.add(new Scored<>(t, calculateTrackRelevance(t, norm, tokens, exact)));
                     }
                 }
 

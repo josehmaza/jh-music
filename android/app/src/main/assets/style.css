@@ -255,8 +255,8 @@ body {
 }
 
 .dashboard-grid.is-expanded .album-art-container {
-  width: 240px;
-  height: 240px;
+  width: 221px; /* 240 - 19: la cápsula sobresale 19px y el título no se mueve */
+  height: 221px;
   border-radius: 20px;
 }
 
@@ -647,10 +647,11 @@ body {
   width: 100%;
 }
 
-/* Carátula */
+/* Carátula: 221px (240 - 19). La cápsula PLAYING sobresale 19px por debajo; la carátula se achica
+   eso mismo para que el título y lo de abajo no se muevan (igual que en la app nativa) */
 .album-art-container {
-  width: 240px;
-  height: 240px;
+  width: 221px;
+  height: 221px;
   border-radius: 20px;
   background: #11141a;
   position: relative;
@@ -767,9 +768,20 @@ body {
 }
 
 /* Cápsula Glassmorphism Neón (Opción 2) */
+/* Envuelve carátula + cápsula: la cápsula queda montada sobre el borde de abajo (mitad fuera)
+   y el margen de abajo reserva esa mitad para que no choque con el título */
+.album-art-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 19px;
+}
+
 .now-playing-pill {
   position: absolute;
-  bottom: 10px;
+  left: 50%;
+  bottom: -19px;
+  transform: translateX(-50%);
   background: rgba(10, 14, 22, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -784,7 +796,7 @@ body {
   transition: all 0.3s ease;
 }
 
-.album-art-container.is-playing .now-playing-pill {
+.album-art-container.is-playing ~ .now-playing-pill {
   border-color: rgba(0, 210, 255, 0.45);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 14px rgba(0, 210, 255, 0.3);
 }
@@ -799,7 +811,7 @@ body {
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
-.album-art-container.is-playing .pill-label {
+.album-art-container.is-playing ~ .now-playing-pill .pill-label {
   color: var(--accent-blue);
   text-shadow: 0 0 4px rgba(0, 210, 255, 0.4);
 }
@@ -819,15 +831,15 @@ body {
   transition: height 0.2s, background 0.3s;
 }
 
-.album-art-container.is-playing .pill-eq-bars span {
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span {
   background: linear-gradient(to top, var(--accent-blue), #67e8f9);
 }
 
-.album-art-container.is-playing .pill-eq-bars span:nth-child(1) { animation: pillWave 0.7s infinite alternate ease-in-out; }
-.album-art-container.is-playing .pill-eq-bars span:nth-child(2) { animation: pillWave 0.5s 0.15s infinite alternate ease-in-out; }
-.album-art-container.is-playing .pill-eq-bars span:nth-child(3) { animation: pillWave 0.8s 0.3s infinite alternate ease-in-out; }
-.album-art-container.is-playing .pill-eq-bars span:nth-child(4) { animation: pillWave 0.6s 0.2s infinite alternate ease-in-out; }
-.album-art-container.is-playing .pill-eq-bars span:nth-child(5) { animation: pillWave 0.75s 0.05s infinite alternate ease-in-out; }
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span:nth-child(1) { animation: pillWave 0.7s infinite alternate ease-in-out; }
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span:nth-child(2) { animation: pillWave 0.5s 0.15s infinite alternate ease-in-out; }
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span:nth-child(3) { animation: pillWave 0.8s 0.3s infinite alternate ease-in-out; }
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span:nth-child(4) { animation: pillWave 0.6s 0.2s infinite alternate ease-in-out; }
+.album-art-container.is-playing ~ .now-playing-pill .pill-eq-bars span:nth-child(5) { animation: pillWave 0.75s 0.05s infinite alternate ease-in-out; }
 
 @keyframes pillWave {
   0%   { height: 4px; }
@@ -835,17 +847,17 @@ body {
 }
 
 /* Cápsula en mezcla Automix: conmuta a Magenta Neón */
-.album-art-container.is-mixing .now-playing-pill {
+.album-art-container.is-mixing ~ .now-playing-pill {
   border-color: rgba(244, 63, 94, 0.65);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 16px rgba(244, 63, 94, 0.45);
 }
 
-.album-art-container.is-mixing .pill-label {
+.album-art-container.is-mixing ~ .now-playing-pill .pill-label {
   color: #f43f5e;
   text-shadow: 0 0 4px rgba(244, 63, 94, 0.6);
 }
 
-.album-art-container.is-mixing .pill-eq-bars span {
+.album-art-container.is-mixing ~ .now-playing-pill .pill-eq-bars span {
   background: linear-gradient(to top, #f43f5e, #fb7185);
 }
 
@@ -876,18 +888,21 @@ body {
   50% { height: 20px; }
 }
 
+/* Pegado a la esquina de arriba a la derecha, siguiendo su curva: tapa lo mínimo de la carátula */
 .audio-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(12, 14, 18, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-light);
+  top: -1px; /* 1px de más: tapa el borde suavizado de la carátula en la curva */
+  right: -1px;
+  /* Fondo sólido y curva propia igual a la de la carátula (17px): el desenfoque no se recortaba
+     bien en la esquina redondeada y dejaba ver la carátula por el borde */
+  background: rgb(12, 14, 18);
   color: var(--accent-titanium);
   font-size: 0.65rem;
   font-weight: 800;
-  padding: 3px 7px;
-  border-radius: 5px;
+  padding: 4px 10px 4px 8px;
+  border-left: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  border-radius: 0 18px 0 10px;
   font-family: var(--font-mono);
   z-index: 2; /* siempre visible, también encima de la carátula */
 }

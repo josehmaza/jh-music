@@ -13,7 +13,7 @@
 
 ## 2. Generar el APK
 
-La forma más simple, desde la raíz del repositorio en Git Bash:
+La forma más simple, desde la carpeta `jh-music/` en Git Bash:
 
 ```bash
 bash build.sh
@@ -37,8 +37,8 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-11.0.30"
 
 Al terminar `assembleDebug`, la tarea `copyApkToRoot` (en `android/app/build.gradle`):
 
-1. Borra de la raíz del repositorio el APK de la versión anterior (`JH-MUSIC-v*.apk`).
-2. Copia el nuevo como **`JH-MUSIC-v<versionName>.apk`** en la raíz.
+1. Borra de `jh-music/` **todos** los APK `JH-MUSIC-v*.apk`, también los que tengan otro sufijo en el nombre. Así siempre queda uno solo, el de la versión actual.
+2. Copia el nuevo como **`JH-MUSIC-v<versionName>.apk`** en `jh-music/`.
 
 El APK también queda en `android/app/build/outputs/apk/debug/`.
 
@@ -50,11 +50,11 @@ Hay que cambiar tres lugares:
 
 1. `android/app/build.gradle`:
    ```groovy
-   versionCode 28        // entero: +1 en cada versión
-   versionName "2.6.1"   // lo que se ve y el nombre del APK
+   versionCode 29        // entero: +1 en cada versión
+   versionName "2.7.0"   // lo que se ve y el nombre del APK
    ```
-2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.6.1"` de la barra superior.
-3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.6.1</span>`.
+2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.7.0"` de la barra superior.
+3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.7.0</span>`.
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 
@@ -72,7 +72,8 @@ Si después de actualizar sigue apareciendo el ícono anterior, reinicia el radi
 
 ## 5. Convenciones del repositorio
 
-- **Ramas:** `master` es la principal; el trabajo de Automix se hace en `hotfix/automix` (también existe `mix`). El repositorio no tiene remoto configurado.
+- **Ramas:** `master` es la principal; también existen `hotfix/automix` (trabajo de Automix y diseño), `feature/recyclerview-mimix-drag` (reordenar Mi Mix) y `mix`. El repositorio no tiene remoto configurado.
 - **Mensajes de commit:** en español, con prefijo `feat:`, `fix:` o `build:`.
 - **El APK se versiona en git** junto con el código, para tener siempre a mano el de cada versión. Mientras se prueba en el auto, se hacen commits solo del código; el APK se agrega en el commit final de la versión, junto con el borrado del APK anterior.
-- **Simulador web:** si se cambia `index.html`, `app.js` o `style.css` en la raíz, copiarlos también a `android/app/src/main/assets/`.
+- **Simulador web:** si se cambia `index.html`, `app.js` o `style.css` de `jh-music/`, copiarlos también a `android/app/src/main/assets/`.
+- **Saltos de línea:** git convierte a CRLF en Windows (`core.autocrlf=true`); los scripts que reescriban archivos deben respetarlo.
