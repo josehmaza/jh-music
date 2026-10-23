@@ -1621,8 +1621,8 @@ public class MainActivity extends Activity {
      */
     private void refreshTabLabels() {
         if (tabFolders == null) return;
-        setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Carpetas USB", currentTab == 0);
-        setTabLabel(tabTracks, R.drawable.ic_tab_list, "Pistas (" + currentPlaylist.size() + ")", currentTab == 1);
+        setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Librería", currentTab == 0);
+        setTabLabel(tabTracks, R.drawable.ic_tab_list, "Canciones (" + currentPlaylist.size() + ")", currentTab == 1);
         setTabLabel(tabMyMix, R.drawable.ic_tab_mymix, "Mi Mix (" + (myMixLoaded ? mixTracks().size() : 0) + ")", currentTab == 2);
         addMixLiveDot();
     }
@@ -2735,11 +2735,11 @@ public class MainActivity extends Activity {
             listViewContent.setVisibility(View.VISIBLE);
             if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.VISIBLE);
             if (currentSearchFilter == FILTER_USB1) {
-                tvCurrentPath.setText("Carpetas USB 1 (Árbol)");
+                tvCurrentPath.setText("Librería USB 1 (Árbol)");
             } else if (currentSearchFilter == FILTER_USB2) {
-                tvCurrentPath.setText("Carpetas USB 2 (Árbol)");
+                tvCurrentPath.setText("Librería USB 2 (Árbol)");
             } else {
-                tvCurrentPath.setText("Carpetas USB (Árbol de Pendrives)");
+                tvCurrentPath.setText("Librería (Árbol de Pendrives)");
             }
 
             updateVisibleTreeNodes();

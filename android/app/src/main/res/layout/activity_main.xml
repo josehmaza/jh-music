@@ -231,7 +231,7 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:background="@drawable/bg_tab_selected"
-                        android:text="Carpetas USB"
+                        android:text="Librería"
                         android:textColor="@color/accent_cyan"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -243,7 +243,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="Pistas (0)"
+                        android:text="Canciones (0)"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -657,7 +657,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="10dp"
-                            android:text="Buscando pistas..."
+                            android:text="Buscando canciones..."
                             android:textColor="@color/accent_cyan"
                             android:textSize="16sp"
                             android:textStyle="bold" />

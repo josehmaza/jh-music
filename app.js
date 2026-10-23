@@ -2497,12 +2497,12 @@ function initApp() {
       let filteredRoots = currentTreeData;
       if (currentSearchFilter === 'usb1') {
         filteredRoots = currentTreeData.filter(n => n.usbSource === 'USB 1' || n.id === 'usb1');
-        crumbFolder.textContent = "Carpetas USB 1 (Árbol)";
+        crumbFolder.textContent = "Librería USB 1 (Árbol)";
       } else if (currentSearchFilter === 'usb2') {
         filteredRoots = currentTreeData.filter(n => n.usbSource === 'USB 2' || n.id === 'usb2');
-        crumbFolder.textContent = "Carpetas USB 2 (Árbol)";
+        crumbFolder.textContent = "Librería USB 2 (Árbol)";
       } else {
-        crumbFolder.textContent = "Carpetas USB (Árbol de Pendrives)";
+        crumbFolder.textContent = "Librería (Árbol de Pendrives)";
       }
 
       function renderTreeNode(node, level = 0) {
@@ -2664,13 +2664,13 @@ function initApp() {
       {
         if (currentSearchFilter === 'usb1') {
           filtered = allPool.filter(t => t.usbSource === 'USB 1' || (t.path && (t.path.includes('udisk1') || t.path.includes('usb0'))));
-          crumbFolder.textContent = `Pistas USB 1 (${filtered.length})`;
+          crumbFolder.textContent = `Canciones USB 1 (${filtered.length})`;
         } else if (currentSearchFilter === 'usb2') {
           filtered = allPool.filter(t => t.usbSource === 'USB 2' || (t.path && (t.path.includes('udisk2') || t.path.includes('usb1'))));
-          crumbFolder.textContent = `Pistas USB 2 (${filtered.length})`;
+          crumbFolder.textContent = `Canciones USB 2 (${filtered.length})`;
         } else if (currentSearchFilter === 'all') {
           filtered = [...allPool];
-          crumbFolder.textContent = `Todas las pistas (${filtered.length})`;
+          crumbFolder.textContent = `Todas las canciones (${filtered.length})`;
         } else {
           filtered = pistasTracks;
           const usbTag = currentFolderUsbSource ? `[${currentFolderUsbSource}] ` : '';

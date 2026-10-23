@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controles para el auto - JH MUSIC</title>
+  <style>
+    :root { --cyan: #38bdf8; --text: #f8fafc; --muted: #94a3b8; --mono: 'JetBrains Mono', Consolas, monospace; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; background: #07090c; color: var(--text); padding: 28px 16px 60px; }
+    header, .group { max-width: 1100px; margin: 0 auto 22px; }
+    h1 { font-size: 1.6rem; font-weight: 800; }
+    header p { color: var(--muted); margin-top: 6px; font-size: 0.96rem; line-height: 1.5; }
+    header ul { color: #cbd5e1; margin: 10px 0 0 20px; font-size: 0.93rem; line-height: 1.6; }
+
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .toolbar label { display: flex; align-items: center; gap: 8px; background: #10141b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 0.92rem; }
+
+    .options { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .options { grid-template-columns: 1fr; max-width: 480px; } }
+    .option { background: #10141b; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 14px 16px; }
+    .option.recommended { border-color: rgba(56,189,248,0.55); }
+    .option-head { display: flex; align-items: baseline; gap: 10px; }
+    .letter { font-family: var(--mono); font-weight: 800; color: #0c0e12; background: var(--cyan); border-radius: 8px; padding: 2px 10px; }
+    .title { font-size: 1.05rem; font-weight: 800; }
+    .tag { font-family: var(--mono); font-size: 0.7rem; font-weight: 800; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 6px; padding: 1px 6px; margin-left: auto; }
+    .desc { color: #cbd5e1; margin: 6px 0 12px; font-size: 0.9rem; line-height: 1.45; min-height: 5.6em; }
+    .pros { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-top: 10px; }
+    .pros b { color: #e2e8f0; }
+
+    /* ===== Pantalla (columna del reproductor, como en la captura) ===== */
+    .screen {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      border-radius: 12px;
+      padding: 14px 14px 10px;
+      background:
+        radial-gradient(120% 95% at 50% 4%, rgb(23 60 92 / 0.85) 0%, rgb(23 60 92 / 0) 62%),
+        linear-gradient(172deg, rgb(23 60 92 / 0.5) 0%, rgb(23 60 92 / 0.18) 48%, #07090c 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+    }
+    .top { display: grid; grid-template-columns: 60px 1fr 60px; align-items: start; gap: 8px; }
+    .side { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .sq {
+      width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; cursor: pointer;
+      position: relative;
+    }
+    .sq svg { width: 26px; height: 26px; }
+    .sq.automix { background: var(--cyan); color: #04121c; flex-direction: column; gap: 0; }
+    .sq.automix small { font-family: var(--mono); font-size: 0.6rem; font-weight: 800; }
+    .sq.toggle.on { color: var(--cyan); border-color: rgba(56,189,248,0.6); background: rgba(56,189,248,0.12); }
+    .sq.toggle.on::after { content: ''; position: absolute; bottom: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+
+    .cover {
+      width: 190px; height: 190px; margin: 0 auto; border-radius: 18px; position: relative;
+      background: linear-gradient(160deg, #1b2735, #0d131b); border: 1px solid rgba(255,255,255,0.08);
+      display: grid; place-items: center; color: rgba(255,255,255,0.35); touch-action: pan-y; cursor: grab;
+      transition: transform 0.18s;
+    }
+    .cover svg { width: 80px; height: 80px; }
+    .cover .badge { position: absolute; top: 8px; right: 8px; font-family: var(--mono); font-size: 0.62rem; font-weight: 800; background: #05080c; color: #fff; padding: 3px 7px; border-radius: 6px; }
+    .cover .hint { position: absolute; bottom: 8px; font-size: 0.68rem; color: rgba(255,255,255,0.45); display: none; }
+    .swipe-on .cover .hint { display: block; }
+
+    .meta { text-align: center; margin-top: 12px; }
+    .meta h3 { font-size: 1.45rem; font-weight: 800; }
+    .meta p { margin-top: 4px; font-size: 0.95rem; }
+    .meta .artist { color: var(--cyan); font-weight: 700; }
+    .meta .album { color: var(--muted); }
+
+    .adj { display: flex; margin-top: 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); font-size: 0.95rem; font-weight: 700; }
+    .adj div { flex: 1; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .adj div:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
+    .adj b { color: var(--cyan); }
+
+    .progress { margin-top: 14px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.15); position: relative; }
+    .progress i { position: absolute; left: 0; top: 0; bottom: 0; width: 28%; background: var(--cyan); border-radius: 3px; }
+    .progress i::after { content: ''; position: absolute; right: -8px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+    .times { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-family: var(--mono); font-size: 1.05rem; font-weight: 800; color: rgba(255,255,255,0.78); }
+
+    /* ===== Fila de controles ===== */
+    .controls { display: flex; align-items: stretch; margin-top: 6px; height: 104px; gap: 6px; }
+    .zone {
+      position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      border-radius: 18px; color: #fff; transition: background 0.12s;
+    }
+    .zone svg { width: 40px; height: 40px; }
+    .zone.big svg { width: 50px; height: 50px; }
+    .zone.flash { background: rgba(56,189,248,0.28) !important; }
+    .zone.pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); }
+    .zone.grow { flex: 1; }
+    .zone.small { width: 56px; flex: none; }
+    .zone.small svg { width: 26px; height: 26px; }
+    .zone.small.on { color: var(--cyan); }
+    .zone.small.on::after { content: ''; position: absolute; bottom: 22px; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+    .play { flex: none; width: 104px; display: grid; place-items: center; cursor: pointer; }
+    .play span { width: 92px; height: 92px; border-radius: 50%; background: #fff; color: #0b0f14; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+    .play svg { width: 40px; height: 40px; }
+
+    /* Mostrar las zonas que reciben el toque */
+    .show-zones .zone::before, .show-zones .play::before, .show-zones .sq::before, .show-zones .times .mini::before {
+      content: ''; position: absolute; inset: 0; border: 2px dashed #f43f5e; border-radius: inherit; pointer-events: none;
+    }
+    .show-zones .play { position: relative; border-radius: 50%; }
+
+    .toast {
+      position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%) translateY(10px); opacity: 0;
+      background: rgba(5,8,12,0.92); border: 1px solid rgba(56,189,248,0.5); color: #fff; font-weight: 800;
+      padding: 8px 14px; border-radius: 10px; font-size: 0.95rem; white-space: nowrap; transition: all 0.18s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .notes { max-width: 1100px; margin: 26px auto 0; background: #10141b; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px 18px; }
+    .notes h2 { font-size: 1.15rem; margin-bottom: 8px; }
+    .notes li { color: #cbd5e1; font-size: 0.92rem; line-height: 1.55; margin-left: 20px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Controles para manejar: anterior / siguiente más fáciles</h1>
+  <p>Toca los controles de cada opción como si fuera la pantalla del carro. Activa <b>"Ver zonas táctiles"</b> para ver en rojo hasta dónde llega cada botón.
+     En las 3 opciones se puede, además, <b>deslizar la carátula</b> a la izquierda (siguiente) o a la derecha (anterior), como en Spotify y YouTube Music.</p>
+  <div class="toolbar">
+    <label><input type="checkbox" id="chkZones" checked> Ver zonas táctiles</label>
+    <label><input type="checkbox" id="chkSwipe" checked> Deslizar la carátula para cambiar de canción</label>
+  </div>
+</header>
+
+<div class="options" id="options"></div>
+
+<div class="notes">
+  <h2>Cómo lo hacen otras apps en el auto</h2>
+  <ul>
+    <li><b>Android Auto y CarPlay:</b> en la pantalla de reproducción dejan solo anterior · play · siguiente bien separados; aleatorio y repetir van aparte, en una esquina o en un menú, justamente para no tocarlos por error.</li>
+    <li><b>Spotify (modo auto) y YouTube Music:</b> además de los botones, deslizar la carátula cambia de canción. Es un gesto que no necesita precisión.</li>
+    <li><b>Tesla y radios de fábrica:</b> anterior y siguiente ocupan mucho espacio y responden en toda su zona, no solo en el dibujo.</li>
+    <li><b>Para no equivocarse:</b> al tocar se ilumina toda la zona y aparece el nombre de la canción a la que se pasó, así se confirma sin mirar fijo.</li>
+  </ul>
+</div>
+
+<script>
+  const ICON = {
+    prev: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="2.6" height="14" rx="1.3"/><path d="M19 6.2v11.6a1 1 0 0 1-1.55.83L9.6 13.2a1.5 1.5 0 0 1 0-2.4l7.85-5.43A1 1 0 0 1 19 6.2z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="16.4" y="5" width="2.6" height="14" rx="1.3"/><path d="M5 6.2v11.6a1 1 0 0 0 1.55.83l7.85-5.43a1.5 1.5 0 0 0 0-2.4L6.55 5.37A1 1 0 0 0 5 6.2z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.2-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2.6c1.8 0 3-.9 4-2.4l3.8-5.2C14.4 7.9 15.6 7 17.4 7H21"/><polyline points="18 4 21 7 18 10"/><path d="M3 7h2.6c1.8 0 3 .9 4 2.4l.5.7"/><path d="M13.9 13.9l.5.7c1 1.5 2.2 2.4 4 2.4H21"/><polyline points="18 14 21 17 18 20"/></svg>',
+    repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 20 5 17 8"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><polyline points="7 22 4 19 7 16"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h12M4 12h7M4 18h7"/><circle cx="17" cy="15" r="3.5"/><path d="M19.5 17.5L22 20"/></svg>',
+    automix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6C9 6 15 18 21 18"/><path d="M3 18C9 18 15 6 21 6"/></svg>',
+    vinyl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/></svg>'
+  };
+
+  const SONGS = [
+    ['Amor Prohibido', 'Los Ángeles Azules'],
+    ['Nunca es suficiente', 'Los Ángeles Azules'],
+    ['Mis sentimientos', 'Los Ángeles Azules'],
+    ['El listón de tu pelo', 'Los Ángeles Azules'],
+    ['Cómo te voy a olvidar', 'Los Ángeles Azules'],
+    ['17 años', 'Los Ángeles Azules']
+  ];
+
+  const OPTIONS = [
+    {
+      key: 'A', title: 'Zonas grandes, aleatorio y repetir arriba', tag: 'RECOMENDADA',
+      desc: 'Toda la fila se reparte en 3: la mitad izquierda es "anterior", la derecha "siguiente" y el centro play. Aleatorio y repetir suben a las esquinas, debajo de la lupa y del Automix.',
+      pros: '<b>A favor:</b> el área roja de tu captura entera pasa la canción; aleatorio y repetir siguen a un toque pero lejos de donde tocas manejando.<br><b>En contra:</b> la carátula queda entre 4 botones (2 a cada lado).',
+      layout: 'A'
+    },
+    {
+      key: 'B', title: 'Zonas grandes, aleatorio y repetir junto a los tiempos', tag: '',
+      desc: 'Igual que A, pero aleatorio y repetir quedan chicos al lado de 00:00 y 02:30. Siguen cerca de los controles, aunque fuera de la fila de abajo.',
+      pros: '<b>A favor:</b> todo lo de reproducción sigue junto; arriba no cambia nada.<br><b>En contra:</b> quedan cerca de la barra de progreso; un toque torpe podría caer en la barra o en ellos.',
+      layout: 'B'
+    },
+    {
+      key: 'C', title: 'Solo 3 botones gigantes', tag: '',
+      desc: 'Se quitan aleatorio y repetir de la pantalla principal (pasarían a Mi Mix o a un menú). Queda anterior · play · siguiente, cada uno ocupando un tercio.',
+      pros: '<b>A favor:</b> lo más simple y lo más difícil de fallar, como CarPlay.<br><b>En contra:</b> para activar aleatorio o repetir hay que ir a otra parte.',
+      layout: 'C'
+    }
+  ];
+
+  const root = document.getElementById('options');
+
+  OPTIONS.forEach(opt => {
+    const el = document.createElement('div');
+    el.className = 'option' + (opt.tag ? ' recommended' : '');
+    const sideLeft = opt.layout === 'A'
+      ? `<div class="sq">${ICON.search}</div><div class="sq toggle" data-act="shuffle">${ICON.shuffle}</div>`
+      : `<div class="sq">${ICON.search}</div>`;
+    const sideRight = opt.layout === 'A'
+      ? `<div class="sq automix">${ICON.automix}<small>ON</small></div><div class="sq toggle" data-act="repeat">${ICON.repeat}</div>`
+      : `<div class="sq automix">${ICON.automix}<small>ON</small></div>`;
+
+    const times = opt.layout === 'B'
+      ? `<div class="times"><span>00:42</span>
+           <span style="display:flex;gap:6px">
+             <span class="sq toggle mini" data-act="shuffle" style="width:46px;height:40px">${ICON.shuffle}</span>
+             <span class="sq toggle mini" data-act="repeat" style="width:46px;height:40px">${ICON.repeat}</span>
+           </span>
+           <span>02:30</span></div>`
+      : `<div class="times"><span>00:42</span><span>02:30</span></div>`;
+
+    let controls;
+    if (opt.layout === 'C') {
+      controls = `
+        <div class="zone grow pill big" data-act="prev">${ICON.prev}</div>
+        <div class="zone grow pill big" data-act="play" style="background:#fff;color:#0b0f14">${ICON.play}</div>
+        <div class="zone grow pill big" data-act="next">${ICON.next}</div>`;
+    } else {
+      controls = `
+        <div class="zone grow pill big" data-act="prev">${ICON.prev}</div>
+        <div class="play" data-act="play"><span>${ICON.play}</span></div>
+        <div class="zone grow pill big" data-act="next">${ICON.next}</div>`;
+    }
+
+    el.innerHTML = `
+      <div class="option-head"><span class="letter">${opt.key}</span><span class="title">${opt.title}</span>${opt.tag ? `<span class="tag">${opt.tag}</span>` : ''}</div>
+      <p class="desc">${opt.desc}</p>
+      <div class="screen">
+        <div class="top">
+          <div class="side">${sideLeft}</div>
+          <div class="cover">${ICON.vinyl}<span class="badge">MP3 320K</span><span class="hint">⇠ desliza ⇢</span></div>
+          <div class="side">${sideRight}</div>
+        </div>
+        <div class="meta"><h3 class="t"></h3><p><span class="artist"></span> <span class="album">• Prueba 50 canciones</span></p></div>
+        <div class="adj"><div data-act="prev"><b>⏮</b> <span class="pv"></span></div><div data-act="next" style="text-align:right"><span class="nx"></span> <b>⏭</b></div></div>
+        <div class="progress"><i></i></div>
+        ${times}
+        <div class="controls">${controls}</div>
+        <div class="toast"></div>
+      </div>
+      <p class="pros">${opt.pros}</p>`;
+    root.appendChild(el);
+    wire(el.querySelector('.screen'));
+  });
+
+  function wire(screen) {
+    let idx = 0, playing = false, toastTimer;
+    const $ = s => screen.querySelector(s);
+
+    function render() {
+      const n = SONGS.length;
+      $('.t').textContent = SONGS[idx][0];
+      $('.artist').textContent = SONGS[idx][1];
+      $('.pv').textContent = SONGS[(idx - 1 + n) % n][0];
+      $('.nx').textContent = SONGS[(idx + 1) % n][0];
+      screen.querySelectorAll('[data-act="play"]').forEach(p => {
+        const holder = p.querySelector('span') || p;
+        holder.innerHTML = playing ? ICON.pause : ICON.play;
+      });
+    }
+    function toast(text) {
+      const t = $('.toast');
+      t.textContent = text;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
+    }
+    function flash(el) {
+      if (!el || !el.classList.contains('zone')) return;
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 220);
+    }
+    function act(name, el) {
+      const n = SONGS.length;
+      if (name === 'next') { idx = (idx + 1) % n; toast('⏭  ' + SONGS[idx][0]); }
+      else if (name === 'prev') { idx = (idx - 1 + n) % n; toast('⏮  ' + SONGS[idx][0]); }
+      else if (name === 'play') { playing = !playing; toast(playing ? '▶  Reproduciendo' : '⏸  En pausa'); }
+      else if (name === 'shuffle' || name === 'repeat') {
+        el.classList.toggle('on');
+        toast((name === 'shuffle' ? 'Aleatorio ' : 'Repetir ') + (el.classList.contains('on') ? 'ON' : 'OFF'));
+      }
+      flash(el);
+      render();
+    }
+
+    screen.querySelectorAll('[data-act]').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        act(el.dataset.act, el);
+      });
+    });
+
+    // Deslizar la carátula: izquierda = siguiente, derecha = anterior
+    const cover = $('.cover');
+    let startX = null;
+    cover.addEventListener('pointerdown', e => { startX = e.clientX; cover.setPointerCapture(e.pointerId); });
+    cover.addEventListener('pointermove', e => {
+      if (startX === null || !document.body.classList.contains('swipe-on')) return;
+      const dx = Math.max(-60, Math.min(60, e.clientX - startX));
+      cover.style.transform = `translateX(${dx}px) rotate(${dx / 20}deg)`;
+    });
+    cover.addEventListener('pointerup', e => {
+      if (startX === null) return;
+      const dx = e.clientX - startX;
+      startX = null;
+      cover.style.transform = '';
+      if (!document.body.classList.contains('swipe-on')) return;
+      if (dx < -50) act('next');
+      else if (dx > 50) act('prev');
+    });
+
+    render();
+  }
+
+  const chkZones = document.getElementById('chkZones');
+  const chkSwipe = document.getElementById('chkSwipe');
+  const sync = () => {
+    document.body.classList.toggle('show-zones', chkZones.checked);
+    document.body.classList.toggle('swipe-on', chkSwipe.checked);
+  };
+  chkZones.addEventListener('change', sync);
+  chkSwipe.addEventListener('change', sync);
+  sync();
+</script>
+</body>
+</html>
