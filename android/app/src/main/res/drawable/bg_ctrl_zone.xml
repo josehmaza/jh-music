@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Anterior / Siguiente para el auto: sin caja (se ve solo el ícono blanco), pero responden en todo el ancho.
+     Al tocar (presionado, o el destello de 180 ms que pone el código) la zona entera se ilumina en cian -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="#2e38bdf8" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item android:state_activated="true">
+        <shape>
+            <solid android:color="#2e38bdf8" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

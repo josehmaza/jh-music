@@ -2,7 +2,18 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## Sin publicar (próxima 2.7.1) — 2026-10-19, pendiente de probar en el auto
+## 2.8.0 — 2026-10-23, pendiente de probar en el auto
+
+Incluye los cambios que estaban sin publicar para la 2.7.1 (más abajo).
+
+- **Anterior y Siguiente fáciles de tocar manejando:** se siguen viendo como íconos blancos sin caja, más grandes (50 dp; 56 dp con el explorador oculto; antes 36 / 40), pegados hacia el play, pero cada uno responde en todo el ancho que deja el play, hasta el borde del reproductor (también con el explorador oculto, donde antes la fila no pasaba de 540 dp), y en 76 dp de alto (88 dp con el explorador oculto); antes, solo en un cuadro de 58 dp. Al tocar, esa zona entera se ilumina en cian un instante (también en un toque rápido). Doble toque = ±10 s, igual que antes.
+- **Menú ☰** arriba a la derecha, con **Automix debajo**: Aleatorio y Repetir canción (con ON / OFF escrito) y Ocultar / Mostrar explorador. Se cierra solo a los 5 s, tocando fuera o en ✕. Aleatorio y Repetir salen de la botonera, así no se tocan por error al buscar Siguiente. Cuando están encendidos, sus íconos se ven en cian arriba a la izquierda del reproductor (repetir arriba, aleatorio debajo); no se tocan, así no estorban al gesto de jalar el explorador.
+- **Sin la lupa:** el explorador se oculta o muestra jalando en la franja libre a la izquierda de la carátula (como antes) o desde el menú ☰.
+- **Nombres nuevos:** la pestaña **Pistas** pasa a **Canciones** y **Carpetas USB** a **Librería** (también en la ruta de arriba de la lista y en "Buscando canciones...").
+- Recursos nuevos: `bg_ctrl_zone`, `ic_menu`, `ic_explorer_panel`, `bg_player_menu*` y `layout/popup_player_menu.xml`. Se borran `bg_ctrl_flat` e `ic_music_search`.
+- En la app el menú es un `PopupWindow` sin foco y sin recorte: con foco Android mostraba la barra de navegación y el menú quedaba corrido hacia arriba.
+
+### Cambios que eran para la 2.7.1
 
 - **Buscador con ñ y tildes:** si escribes `ñaña`, primero salen las canciones que lo tienen escrito igual ("Las Ñañas") y después las que solo se parecen ("didi nana"). Antes salía primero "didi nana", porque al quitar tildes la ñ quedaba como n. Sin ñ ni tildes en la búsqueda, el orden es el de siempre. En la app y en la maqueta web.
 - **Nada tapa la carátula** (las carátulas oficiales no se editan; cambia solo dónde va lo que la app pone encima):

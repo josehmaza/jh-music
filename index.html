@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.7.0</span>
+        <span class="version-badge" id="appVersionBadge">v2.8.0</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -186,19 +186,18 @@
       <!-- COLUMNA 3: REPRODUCTOR, CARÁTULA Y CONTROLES DE PISTA (Ahora a la derecha) -->
       <section class="player-panel" id="playerPanel">
         
-        <!-- Barra superior del reproductor con botón de alternar explorador -->
+        <!-- Barra superior del reproductor: menú ☰ arriba a la derecha y Automix debajo.
+             El explorador se oculta jalando la franja libre a la izquierda de la carátula, o desde el menú -->
         <div class="player-top-bar">
-          <div class="player-top-actions">
-            <!-- Botón Buscador / Explorador (Abre/oculta el explorador que está a su izquierda) -->
-            <button class="btn-toggle-expand" id="btnToggleExpand" title="Ocultar / Mostrar explorador de archivos">
-              <svg class="icon-music-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="6" x2="15" y2="6"/>
-                <line x1="3" y1="12" x2="11" y2="12"/>
-                <line x1="3" y1="18" x2="9" y2="18"/>
-                <circle cx="16.5" cy="15.5" r="4.5"/>
-                <line x1="19.8" y1="18.8" x2="22.5" y2="21.5"/>
-              </svg>
-            </button>
+          <!-- Indicadores arriba a la izquierda: repetir y aleatorio, solo cuando están encendidos.
+               No se tocan (se cambian en el menú ☰), así no estorban al gesto de jalar el explorador -->
+          <div class="player-mode-icons">
+            <span class="player-mode-icon hidden" id="modeRepeatIcon" title="Repetir canción: ON">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 20 5 17 8"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><polyline points="7 22 4 19 7 16"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
+            </span>
+            <span class="player-mode-icon hidden" id="modeShuffleIcon" title="Aleatorio: ON">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2.6c1.8 0 3-.9 4-2.4l3.8-5.2C14.4 7.9 15.6 7 17.4 7H21"/><polyline points="18 4 21 7 18 10"/><path d="M3 7h2.6c1.8 0 3 .9 4 2.4l.5.7"/><path d="M13.9 13.9l.5.7c1 1.5 2.2 2.4 4 2.4H21"/><polyline points="18 14 21 17 18 20"/></svg>
+            </span>
           </div>
 
           <!-- Estado oculto (igual que la app): ya lo muestran la cápsula PLAYING / MIXING y el botón Automix -->
@@ -207,14 +206,44 @@
             <span id="playbackStatusText">EN PAUSA</span>
           </div>
 
-          <!-- Botón Automix: arriba a la derecha, en la esquina opuesta a la lupa (dos curvas cruzadas) -->
-          <button class="btn-toggle-expand btn-automix" id="btnAutoMix" title="Automix: mezcla automática entre canciones">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-              <path d="M3 6C9 6 15 18 21 18"/>
-              <path d="M3 18C9 18 15 6 21 6"/>
-            </svg>
-            <!-- Estado escrito: ON / OFF, para no tener que adivinar por el color -->
-            <span class="automix-state" id="automixState">OFF</span>
+          <div class="player-top-right">
+            <!-- Menú: aleatorio, repetir y ocultar / mostrar el explorador -->
+            <button class="btn-toggle-expand btn-player-menu" id="btnPlayerMenu" title="Opciones de reproducción">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
+
+            <!-- Botón Automix (dos curvas cruzadas) -->
+            <button class="btn-toggle-expand btn-automix" id="btnAutoMix" title="Automix: mezcla automática entre canciones">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                <path d="M3 6C9 6 15 18 21 18"/>
+                <path d="M3 18C9 18 15 6 21 6"/>
+              </svg>
+              <!-- Estado escrito: ON / OFF, para no tener que adivinar por el color -->
+              <span class="automix-state" id="automixState">OFF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Menú ☰: filas altas con ON / OFF escrito; se cierra solo a los 5 s, tocando fuera o en ✕ -->
+        <div class="player-menu-backdrop hidden" id="playerMenuBackdrop"></div>
+        <div class="player-menu hidden" id="playerMenu">
+          <div class="player-menu-head">
+            <span>Opciones</span>
+            <button class="player-menu-close" id="playerMenuClose" title="Cerrar">✕</button>
+          </div>
+          <button class="player-menu-row" id="menuShuffle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2.6c1.8 0 3-.9 4-2.4l3.8-5.2C14.4 7.9 15.6 7 17.4 7H21"/><polyline points="18 4 21 7 18 10"/><path d="M3 7h2.6c1.8 0 3 .9 4 2.4l.5.7"/><path d="M13.9 13.9l.5.7c1 1.5 2.2 2.4 4 2.4H21"/><polyline points="18 14 21 17 18 20"/></svg>
+            <span class="player-menu-text"><b>Aleatorio</b><small>Mezcla el orden de la lista</small></span>
+            <span class="player-menu-state">OFF</span>
+          </button>
+          <button class="player-menu-row" id="menuRepeat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 20 5 17 8"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><polyline points="7 22 4 19 7 16"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
+            <span class="player-menu-text"><b>Repetir canción</b><small>Vuelve a sonar la misma al terminar</small></span>
+            <span class="player-menu-state">OFF</span>
+          </button>
+          <button class="player-menu-row" id="menuExplorer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+            <span class="player-menu-text"><b id="menuExplorerLabel">Ocultar explorador</b><small>También se hace jalando a la izquierda de la carátula</small></span>
           </button>
         </div>
 
@@ -297,12 +326,8 @@
             </div>
           </div>
 
-          <!-- Controles de Reproducción táctiles (Grandes para auto) -->
+          <!-- Controles para el auto: anterior y siguiente ocupan todo el ancho que deja el play -->
           <div class="playback-controls">
-            <button class="btn-ctrl btn-secondary" id="btnShuffle" title="Aleatorio">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2.6c1.8 0 3-.9 4-2.4l3.8-5.2C14.4 7.9 15.6 7 17.4 7H21"/><polyline points="18 4 21 7 18 10"/><path d="M3 7h2.6c1.8 0 3 .9 4 2.4l.5.7"/><path d="M13.9 13.9l.5.7c1 1.5 2.2 2.4 4 2.4H21"/><polyline points="18 14 21 17 18 20"/></svg>
-            </button>
-
             <button class="btn-ctrl btn-nav" id="btnPrev" title="Anterior">
               <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="2.6" height="14" rx="1.3"/><path d="M19 6.2v11.6a1 1 0 0 1-1.55.83L9.6 13.2a1.5 1.5 0 0 1 0-2.4l7.85-5.43A1 1 0 0 1 19 6.2z"/></svg>
             </button>
@@ -314,10 +339,6 @@
 
             <button class="btn-ctrl btn-nav" id="btnNext" title="Siguiente">
               <svg viewBox="0 0 24 24" fill="currentColor"><rect x="16.4" y="5" width="2.6" height="14" rx="1.3"/><path d="M5 6.2v11.6a1 1 0 0 0 1.55.83l7.85-5.43a1.5 1.5 0 0 0 0-2.4L6.55 5.37A1 1 0 0 0 5 6.2z"/></svg>
-            </button>
-
-            <button class="btn-ctrl btn-secondary" id="btnRepeat" title="Repetir">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 20 5 17 8"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><polyline points="7 22 4 19 7 16"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
             </button>
           </div>
         </div>

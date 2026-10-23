@@ -495,12 +495,21 @@ function initApp() {
   const pauseIcon = document.getElementById('pauseIcon');
   const btnPrev = document.getElementById('btnPrev');
   const btnNext = document.getElementById('btnNext');
-  const btnShuffle = document.getElementById('btnShuffle');
-  const btnRepeat = document.getElementById('btnRepeat');
+
+  // Menú ☰ del reproductor: aleatorio, repetir y ocultar / mostrar el explorador
+  const btnPlayerMenu = document.getElementById('btnPlayerMenu');
+  const playerMenu = document.getElementById('playerMenu');
+  const playerMenuBackdrop = document.getElementById('playerMenuBackdrop');
+  const playerMenuClose = document.getElementById('playerMenuClose');
+  const menuShuffle = document.getElementById('menuShuffle');
+  const menuRepeat = document.getElementById('menuRepeat');
+  const menuExplorer = document.getElementById('menuExplorer');
+  const menuExplorerLabel = document.getElementById('menuExplorerLabel');
+  const modeRepeatIcon = document.getElementById('modeRepeatIcon');
+  const modeShuffleIcon = document.getElementById('modeShuffleIcon');
 
   // Modo Reproductor Expandido / Buscador de Archivos
   const dashboardGrid = document.querySelector('.dashboard-grid');
-  const btnToggleExpand = document.getElementById('btnToggleExpand');
   const btnAutoMix = document.getElementById('btnAutoMix');
 
   // =================== AUTOMIX (simulado en la maqueta) ===================
@@ -1567,6 +1576,14 @@ function initApp() {
   btnNext.addEventListener('click', handleNextTouch);
   btnPrev.addEventListener('click', handlePrevTouch);
 
+  // La zona entera se pinta de cian al tocarla (en pantallas táctiles :active no siempre se ve)
+  [btnPrev, btnNext].forEach(btn => {
+    btn.addEventListener('pointerdown', () => {
+      btn.classList.add('pressed');
+      setTimeout(() => btn.classList.remove('pressed'), 180);
+    });
+  });
+
   // Clicks directos en las tarjetas flotantes
   if (adjPrevCard) {
     adjPrevCard.addEventListener('click', handlePrevTouch);
@@ -1579,16 +1596,11 @@ function initApp() {
   let isPlayerExpanded = false;
 
   function setPlayerExpanded(expanded) {
-    if (!dashboardGrid || !btnToggleExpand) return;
+    if (!dashboardGrid) return;
     isPlayerExpanded = expanded;
-    if (isPlayerExpanded) {
-      dashboardGrid.classList.add('is-expanded');
-      btnToggleExpand.classList.add('is-active');
-      btnToggleExpand.title = "Mostrar explorador de música y carpetas";
-    } else {
-      dashboardGrid.classList.remove('is-expanded');
-      btnToggleExpand.classList.remove('is-active');
-      btnToggleExpand.title = "Ocultar explorador (reproductor a pantalla completa)";
+    dashboardGrid.classList.toggle('is-expanded', isPlayerExpanded);
+    if (menuExplorerLabel) {
+      menuExplorerLabel.textContent = isPlayerExpanded ? "Mostrar explorador" : "Ocultar explorador";
     }
     setTimeout(refreshAllMarquees, 320);
   }
@@ -1597,36 +1609,58 @@ function initApp() {
     setPlayerExpanded(!isPlayerExpanded);
   }
 
-  // Soporta tanto click/toque directo como gesto de arrastre
-  if (btnToggleExpand) {
-    btnToggleExpand.style.cursor = "pointer";
-    btnToggleExpand.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleExplorer();
-    });
+  // =================== MENÚ ☰ DEL REPRODUCTOR ===================
+  // Se cierra solo a los 5 s sin tocarlo (cada toque en una opción vuelve a contar), tocando fuera o en ✕
+  const PLAYER_MENU_AUTO_CLOSE_MS = 5000;
+  let playerMenuTimer = null;
+
+  function setPlayerMenuOpen(open) {
+    playerMenu.classList.toggle('hidden', !open);
+    playerMenuBackdrop.classList.toggle('hidden', !open);
+    clearTimeout(playerMenuTimer);
+    if (open) playerMenuTimer = setTimeout(() => setPlayerMenuOpen(false), PLAYER_MENU_AUTO_CLOSE_MS);
   }
+
+  function refreshPlayerMenu() {
+    menuShuffle.classList.toggle('is-on', isShuffle);
+    menuShuffle.querySelector('.player-menu-state').textContent = isShuffle ? 'ON' : 'OFF';
+    menuRepeat.classList.toggle('is-on', isRepeat);
+    menuRepeat.querySelector('.player-menu-state').textContent = isRepeat ? 'ON' : 'OFF';
+    // Indicadores arriba a la izquierda del reproductor
+    modeRepeatIcon.classList.toggle('hidden', !isRepeat);
+    modeShuffleIcon.classList.toggle('hidden', !isShuffle);
+  }
+
+  btnPlayerMenu.addEventListener('click', () => setPlayerMenuOpen(true));
+  playerMenuBackdrop.addEventListener('click', () => setPlayerMenuOpen(false));
+  playerMenuClose.addEventListener('click', () => setPlayerMenuOpen(false));
+
+  // Ocultar / mostrar el explorador cierra el menú (es una acción, no un interruptor)
+  menuExplorer.addEventListener('click', () => {
+    setPlayerMenuOpen(false);
+    toggleExplorer();
+  });
 
   // =================== ZONA EXCLUSIVA DE GESTOS TÁCTILES / ARRASTRE ===================
   // El área de touch y arrastrar para alternar el explorador se restringe ÚNICAMENTE
-  // a la zona delimitada por el botón de explorador y la franja vertical a su lado (área roja)
+  // a la franja libre a la izquierda de la carátula (área roja)
   let isDragGestureActive = false;
   let touchStartX = 0;
   let touchStartY = 0;
 
   function isInsideExplorerDragZone(clientX, clientY) {
-    if (!btnToggleExpand || !playerPanel) return false;
-    const btnRect = btnToggleExpand.getBoundingClientRect();
-    const playerRect = playerPanel.getBoundingClientRect();
     const albumContainer = document.getElementById('albumContainer');
-    const albumRect = albumContainer ? albumContainer.getBoundingClientRect() : null;
+    if (!playerPanel || !albumContainer) return false;
+    const playerRect = playerPanel.getBoundingClientRect();
+    const albumRect = albumContainer.getBoundingClientRect();
 
-    // Área roja delimitada por Hernan:
-    // - Horizontal: Desde el borde izquierdo del panel del reproductor hasta pasar el botón (+20px)
-    // - Vertical: Desde la parte superior del botón (-10px) hasta el fondo de la carátula (+10px)
-    const minX = Math.max(0, Math.min(playerRect.left, btnRect.left - 15));
-    const maxX = btnRect.right + 22;
-    const minY = Math.max(0, btnRect.top - 10);
-    const maxY = albumRect ? (albumRect.bottom + 10) : (btnRect.bottom + 200);
+    // Área roja delimitada por Hernan (igual que la app):
+    // - Horizontal: Desde el borde izquierdo del panel del reproductor hasta la carátula
+    // - Vertical: Desde arriba del panel hasta el fondo de la carátula (+10px)
+    const minX = playerRect.left;
+    const maxX = albumRect.left;
+    const minY = playerRect.top;
+    const maxY = albumRect.bottom + 10;
 
     return clientX >= minX && clientX <= maxX && clientY >= minY && clientY <= maxY;
   }
@@ -1695,14 +1729,17 @@ function initApp() {
     refreshAllMarquees();
   });
 
-  btnShuffle.addEventListener('click', () => {
+  // Aleatorio y repetir dejan el menú abierto 5 s más, para cambiar los dos de una vez
+  menuShuffle.addEventListener('click', () => {
     isShuffle = !isShuffle;
-    btnShuffle.classList.toggle('active', isShuffle);
+    refreshPlayerMenu();
+    setPlayerMenuOpen(true);
   });
 
-  btnRepeat.addEventListener('click', () => {
+  menuRepeat.addEventListener('click', () => {
     isRepeat = !isRepeat;
-    btnRepeat.classList.toggle('active', isRepeat);
+    refreshPlayerMenu();
+    setPlayerMenuOpen(true);
   });
 
   // =================== UTILIDADES DE BÚSQUEDA Y ALMACENAMIENTO ===================

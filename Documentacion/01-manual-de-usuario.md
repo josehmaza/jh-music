@@ -7,18 +7,19 @@ La pantalla tiene tres zonas:
 ```
 ┌──────┬───────────────────────────────┬──────────────────────┐
 │ Tira │  EXPLORADOR                   │  REPRODUCTOR         │
-│  de  │  [Carpetas][Pistas][Mi Mix]   │ 🔍  [ Carátula ]  ⇄  │
-│volu- │  Filtros / Buscador           │  Título y artista    │
+│  de  │ [Librería][Canciones][Mi Mix] │     [ Carátula ]  ☰  │
+│volu- │  Filtros / Buscador           │                   ⇄  │
+│      │                               │  Título y artista    │
 │ men  │  Lista                        │ ⏮ Anterior|Siguiente⏭│
 │      │  Estado        [▶ Reproducir] │  Barra de progreso   │
-│      │                               │ Alea ⏮  ⏯  ⏭  Rep   │
+│      │                               │    ⏮     ⏯     ⏭    │
 └──────┴───────────────────────────────┴──────────────────────┘
 ```
 
 - **Barra superior:** marca del auto, versión de la app, saludo, reloj y botón **Re-escanear USB**.
 - **Tira de volumen (izquierda):** HOME, MUTE, `+`, porcentaje, `−` y barra vertical.
 - **Explorador (centro):** pestañas, buscador y listas. Se puede ocultar para dejar solo el reproductor.
-- **Reproductor (derecha):** la canción que suena y sus controles. Arriba, a los lados de la carátula, la **lupa** 🔍 (muestra u oculta el explorador) y el botón **Automix** ⇄ (mezcla entre canciones e iguala su volumen).
+- **Reproductor (derecha):** la canción que suena y sus controles. Arriba a la derecha de la carátula, el **menú ☰** (aleatorio, repetir y mostrar u ocultar el explorador) y, debajo, el botón **Automix** ⇄ (mezcla entre canciones e iguala su volumen).
 
 ### Colores de la pantalla
 
@@ -129,7 +130,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 ### Cuadro de la carátula
 
 - **Si la canción trae carátula**, se ve la imagen completa. **Si no trae**, se muestra un disco.
-- El cuadro ocupa la parte de arriba del reproductor, entre la lupa y Automix. Su tamaño se ajusta solo al espacio libre de la pantalla.
+- El cuadro ocupa la parte de arriba del reproductor, junto al menú ☰ y Automix. Su tamaño se ajusta solo al espacio libre de la pantalla.
 - **Pegada a la esquina de arriba a la derecha**, la etiqueta de formato (`MP3 320K`), con la misma curva de la esquina: tapa lo mínimo de la carátula.
 - **Sobre el borde de abajo** (mitad sobre la carátula y mitad fuera), una cápsula con el estado y un ecualizador. Así no tapa el contenido de la carátula; el título queda debajo, en su lugar de siempre:
 
@@ -150,7 +151,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 ### Controles del reproductor
 
-Están al estilo de YouTube Music: **play/pausa en un círculo blanco grande** y los demás como **íconos blancos sin caja**. Aleatorio y Repetir encendidos se ven **en cian con un puntito debajo**. Con el explorador oculto, los controles se agrandan. La barra de progreso es una línea fina blanca con un punto blanco.
+Pensados para tocar manejando: **play/pausa en un círculo blanco grande** al centro y, a los lados, **Anterior y Siguiente** como íconos blancos grandes, sin caja. Aunque se ve solo el ícono, **cada uno responde en todo el ancho que queda a su lado del play, hasta el borde del reproductor** (también con el explorador oculto): no hace falta atinarle al ícono. Al tocar, esa zona entera se ilumina en cian un instante para confirmar el toque. Con el explorador oculto, los controles se agrandan. La barra de progreso es una línea fina blanca con un punto blanco.
 
 | Control | Función |
 |---|---|
@@ -158,11 +159,25 @@ Están al estilo de YouTube Music: **play/pausa en un círculo blanco grande** y
 | ⏮ / ⏭ o tarjetas **Anterior / Siguiente**, **un toque** | Canción anterior / siguiente |
 | ⏮ / ⏭ o tarjetas, **doble toque** | Retrocede / adelanta **10 s**. Cada toque extra seguido suma otros 10 s. Se muestra un aviso `+10s` / `-10s` en el centro |
 | Barra de progreso | Arrastrar para adelantar o retroceder |
-| Aleatorio (primer botón, a la izquierda) | Alterna orden aleatorio y secuencial |
-| Repetir (último botón, a la derecha) | Alterna repetir la canción actual o seguir con la lista |
-| **▶ Reproducir Todo** (Pistas) | Reproduce la lista mostrada desde la primera. Mi Mix tiene su propio **▶ Reproducir** |
+| **Menú ☰ → Aleatorio** | Alterna orden aleatorio y secuencial |
+| **Menú ☰ → Repetir canción** | Alterna repetir la canción actual o seguir con la lista |
+| **▶ Reproducir Todo** (Canciones) | Reproduce la lista mostrada desde la primera. Mi Mix tiene su propio **▶ Reproducir** |
 
 Un toque en Siguiente o Anterior espera un instante (0,28 s) para saber si es un doble toque, y recién ahí cambia de canción.
+
+### Menú ☰
+
+Arriba a la derecha del reproductor, encima de Automix. Se abre sobre el reproductor con filas grandes:
+
+| Fila | Qué hace |
+|---|---|
+| **Aleatorio** | Lo prende o apaga. Dice **ON** (en cian) u **OFF** |
+| **Repetir canción** | Lo prende o apaga. Dice **ON** (en cian) u **OFF** |
+| **Ocultar / Mostrar explorador** | Oculta o muestra el explorador y cierra el menú |
+
+El menú se cierra solo a los 5 s sin tocarlo (cada toque en Aleatorio o Repetir vuelve a contar), tocando fuera del panel o en **✕**.
+
+**Para saber si están encendidos sin abrir el menú:** arriba a la izquierda del reproductor aparecen en cian el ícono de **repetir** y, debajo, el de **aleatorio**, solo mientras están encendidos. Son solo un aviso: no se tocan.
 
 ### Automix: mezcla entre canciones
 
@@ -227,9 +242,9 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 
 ## 7. Mostrar u ocultar el explorador
 
-- **Tocar la lupa** (arriba a la izquierda del reproductor): abre o cierra el explorador. Con el explorador oculto, la lupa queda resaltada para que sepas cómo volver a abrirlo.
-- **Jalar en la zona de la lupa:** hacia la izquierda lo oculta, hacia la derecha lo muestra.
-- Un toque en el resto de esa zona no hace nada, para evitar toques accidentales al conducir.
+- **Jalar en la franja libre a la izquierda de la carátula:** hacia la izquierda lo oculta, hacia la derecha lo muestra.
+- **Menú ☰ → Ocultar explorador / Mostrar explorador.**
+- Un toque simple en esa franja no hace nada, para evitar toques accidentales al conducir.
 
 ## 8. Botón Atrás y HOME
 

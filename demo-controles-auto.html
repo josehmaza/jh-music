@@ -8,13 +8,15 @@
     :root { --cyan: #38bdf8; --text: #f8fafc; --muted: #94a3b8; --mono: 'JetBrains Mono', Consolas, monospace; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; background: #07090c; color: var(--text); padding: 28px 16px 60px; }
-    header, .group { max-width: 1100px; margin: 0 auto 22px; }
+    header { max-width: 1100px; margin: 0 auto 22px; }
     h1 { font-size: 1.6rem; font-weight: 800; }
     header p { color: var(--muted); margin-top: 6px; font-size: 0.96rem; line-height: 1.5; }
-    header ul { color: #cbd5e1; margin: 10px 0 0 20px; font-size: 0.93rem; line-height: 1.6; }
 
-    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    .toolbar label { display: flex; align-items: center; gap: 8px; background: #10141b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 0.92rem; }
+    .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 14px; }
+    .toolbar label { display: flex; align-items: flex-start; gap: 10px; background: #10141b; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-size: 0.9rem; line-height: 1.4; }
+    .toolbar label b { display: block; color: #fff; }
+    .toolbar label span { color: var(--muted); }
+    .toolbar input { margin-top: 3px; }
 
     .options { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     @media (max-width: 1100px) { .options { grid-template-columns: 1fr; max-width: 480px; } }
@@ -24,49 +26,44 @@
     .letter { font-family: var(--mono); font-weight: 800; color: #0c0e12; background: var(--cyan); border-radius: 8px; padding: 2px 10px; }
     .title { font-size: 1.05rem; font-weight: 800; }
     .tag { font-family: var(--mono); font-size: 0.7rem; font-weight: 800; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 6px; padding: 1px 6px; margin-left: auto; }
-    .desc { color: #cbd5e1; margin: 6px 0 12px; font-size: 0.9rem; line-height: 1.45; min-height: 5.6em; }
+    .desc { color: #cbd5e1; margin: 6px 0 12px; font-size: 0.9rem; line-height: 1.45; min-height: 4.4em; }
     .pros { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-top: 10px; }
     .pros b { color: #e2e8f0; }
 
     /* ===== Pantalla (columna del reproductor, como en la captura) ===== */
     .screen {
-      position: relative;
-      width: 100%;
-      max-width: 440px;
-      margin: 0 auto;
-      border-radius: 12px;
-      padding: 14px 14px 10px;
+      position: relative; width: 100%; max-width: 440px; margin: 0 auto; border-radius: 12px; padding: 14px 14px 12px;
       background:
         radial-gradient(120% 95% at 50% 4%, rgb(23 60 92 / 0.85) 0%, rgb(23 60 92 / 0) 62%),
         linear-gradient(172deg, rgb(23 60 92 / 0.5) 0%, rgb(23 60 92 / 0.18) 48%, #07090c 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      user-select: none;
-      -webkit-user-select: none;
-      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06); user-select: none; -webkit-user-select: none; overflow: hidden;
     }
     .top { display: grid; grid-template-columns: 60px 1fr 60px; align-items: start; gap: 8px; }
     .side { display: flex; flex-direction: column; gap: 10px; align-items: center; }
     .sq {
-      width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center;
+      width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; position: relative;
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; cursor: pointer;
-      position: relative;
     }
     .sq svg { width: 26px; height: 26px; }
-    .sq.automix { background: var(--cyan); color: #04121c; flex-direction: column; gap: 0; }
+    .sq.automix { background: var(--cyan); color: #04121c; flex-direction: column; }
     .sq.automix small { font-family: var(--mono); font-size: 0.6rem; font-weight: 800; }
-    .sq.toggle.on { color: var(--cyan); border-color: rgba(56,189,248,0.6); background: rgba(56,189,248,0.12); }
-    .sq.toggle.on::after { content: ''; position: absolute; bottom: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+
+    /* Botón del menú: si hay algo activo, se pinta de cian y muestra los íconos de lo activo debajo */
+    .menu-btn.has-active { border-color: rgba(56,189,248,0.7); color: var(--cyan); background: rgba(56,189,248,0.12); }
+    .modes { display: flex; gap: 3px; justify-content: center; min-height: 18px; }
+    .modes svg { width: 16px; height: 16px; color: var(--cyan); }
+    .modes-chip { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 0.68rem; font-weight: 800; color: var(--cyan); border: 1px solid rgba(56,189,248,0.5); border-radius: 6px; padding: 2px 6px; }
+    .modes-chip svg { width: 13px; height: 13px; }
+    .no-indicator .modes, .no-indicator .modes-chip { display: none !important; }
+    .no-indicator .menu-btn.has-active { border-color: rgba(255,255,255,0.1); color: #e2e8f0; background: rgba(255,255,255,0.06); }
 
     .cover {
-      width: 190px; height: 190px; margin: 0 auto; border-radius: 18px; position: relative;
+      width: 180px; height: 180px; margin: 0 auto; border-radius: 18px; position: relative;
       background: linear-gradient(160deg, #1b2735, #0d131b); border: 1px solid rgba(255,255,255,0.08);
-      display: grid; place-items: center; color: rgba(255,255,255,0.35); touch-action: pan-y; cursor: grab;
-      transition: transform 0.18s;
+      display: grid; place-items: center; color: rgba(255,255,255,0.35);
     }
-    .cover svg { width: 80px; height: 80px; }
+    .cover svg { width: 76px; height: 76px; }
     .cover .badge { position: absolute; top: 8px; right: 8px; font-family: var(--mono); font-size: 0.62rem; font-weight: 800; background: #05080c; color: #fff; padding: 3px 7px; border-radius: 6px; }
-    .cover .hint { position: absolute; bottom: 8px; font-size: 0.68rem; color: rgba(255,255,255,0.45); display: none; }
-    .swipe-on .cover .hint { display: block; }
 
     .meta { text-align: center; margin-top: 12px; }
     .meta h3 { font-size: 1.45rem; font-weight: 800; }
@@ -75,46 +72,64 @@
     .meta .album { color: var(--muted); }
 
     .adj { display: flex; margin-top: 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.03); font-size: 0.95rem; font-weight: 700; }
-    .adj div { flex: 1; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .adj div { flex: 1; padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .adj div:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
     .adj b { color: var(--cyan); }
 
     .progress { margin-top: 14px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.15); position: relative; }
-    .progress i { position: absolute; left: 0; top: 0; bottom: 0; width: 28%; background: var(--cyan); border-radius: 3px; }
+    .progress i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--cyan); border-radius: 3px; }
     .progress i::after { content: ''; position: absolute; right: -8px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
-    .times { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-family: var(--mono); font-size: 1.05rem; font-weight: 800; color: rgba(255,255,255,0.78); }
+    .times { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; min-height: 40px; font-family: var(--mono); font-size: 1.05rem; font-weight: 800; color: rgba(255,255,255,0.78); }
+    .times .center { display: flex; align-items: center; gap: 6px; }
+    .times .menu-btn { width: 56px; height: 40px; border-radius: 10px; }
 
-    /* ===== Fila de controles ===== */
-    .controls { display: flex; align-items: stretch; margin-top: 6px; height: 104px; gap: 6px; }
+    /* ===== Botonera elegida: 3 zonas ===== */
+    .controls { display: flex; align-items: stretch; margin-top: 6px; height: 104px; gap: 8px; }
     .zone {
-      position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;
-      border-radius: 18px; color: #fff; transition: background 0.12s;
+      flex: 1; position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      border-radius: 18px; color: #fff; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09);
+      transition: background 0.12s, transform 0.08s;
     }
-    .zone svg { width: 40px; height: 40px; }
-    .zone.big svg { width: 50px; height: 50px; }
-    .zone.flash { background: rgba(56,189,248,0.28) !important; }
-    .zone.pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09); }
-    .zone.grow { flex: 1; }
-    .zone.small { width: 56px; flex: none; }
-    .zone.small svg { width: 26px; height: 26px; }
-    .zone.small.on { color: var(--cyan); }
-    .zone.small.on::after { content: ''; position: absolute; bottom: 22px; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+    .zone svg { width: 50px; height: 50px; }
+    .zone.pressed { background: rgba(56,189,248,0.3); border-color: rgba(56,189,248,0.7); transform: scale(0.97); }
     .play { flex: none; width: 104px; display: grid; place-items: center; cursor: pointer; }
-    .play span { width: 92px; height: 92px; border-radius: 50%; background: #fff; color: #0b0f14; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+    .play span { width: 92px; height: 92px; border-radius: 50%; background: #fff; color: #0b0f14; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0,0,0,0.45); transition: transform 0.08s; }
+    .play.pressed span { transform: scale(0.94); }
     .play svg { width: 40px; height: 40px; }
-
-    /* Mostrar las zonas que reciben el toque */
-    .show-zones .zone::before, .show-zones .play::before, .show-zones .sq::before, .show-zones .times .mini::before {
-      content: ''; position: absolute; inset: 0; border: 2px dashed #f43f5e; border-radius: inherit; pointer-events: none;
-    }
-    .show-zones .play { position: relative; border-radius: 50%; }
+    .no-press .zone.pressed { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.09); transform: none; }
 
     .toast {
-      position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%) translateY(10px); opacity: 0;
-      background: rgba(5,8,12,0.92); border: 1px solid rgba(56,189,248,0.5); color: #fff; font-weight: 800;
-      padding: 8px 14px; border-radius: 10px; font-size: 0.95rem; white-space: nowrap; transition: all 0.18s; pointer-events: none;
+      position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%) translateY(10px); opacity: 0; max-width: 92%;
+      background: rgba(5,8,12,0.94); border: 1px solid rgba(56,189,248,0.6); color: #fff; font-weight: 800;
+      padding: 10px 16px; border-radius: 12px; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: all 0.18s; pointer-events: none;
     }
+    .toast small { display: block; font-family: var(--mono); font-size: 0.68rem; color: var(--cyan); letter-spacing: 1px; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== Menú de aleatorio / repetir ===== */
+    .sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+    .sheet {
+      position: absolute; left: 12px; right: 12px; top: 12px; padding: 12px; border-radius: 16px;
+      background: #0e141c; border: 1px solid rgba(56,189,248,0.35); box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      transform: translateY(-12px); opacity: 0; pointer-events: none; transition: all 0.16s;
+    }
+    .open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+    .open .sheet { transform: none; opacity: 1; pointer-events: auto; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .sheet-head b { font-size: 1.05rem; }
+    .sheet-close { width: 52px; height: 52px; border-radius: 12px; background: rgba(255,255,255,0.08); border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
+    .row-toggle {
+      display: flex; align-items: center; gap: 14px; height: 72px; padding: 0 14px; margin-top: 8px; border-radius: 14px; cursor: pointer;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .row-toggle svg { width: 30px; height: 30px; flex: none; }
+    .row-toggle .txt { flex: 1; }
+    .row-toggle .txt b { display: block; font-size: 1.12rem; }
+    .row-toggle .txt span { color: var(--muted); font-size: 0.85rem; }
+    .row-toggle .state { font-family: var(--mono); font-weight: 800; font-size: 0.95rem; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1); color: var(--muted); min-width: 58px; text-align: center; }
+    .row-toggle.on { border-color: rgba(56,189,248,0.7); background: rgba(56,189,248,0.12); color: var(--cyan); }
+    .row-toggle.on .state { background: var(--cyan); color: #04121c; }
 
     .notes { max-width: 1100px; margin: 26px auto 0; background: #10141b; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px 18px; }
     .notes h2 { font-size: 1.15rem; margin-bottom: 8px; }
@@ -124,24 +139,25 @@
 <body>
 
 <header>
-  <h1>Controles para manejar: anterior / siguiente más fáciles</h1>
-  <p>Toca los controles de cada opción como si fuera la pantalla del carro. Activa <b>"Ver zonas táctiles"</b> para ver en rojo hasta dónde llega cada botón.
-     En las 3 opciones se puede, además, <b>deslizar la carátula</b> a la izquierda (siguiente) o a la derecha (anterior), como en Spotify y YouTube Music.</p>
+  <h1>Botonera de 3 zonas + menú para aleatorio y repetir</h1>
+  <p>La botonera de abajo es la que elegiste y es igual en las 3 opciones. Lo que cambia es <b>dónde va el botón ☰</b> que abre aleatorio y repetir.
+     Toca como en el carro. <b>Doble toque</b> en anterior/siguiente = ±10 s, como ya funciona hoy. Con las casillas puedes prender y apagar cada mejora para comparar.</p>
   <div class="toolbar">
-    <label><input type="checkbox" id="chkZones" checked> Ver zonas táctiles</label>
-    <label><input type="checkbox" id="chkSwipe" checked> Deslizar la carátula para cambiar de canción</label>
+    <label><input type="checkbox" id="chkPress" checked><div><b>Se ilumina toda la zona</b><span>Al tocar, la zona entera se pinta de cian y se hunde un poco.</span></div></label>
+    <label><input type="checkbox" id="chkToast" checked><div><b>Aviso con la canción nueva</b><span>Durante 1,5 s se ve el nombre de la canción a la que pasaste.</span></div></label>
+    <label><input type="checkbox" id="chkRestart" checked><div><b>Anterior reinicia la canción</b><span>Si ya pasaron más de 3 s, el primer toque la vuelve a empezar y el segundo va a la anterior (como Spotify y los radios).</span></div></label>
+    <label><input type="checkbox" id="chkIndicator" checked><div><b>Se ve si aleatorio/repetir están activos</b><span>Aunque estén dentro del menú, el botón ☰ se pinta y muestra los íconos de lo que está prendido.</span></div></label>
   </div>
 </header>
 
 <div class="options" id="options"></div>
 
 <div class="notes">
-  <h2>Cómo lo hacen otras apps en el auto</h2>
+  <h2>Detalles del menú pensados para manejar</h2>
   <ul>
-    <li><b>Android Auto y CarPlay:</b> en la pantalla de reproducción dejan solo anterior · play · siguiente bien separados; aleatorio y repetir van aparte, en una esquina o en un menú, justamente para no tocarlos por error.</li>
-    <li><b>Spotify (modo auto) y YouTube Music:</b> además de los botones, deslizar la carátula cambia de canción. Es un gesto que no necesita precisión.</li>
-    <li><b>Tesla y radios de fábrica:</b> anterior y siguiente ocupan mucho espacio y responden en toda su zona, no solo en el dibujo.</li>
-    <li><b>Para no equivocarse:</b> al tocar se ilumina toda la zona y aparece el nombre de la canción a la que se pasó, así se confirma sin mirar fijo.</li>
+    <li>Las filas son altas (72 px) y dicen <b>ON / OFF</b> en texto, no solo con el color.</li>
+    <li>Se cierra solo a los 5 s sin tocar nada, o tocando fuera o en ✕.</li>
+    <li>Repetir sigue igual que hoy: <b>ON</b> repite la canción actual; <b>OFF</b> sigue con la carpeta.</li>
   </ul>
 </div>
 
@@ -153,6 +169,7 @@
     pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
     shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2.6c1.8 0 3-.9 4-2.4l3.8-5.2C14.4 7.9 15.6 7 17.4 7H21"/><polyline points="18 4 21 7 18 10"/><path d="M3 7h2.6c1.8 0 3 .9 4 2.4l.5.7"/><path d="M13.9 13.9l.5.7c1 1.5 2.2 2.4 4 2.4H21"/><polyline points="18 14 21 17 18 20"/></svg>',
     repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 2 20 5 17 8"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><polyline points="7 22 4 19 7 16"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>',
+    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h12M4 12h7M4 18h7"/><circle cx="17" cy="15" r="3.5"/><path d="M19.5 17.5L22 20"/></svg>',
     automix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6C9 6 15 18 21 18"/><path d="M3 18C9 18 15 6 21 6"/></svg>',
     vinyl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5"/></svg>'
@@ -166,160 +183,185 @@
     ['Cómo te voy a olvidar', 'Los Ángeles Azules'],
     ['17 años', 'Los Ángeles Azules']
   ];
+  const DURATION = 150;          // 02:30
+  const DOUBLE_TAP_MS = 280;     // igual que la app
 
   const OPTIONS = [
     {
-      key: 'A', title: 'Zonas grandes, aleatorio y repetir arriba', tag: 'RECOMENDADA',
-      desc: 'Toda la fila se reparte en 3: la mitad izquierda es "anterior", la derecha "siguiente" y el centro play. Aleatorio y repetir suben a las esquinas, debajo de la lupa y del Automix.',
-      pros: '<b>A favor:</b> el área roja de tu captura entera pasa la canción; aleatorio y repetir siguen a un toque pero lejos de donde tocas manejando.<br><b>En contra:</b> la carátula queda entre 4 botones (2 a cada lado).',
-      layout: 'A'
+      key: 'A', place: 'left', title: '☰ debajo de la lupa', tag: 'RECOMENDADA',
+      desc: 'Arriba a la izquierda, debajo de la lupa. Queda simétrico con el Automix y lejos de la botonera.',
+      pros: '<b>A favor:</b> imposible tocarlo por error buscando "siguiente"; arriba ya están las opciones (lupa, Automix).<br><b>En contra:</b> hay que estirar el brazo hasta arriba (se usa poco).'
     },
     {
-      key: 'B', title: 'Zonas grandes, aleatorio y repetir junto a los tiempos', tag: '',
-      desc: 'Igual que A, pero aleatorio y repetir quedan chicos al lado de 00:00 y 02:30. Siguen cerca de los controles, aunque fuera de la fila de abajo.',
-      pros: '<b>A favor:</b> todo lo de reproducción sigue junto; arriba no cambia nada.<br><b>En contra:</b> quedan cerca de la barra de progreso; un toque torpe podría caer en la barra o en ellos.',
-      layout: 'B'
+      key: 'B', place: 'right', title: '☰ debajo del Automix', tag: '',
+      desc: 'Arriba a la derecha, debajo del Automix: todas las opciones de cómo suena la música quedan juntas.',
+      pros: '<b>A favor:</b> Automix, aleatorio y repetir en el mismo lado.<br><b>En contra:</b> el lado derecho queda más cargado que el izquierdo.'
     },
     {
-      key: 'C', title: 'Solo 3 botones gigantes', tag: '',
-      desc: 'Se quitan aleatorio y repetir de la pantalla principal (pasarían a Mi Mix o a un menú). Queda anterior · play · siguiente, cada uno ocupando un tercio.',
-      pros: '<b>A favor:</b> lo más simple y lo más difícil de fallar, como CarPlay.<br><b>En contra:</b> para activar aleatorio o repetir hay que ir a otra parte.',
-      layout: 'C'
+      key: 'C', place: 'times', title: '☰ entre los tiempos', tag: '',
+      desc: 'Al centro, entre 00:42 y 02:30. Queda cerca de la botonera, pero fuera de ella.',
+      pros: '<b>A favor:</b> está a la mano y no cambia nada arriba.<br><b>En contra:</b> está pegado a la barra de progreso y encima del play; un toque torpe puede caer ahí.'
     }
   ];
 
   const root = document.getElementById('options');
-
   OPTIONS.forEach(opt => {
     const el = document.createElement('div');
     el.className = 'option' + (opt.tag ? ' recommended' : '');
-    const sideLeft = opt.layout === 'A'
-      ? `<div class="sq">${ICON.search}</div><div class="sq toggle" data-act="shuffle">${ICON.shuffle}</div>`
-      : `<div class="sq">${ICON.search}</div>`;
-    const sideRight = opt.layout === 'A'
-      ? `<div class="sq automix">${ICON.automix}<small>ON</small></div><div class="sq toggle" data-act="repeat">${ICON.repeat}</div>`
-      : `<div class="sq automix">${ICON.automix}<small>ON</small></div>`;
-
-    const times = opt.layout === 'B'
-      ? `<div class="times"><span>00:42</span>
-           <span style="display:flex;gap:6px">
-             <span class="sq toggle mini" data-act="shuffle" style="width:46px;height:40px">${ICON.shuffle}</span>
-             <span class="sq toggle mini" data-act="repeat" style="width:46px;height:40px">${ICON.repeat}</span>
-           </span>
-           <span>02:30</span></div>`
-      : `<div class="times"><span>00:42</span><span>02:30</span></div>`;
-
-    let controls;
-    if (opt.layout === 'C') {
-      controls = `
-        <div class="zone grow pill big" data-act="prev">${ICON.prev}</div>
-        <div class="zone grow pill big" data-act="play" style="background:#fff;color:#0b0f14">${ICON.play}</div>
-        <div class="zone grow pill big" data-act="next">${ICON.next}</div>`;
-    } else {
-      controls = `
-        <div class="zone grow pill big" data-act="prev">${ICON.prev}</div>
-        <div class="play" data-act="play"><span>${ICON.play}</span></div>
-        <div class="zone grow pill big" data-act="next">${ICON.next}</div>`;
-    }
+    const menuBtn = `<div class="sq menu-btn" data-act="menu">${ICON.menu}</div>`;
+    const modes = '<div class="modes"></div>';
+    const left = `<div class="sq">${ICON.search}</div>` + (opt.place === 'left' ? menuBtn + modes : '');
+    const right = `<div class="sq automix">${ICON.automix}<small>ON</small></div>` + (opt.place === 'right' ? menuBtn + modes : '');
+    const times = opt.place === 'times'
+      ? `<div class="times"><span class="cur">00:00</span><span class="center">${menuBtn.replace('sq menu-btn', 'sq menu-btn')}<span class="modes-chip"></span></span><span>02:30</span></div>`
+      : `<div class="times"><span class="cur">00:00</span><span>02:30</span></div>`;
 
     el.innerHTML = `
       <div class="option-head"><span class="letter">${opt.key}</span><span class="title">${opt.title}</span>${opt.tag ? `<span class="tag">${opt.tag}</span>` : ''}</div>
       <p class="desc">${opt.desc}</p>
       <div class="screen">
         <div class="top">
-          <div class="side">${sideLeft}</div>
-          <div class="cover">${ICON.vinyl}<span class="badge">MP3 320K</span><span class="hint">⇠ desliza ⇢</span></div>
-          <div class="side">${sideRight}</div>
+          <div class="side">${left}</div>
+          <div class="cover">${ICON.vinyl}<span class="badge">MP3 320K</span></div>
+          <div class="side">${right}</div>
         </div>
         <div class="meta"><h3 class="t"></h3><p><span class="artist"></span> <span class="album">• Prueba 50 canciones</span></p></div>
-        <div class="adj"><div data-act="prev"><b>⏮</b> <span class="pv"></span></div><div data-act="next" style="text-align:right"><span class="nx"></span> <b>⏭</b></div></div>
+        <div class="adj"><div><b>⏮</b> <span class="pv"></span></div><div style="text-align:right"><span class="nx"></span> <b>⏭</b></div></div>
         <div class="progress"><i></i></div>
         ${times}
-        <div class="controls">${controls}</div>
+        <div class="controls">
+          <div class="zone" data-act="prev">${ICON.prev}</div>
+          <div class="play" data-act="play"><span>${ICON.play}</span></div>
+          <div class="zone" data-act="next">${ICON.next}</div>
+        </div>
         <div class="toast"></div>
+        <div class="sheet-backdrop"></div>
+        <div class="sheet">
+          <div class="sheet-head"><b>Modo de reproducción</b><button class="sheet-close">✕</button></div>
+          <div class="row-toggle" data-mode="shuffle">${ICON.shuffle}<div class="txt"><b>Aleatorio</b><span>Mezcla el orden de la carpeta</span></div><span class="state">OFF</span></div>
+          <div class="row-toggle" data-mode="repeat">${ICON.repeat}<div class="txt"><b>Repetir canción</b><span>Vuelve a sonar la misma al terminar</span></div><span class="state">OFF</span></div>
+        </div>
       </div>
       <p class="pros">${opt.pros}</p>`;
     root.appendChild(el);
     wire(el.querySelector('.screen'));
   });
 
-  function wire(screen) {
-    let idx = 0, playing = false, toastTimer;
-    const $ = s => screen.querySelector(s);
+  const flags = () => ({
+    toast: document.getElementById('chkToast').checked,
+    restart: document.getElementById('chkRestart').checked
+  });
 
+  function wire(screen) {
+    const $ = s => screen.querySelector(s);
+    let idx = 0, pos = 0, playing = true, toastTimer, closeTimer;
+    const mode = { shuffle: false, repeat: false };
+    const taps = { prev: 0, next: 0 }, tapTimer = {};
+
+    const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
     function render() {
       const n = SONGS.length;
       $('.t').textContent = SONGS[idx][0];
       $('.artist').textContent = SONGS[idx][1];
       $('.pv').textContent = SONGS[(idx - 1 + n) % n][0];
       $('.nx').textContent = SONGS[(idx + 1) % n][0];
-      screen.querySelectorAll('[data-act="play"]').forEach(p => {
-        const holder = p.querySelector('span') || p;
-        holder.innerHTML = playing ? ICON.pause : ICON.play;
+      $('.cur').textContent = fmt(pos);
+      $('.progress i').style.width = (pos / DURATION * 100) + '%';
+      $('.play span').innerHTML = playing ? ICON.pause : ICON.play;
+
+      const active = ['shuffle', 'repeat'].filter(k => mode[k]);
+      screen.querySelectorAll('.menu-btn').forEach(b => b.classList.toggle('has-active', active.length > 0));
+      const modes = $('.modes');
+      if (modes) modes.innerHTML = active.map(k => ICON[k]).join('');
+      const chip = $('.modes-chip');
+      if (chip) {
+        chip.innerHTML = active.map(k => ICON[k]).join('');
+        chip.style.display = active.length ? '' : 'none';
+      }
+      screen.querySelectorAll('.row-toggle').forEach(r => {
+        const on = mode[r.dataset.mode];
+        r.classList.toggle('on', on);
+        r.querySelector('.state').textContent = on ? 'ON' : 'OFF';
       });
     }
-    function toast(text) {
+    function toast(label, text) {
+      if (!flags().toast) return;
       const t = $('.toast');
-      t.textContent = text;
+      t.innerHTML = `<small>${label}</small>${text}`;
       t.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
     }
-    function flash(el) {
-      if (!el || !el.classList.contains('zone')) return;
-      el.classList.add('flash');
-      setTimeout(() => el.classList.remove('flash'), 220);
-    }
-    function act(name, el) {
+    function go(delta) {
       const n = SONGS.length;
-      if (name === 'next') { idx = (idx + 1) % n; toast('⏭  ' + SONGS[idx][0]); }
-      else if (name === 'prev') { idx = (idx - 1 + n) % n; toast('⏮  ' + SONGS[idx][0]); }
-      else if (name === 'play') { playing = !playing; toast(playing ? '▶  Reproduciendo' : '⏸  En pausa'); }
-      else if (name === 'shuffle' || name === 'repeat') {
-        el.classList.toggle('on');
-        toast((name === 'shuffle' ? 'Aleatorio ' : 'Repetir ') + (el.classList.contains('on') ? 'ON' : 'OFF'));
+      idx = (idx + delta + n) % n;
+      pos = 0;
+      toast(delta > 0 ? '⏭  SIGUIENTE' : '⏮  ANTERIOR', SONGS[idx][0]);
+    }
+
+    // Un toque = cambiar de canción; doble toque = ±10 s (espera 280 ms como la app)
+    function navTap(dir) {
+      taps[dir]++;
+      clearTimeout(tapTimer[dir]);
+      if (taps[dir] === 1) {
+        tapTimer[dir] = setTimeout(() => {
+          taps[dir] = 0;
+          if (dir === 'next') go(1);
+          else if (flags().restart && pos > 3) { pos = 0; toast('⏮  DESDE EL INICIO', SONGS[idx][0]); }
+          else go(-1);
+          render();
+        }, DOUBLE_TAP_MS);
+      } else {
+        const s = dir === 'next' ? 10 : -10;
+        pos = Math.max(0, Math.min(DURATION - 1, pos + s));
+        toast('', (s > 0 ? '+10 s' : '−10 s'));
+        tapTimer[dir] = setTimeout(() => { taps[dir] = 0; }, 450);
+        render();
       }
-      flash(el);
-      render();
+    }
+
+    function openMenu(open) {
+      screen.classList.toggle('open', open);
+      clearTimeout(closeTimer);
+      if (open) closeTimer = setTimeout(() => openMenu(false), 5000);
     }
 
     screen.querySelectorAll('[data-act]').forEach(el => {
       el.addEventListener('pointerdown', e => {
         e.preventDefault();
-        act(el.dataset.act, el);
+        const a = el.dataset.act;
+        if (a === 'menu') { openMenu(true); return; }
+        el.classList.add('pressed');
+        setTimeout(() => el.classList.remove('pressed'), 180);
+        if (a === 'play') { playing = !playing; render(); }
+        else navTap(a);
       });
     });
+    screen.querySelectorAll('.row-toggle').forEach(r => r.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      mode[r.dataset.mode] = !mode[r.dataset.mode];
+      openMenu(true); // reinicia los 5 s
+      render();
+    }));
+    $('.sheet-backdrop').addEventListener('pointerdown', () => openMenu(false));
+    $('.sheet-close').addEventListener('pointerdown', () => openMenu(false));
 
-    // Deslizar la carátula: izquierda = siguiente, derecha = anterior
-    const cover = $('.cover');
-    let startX = null;
-    cover.addEventListener('pointerdown', e => { startX = e.clientX; cover.setPointerCapture(e.pointerId); });
-    cover.addEventListener('pointermove', e => {
-      if (startX === null || !document.body.classList.contains('swipe-on')) return;
-      const dx = Math.max(-60, Math.min(60, e.clientX - startX));
-      cover.style.transform = `translateX(${dx}px) rotate(${dx / 20}deg)`;
-    });
-    cover.addEventListener('pointerup', e => {
-      if (startX === null) return;
-      const dx = e.clientX - startX;
-      startX = null;
-      cover.style.transform = '';
-      if (!document.body.classList.contains('swipe-on')) return;
-      if (dx < -50) act('next');
-      else if (dx > 50) act('prev');
-    });
+    setInterval(() => {
+      if (!playing) return;
+      pos++;
+      if (pos >= DURATION) { if (!mode.repeat) go(1); pos = 0; }
+      render();
+    }, 1000);
 
+    pos = 42;
     render();
   }
 
-  const chkZones = document.getElementById('chkZones');
-  const chkSwipe = document.getElementById('chkSwipe');
   const sync = () => {
-    document.body.classList.toggle('show-zones', chkZones.checked);
-    document.body.classList.toggle('swipe-on', chkSwipe.checked);
+    document.body.classList.toggle('no-press', !document.getElementById('chkPress').checked);
+    document.body.classList.toggle('no-indicator', !document.getElementById('chkIndicator').checked);
   };
-  chkZones.addEventListener('change', sync);
-  chkSwipe.addEventListener('change', sync);
+  document.querySelectorAll('.toolbar input').forEach(i => i.addEventListener('change', sync));
   sync();
 </script>
 </body>

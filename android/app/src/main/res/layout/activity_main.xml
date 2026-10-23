@@ -53,7 +53,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.7.0"
+                android:text="v2.8.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -780,15 +780,60 @@
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <!-- Botón Automix (opción A de la web): ON = cuadro cian lleno con brillo; OFF = oscuro.
-                         Mide 64x60dp: el cuadro visible es de 56x52dp y los 4dp de cada lado son el brillo -->
+                    <!-- Indicadores arriba a la izquierda (igual que la web): repetir y aleatorio, solo cuando están
+                         encendidos. No se tocan (se cambian en el menú ☰): la zona de gestos del explorador va encima -->
                     <LinearLayout
-                        android:id="@+id/btnAutoMix"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentTop="true"
+                        android:layout_alignParentStart="true"
+                        android:orientation="vertical">
+
+                        <ImageView
+                            android:id="@+id/ivModeRepeat"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:src="@drawable/ic_ctrl_repeat"
+                            android:tint="@color/accent_cyan"
+                            android:visibility="gone"
+                            android:contentDescription="Repetir canción encendido" />
+
+                        <ImageView
+                            android:id="@+id/ivModeShuffle"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="10dp"
+                            android:src="@drawable/ic_ctrl_shuffle"
+                            android:tint="@color/accent_cyan"
+                            android:visibility="gone"
+                            android:contentDescription="Aleatorio encendido" />
+                    </LinearLayout>
+
+                    <!-- Menú ☰ (aleatorio, repetir y ocultar / mostrar el explorador): arriba a la derecha,
+                         con el mismo cuadro que Automix apagado (64x60dp con 4dp de margen por lado) -->
+                    <ImageButton
+                        android:id="@+id/btnPlayerMenu"
                         android:layout_width="64dp"
                         android:layout_height="60dp"
                         android:layout_alignParentTop="true"
                         android:layout_alignParentEnd="true"
                         android:layout_marginTop="-4dp"
+                        android:layout_marginEnd="-4dp"
+                        android:background="@drawable/bg_automix_off"
+                        android:src="@drawable/ic_menu"
+                        android:scaleType="center"
+                        android:contentDescription="Opciones de reproducción" />
+
+                    <!-- Botón Automix (opción A de la web), debajo del menú: ON = cuadro cian lleno con brillo; OFF = oscuro.
+                         Mide 64x60dp: el cuadro visible es de 56x52dp y los 4dp de cada lado son el brillo.
+                         2dp + los 8dp de brillo de los dos = 10dp entre los cuadros -->
+                    <LinearLayout
+                        android:id="@+id/btnAutoMix"
+                        android:layout_width="64dp"
+                        android:layout_height="60dp"
+                        android:layout_below="@id/btnPlayerMenu"
+                        android:layout_alignParentEnd="true"
+                        android:layout_marginTop="2dp"
                         android:layout_marginEnd="-4dp"
                         android:orientation="vertical"
                         android:gravity="center"
@@ -928,9 +973,9 @@
                         android:layout_centerHorizontal="true"
                         android:layout_marginBottom="-19dp" />
 
-                    <!-- Zona Táctil Ergonómica (Área libre marcada en cuadro rojo + botón de búsqueda) -->
-                    <!-- Permite tocar, mantener y jalar hacia la izquierda para ocultar o hacia la derecha para mostrar -->
-                    <LinearLayout
+                    <!-- Zona Táctil Ergonómica (área libre marcada en cuadro rojo, a la izquierda de la carátula) -->
+                    <!-- Jalar hacia la izquierda oculta el explorador y hacia la derecha lo muestra (también desde el menú ☰) -->
+                    <View
                         android:id="@+id/layoutExplorerToggleZone"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -940,29 +985,9 @@
                         android:layout_alignBottom="@id/layoutAlbumArtCard"
                         android:minWidth="64dp"
                         android:background="@android:color/transparent"
-                        android:orientation="vertical"
-                        android:gravity="top|start"
                         android:clickable="true"
                         android:focusable="false"
-                        android:contentDescription="Área de gesto para alternar explorador">
-
-                        <!-- Botón Alternar Buscador / Explorador de Música Ampliado para Conducción (54x48dp) -->
-                        <ImageButton
-                            android:id="@+id/btnToggleExplorer"
-                            android:layout_width="54dp"
-                            android:layout_height="48dp"
-                            android:background="@drawable/bg_btn_action"
-                            android:src="@drawable/ic_music_search"
-                            android:scaleType="fitCenter"
-                            android:padding="12dp"
-                            android:contentDescription="Mostrar u Ocultar Explorador" />
-
-                        <!-- Espacio libre táctil hacia abajo junto al disco para fácil pulsación/arrastre al manejar -->
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1" />
-                    </LinearLayout>
+                        android:contentDescription="Área de gesto para alternar explorador" />
                 </RelativeLayout>
 
                 <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA.
@@ -1165,7 +1190,7 @@
                     </RelativeLayout>
                 </LinearLayout>
 
-                <!-- Controles de Transporte (Botones táctiles grandes ampliados) -->
+                <!-- Controles de Transporte: anterior · play · siguiente -->
                 <LinearLayout
                     android:id="@+id/layoutTransportControls"
                     android:layout_width="match_parent"
@@ -1175,31 +1200,23 @@
                     android:gravity="center"
                     android:layout_marginTop="4dp">
 
-                    <!-- Estilo YouTube Music (igual que la web): íconos blancos sin caja y play/pausa en un
-                         círculo blanco grande. Tamaños con el explorador abierto; con el explorador oculto
-                         el código los agranda (88 / 66 / 58dp, como la web) -->
-
-                    <!-- Aleatorio: activo en cian con un puntito debajo (el fondo lo pone el código) -->
-                    <ImageButton
-                        android:id="@+id/btnShuffle"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/ic_ctrl_shuffle"
-                        android:scaleType="fitCenter"
-                        android:padding="13dp"
-                        android:contentDescription="Aleatorio" />
+                    <!-- Para el auto (igual que la web): anterior y siguiente ocupan todo el ancho que deja el play,
+                         aunque se ven como íconos sueltos (sin caja), pegados hacia el play. Aleatorio y repetir
+                         están en el menú ☰. La fila usa todo el ancho (también con el explorador oculto).
+                         Alto 76dp con el explorador abierto; con el explorador oculto el código los agranda a 88dp -->
 
                     <!-- Pista Anterior -->
                     <ImageButton
                         android:id="@+id/btnPrev"
-                        android:layout_width="58dp"
-                        android:layout_height="58dp"
-                        android:layout_marginStart="12dp"
-                        android:background="@drawable/bg_ctrl_flat"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_ctrl_zone"
                         android:src="@drawable/ic_ctrl_prev"
-                        android:scaleType="fitCenter"
-                        android:padding="11dp"
+                        android:scaleType="fitEnd"
+                        android:paddingTop="13dp"
+                        android:paddingBottom="13dp"
+                        android:paddingEnd="48dp"
                         android:contentDescription="Anterior" />
 
                     <!-- Play / Pausa: círculo blanco de 76dp con el ícono oscuro -->
@@ -1219,25 +1236,16 @@
                     <!-- Siguiente Pista -->
                     <ImageButton
                         android:id="@+id/btnNext"
-                        android:layout_width="58dp"
-                        android:layout_height="58dp"
-                        android:layout_marginEnd="12dp"
-                        android:background="@drawable/bg_ctrl_flat"
+                        android:layout_width="0dp"
+                        android:layout_height="76dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_ctrl_zone"
                         android:src="@drawable/ic_ctrl_next"
-                        android:scaleType="fitCenter"
-                        android:padding="11dp"
+                        android:scaleType="fitStart"
+                        android:paddingTop="13dp"
+                        android:paddingBottom="13dp"
+                        android:paddingStart="48dp"
                         android:contentDescription="Siguiente" />
-
-                    <!-- Repetir: activo en cian con un puntito debajo -->
-                    <ImageButton
-                        android:id="@+id/btnRepeat"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
-                        android:background="@android:color/transparent"
-                        android:src="@drawable/ic_ctrl_repeat"
-                        android:scaleType="fitCenter"
-                        android:padding="13dp"
-                        android:contentDescription="Repetir" />
                 </LinearLayout>
 
             </LinearLayout>

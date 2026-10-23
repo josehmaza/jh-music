@@ -18,9 +18,9 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.TransitionDrawable;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
@@ -59,6 +59,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -106,7 +107,9 @@ public class MainActivity extends Activity {
 
     // Reproductor Central
     private TextView tvPlaybackStatus;
-    private ImageButton btnToggleExplorer;
+    private ImageButton btnPlayerMenu;    // menú ☰: aleatorio, repetir y ocultar / mostrar el explorador
+    private PopupWindow playerMenuPopup;
+    private ImageView ivModeRepeat, ivModeShuffle; // indicadores de repetir / aleatorio encendidos
     private View btnAutoMix;              // interruptor Automix: cuadro + ícono + ON / OFF
     private ImageView ivAutoMixIcon;
     private TextView tvAutoMixState;
@@ -133,7 +136,7 @@ public class MainActivity extends Activity {
     private boolean globalGestureHandled = false;
     private SeekBar seekTrackProgress;
     private TextView tvTimeCurrent, tvTimeTotal;
-    private ImageButton btnShuffle, btnPrev, btnPlayPause, btnNext, btnRepeat;
+    private ImageButton btnPrev, btnPlayPause, btnNext;
 
     // Explorador y Reproductor
     private LinearLayout layoutExplorerPanel;
@@ -331,7 +334,9 @@ public class MainActivity extends Activity {
 
         // Reproductor central
         tvPlaybackStatus = findViewById(R.id.tvPlaybackStatus);
-        btnToggleExplorer = findViewById(R.id.btnToggleExplorer);
+        btnPlayerMenu = findViewById(R.id.btnPlayerMenu);
+        ivModeRepeat = findViewById(R.id.ivModeRepeat);
+        ivModeShuffle = findViewById(R.id.ivModeShuffle);
         btnAutoMix = findViewById(R.id.btnAutoMix);
         ivAutoMixIcon = findViewById(R.id.ivAutoMixIcon);
         tvAutoMixState = findViewById(R.id.tvAutoMixState);
@@ -358,11 +363,9 @@ public class MainActivity extends Activity {
         seekTrackProgress = findViewById(R.id.seekTrackProgress);
         tvTimeCurrent = findViewById(R.id.tvTimeCurrent);
         tvTimeTotal = findViewById(R.id.tvTimeTotal);
-        btnShuffle = findViewById(R.id.btnShuffle);
         btnPrev = findViewById(R.id.btnPrev);
         btnPlayPause = findViewById(R.id.btnPlayPause);
         btnNext = findViewById(R.id.btnNext);
-        btnRepeat = findViewById(R.id.btnRepeat);
 
         // Explorador y reproductor
         layoutExplorerPanel = findViewById(R.id.layoutExplorerPanel);
@@ -1042,6 +1045,8 @@ public class MainActivity extends Activity {
         }
         btnNext.setOnClickListener(v -> handleNextButtonClick());
         btnPrev.setOnClickListener(v -> handlePrevButtonClick());
+        flashOnTouch(btnPrev);
+        flashOnTouch(btnNext);
 
         // Tarjetas flotantes anterior y siguiente
         if (layoutPrevCard != null) layoutPrevCard.setOnClickListener(v -> handlePrevButtonClick());
@@ -1050,21 +1055,8 @@ public class MainActivity extends Activity {
         // Botón y Zona Táctil Ergonómica para alternar o deslizar el explorador de música
         setupExplorerToggleGestures();
 
-        btnShuffle.setOnClickListener(v -> {
-            isShuffle = !isShuffle;
-            btnShuffle.setSelected(isShuffle);
-            updateSecondaryButton(btnShuffle, isShuffle);
-            autoMixer.invalidateNext();
-            Toast.makeText(this, isShuffle ? "Aleatorio activado" : "Modo secuencial", Toast.LENGTH_SHORT).show();
-        });
-
-        btnRepeat.setOnClickListener(v -> {
-            isRepeat = !isRepeat;
-            btnRepeat.setSelected(isRepeat);
-            updateSecondaryButton(btnRepeat, isRepeat);
-            autoMixer.invalidateNext();
-            Toast.makeText(this, isRepeat ? "Repetir canción actual" : "Repetir carpeta", Toast.LENGTH_SHORT).show();
-        });
+        // Aleatorio, repetir y ocultar / mostrar el explorador están en el menú ☰
+        if (btnPlayerMenu != null) btnPlayerMenu.setOnClickListener(v -> showPlayerMenu());
 
         seekTrackProgress.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -1103,21 +1095,19 @@ public class MainActivity extends Activity {
     // ==========================================
 
     /**
-     * Tamaños de los controles como la web: con el explorador abierto play 76 / anterior-siguiente 58 /
-     * aleatorio-repetir 52dp; con el explorador oculto 88 / 66 / 58dp. Íconos: 34-38 / 36-40 / 26-28dp.
+     * Tamaños de los controles como la web: con el explorador abierto play 76dp y anterior / siguiente
+     * de 76dp de alto; con el explorador oculto 88dp. Íconos: 34-38 / 50-56dp. Anterior y siguiente
+     * se ven sin caja, pero responden en todo el ancho que deja el play.
      */
     private void applyPlayerControlSizes(boolean expanded) {
         sizeControl(btnPlayPause, expanded ? 88 : 76, expanded ? 38 : 34);
-        sizeControl(btnPrev, expanded ? 66 : 58, expanded ? 40 : 36);
-        sizeControl(btnNext, expanded ? 66 : 58, expanded ? 40 : 36);
-        sizeControl(btnShuffle, expanded ? 58 : 52, expanded ? 28 : 26);
-        sizeControl(btnRepeat, expanded ? 58 : 52, expanded ? 28 : 26);
-        updateSecondaryButton(btnShuffle, isShuffle);
-        updateSecondaryButton(btnRepeat, isRepeat);
+        sizeNavZone(btnPrev, expanded ? 88 : 76, expanded ? 56 : 50, expanded ? 72 : 48, true);
+        sizeNavZone(btnNext, expanded ? 88 : 76, expanded ? 56 : 50, expanded ? 72 : 48, false);
 
-        // Con el explorador oculto, tarjetas, barra y controles no pasan de 540dp (centrados), como la web
+        // Con el explorador oculto, tarjetas y barra no pasan de 540dp (centrados), como la web. Los controles
+        // usan todo el ancho: anterior / siguiente responden hasta los bordes del reproductor
         int maxWidth = expanded ? dp(540) : ViewGroup.LayoutParams.MATCH_PARENT;
-        for (int id : new int[]{R.id.layoutAdjacentPreviews, R.id.layoutProgressBlock, R.id.layoutTransportControls}) {
+        for (int id : new int[]{R.id.layoutAdjacentPreviews, R.id.layoutProgressBlock}) {
             View v = findViewById(id);
             if (v == null) continue;
             ViewGroup.LayoutParams lp = v.getLayoutParams();
@@ -1148,28 +1138,127 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Aleatorio / Repetir: ícono blanco (85 %) apagado; cian con un puntito de 6dp debajo encendido,
-     * igual que la web. El puntito es el fondo del botón (se rearma con su tamaño).
+     * Anterior / siguiente: el ancho lo reparte el peso de la fila; aquí el alto y el ícono. El ícono va pegado
+     * hacia el play, a gapDp de él (fitEnd / fitStart del layout); el resto de la zona también responde.
      */
-    private void updateSecondaryButton(ImageButton button, boolean active) {
+    private void sizeNavZone(View button, int heightDp, int iconDp, int gapDp, boolean iconAtEnd) {
         if (button == null) return;
-        button.setSelected(active);
-        button.setColorFilter(active ? Color.parseColor("#38bdf8") : Color.argb(217, 255, 255, 255), PorterDuff.Mode.SRC_IN);
-        int size = button.getLayoutParams() != null && button.getLayoutParams().width > 0
-                ? button.getLayoutParams().width : dp(52);
-        if (!active) {
-            button.setBackgroundResource(R.drawable.bg_ctrl_flat);
-            return;
+        ViewGroup.LayoutParams lp = button.getLayoutParams();
+        int height = dp(heightDp);
+        if (lp.height != height) {
+            lp.height = height;
+            button.setLayoutParams(lp);
         }
-        GradientDrawable dot = new GradientDrawable();
-        dot.setShape(GradientDrawable.OVAL);
-        dot.setColor(Color.parseColor("#38bdf8"));
-        int dotSize = dp(6);
-        int side = (size - dotSize) / 2;
-        int bottom = dp(4);
-        LayerDrawable bg = new LayerDrawable(new Drawable[]{dot});
-        bg.setLayerInset(0, side, size - bottom - dotSize, side, bottom);
-        button.setBackground(bg);
+        int vertical = (height - dp(iconDp)) / 2;
+        int gap = dp(gapDp);
+        button.setPadding(iconAtEnd ? 0 : gap, vertical, iconAtEnd ? gap : 0, vertical);
+    }
+
+    /**
+     * La zona entera se pinta de cian al tocarla: mientras el dedo está encima (presionado) y 180 ms más,
+     * para que un toque rápido también se vea (el presionado de Android dura apenas 64 ms).
+     */
+    private void flashOnTouch(View zone) {
+        if (zone == null) return;
+        final Runnable unflash = () -> zone.setActivated(false);
+        zone.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.removeCallbacks(unflash);
+                v.setActivated(true);
+            } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                v.postDelayed(unflash, 180);
+            }
+            return false; // el clic lo sigue manejando el botón
+        });
+    }
+
+    // ==========================================
+    // MENÚ ☰ DEL REPRODUCTOR (igual que la web)
+    // Aleatorio, repetir canción y ocultar / mostrar el explorador. Cubre el reproductor;
+    // se cierra solo a los 5 s sin tocarlo, tocando fuera o en ✕
+    // ==========================================
+    private static final int PLAYER_MENU_AUTO_CLOSE_MS = 5000;
+    private final Runnable closePlayerMenu = () -> {
+        if (playerMenuPopup != null) playerMenuPopup.dismiss();
+    };
+
+    private void showPlayerMenu() {
+        if (layoutPlayerPanel == null || layoutPlayerPanel.getWidth() == 0) return;
+        if (playerMenuPopup == null) {
+            View content = getLayoutInflater().inflate(R.layout.popup_player_menu, null);
+            // Sin foco: con foco, Android saca la barra de navegación (la app va a pantalla completa) y el menú
+            // se corre hacia arriba. Tocar fuera del reproductor (el explorador) también lo cierra
+            playerMenuPopup = new PopupWindow(content, 0, 0, false);
+            playerMenuPopup.setOutsideTouchable(true);
+            // Sin esto Android lo sube para que no pise la barra de navegación (oculta): quedaba 40 px más arriba
+            playerMenuPopup.setClippingEnabled(false);
+            playerMenuPopup.setAnimationStyle(0); // sin animación (radios con animaciones desactivadas)
+            playerMenuPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            playerMenuPopup.setOnDismissListener(() -> navTapHandler.removeCallbacks(closePlayerMenu));
+
+            content.setOnClickListener(v -> playerMenuPopup.dismiss()); // tocar fuera del panel
+            content.findViewById(R.id.menuClose).setOnClickListener(v -> playerMenuPopup.dismiss());
+            content.findViewById(R.id.menuShuffle).setOnClickListener(v -> {
+                isShuffle = !isShuffle;
+                autoMixer.invalidateNext();
+                refreshPlayerMenu();
+                updateModeIndicators();
+                restartPlayerMenuTimer();
+            });
+            content.findViewById(R.id.menuRepeat).setOnClickListener(v -> {
+                isRepeat = !isRepeat;
+                autoMixer.invalidateNext();
+                refreshPlayerMenu();
+                updateModeIndicators();
+                restartPlayerMenuTimer();
+            });
+            // Es una acción, no un interruptor: cierra el menú
+            content.findViewById(R.id.menuExplorer).setOnClickListener(v -> {
+                playerMenuPopup.dismiss();
+                toggleExplorerVisibility();
+            });
+        }
+        refreshPlayerMenu();
+        // Del tamaño del reproductor y encima de él (con el explorador oculto o visible)
+        int[] loc = new int[2];
+        layoutPlayerPanel.getLocationInWindow(loc);
+        playerMenuPopup.setWidth(layoutPlayerPanel.getWidth());
+        playerMenuPopup.setHeight(layoutPlayerPanel.getHeight());
+        playerMenuPopup.showAtLocation(layoutPlayerPanel, Gravity.NO_GRAVITY, loc[0], loc[1]);
+        restartPlayerMenuTimer();
+    }
+
+    /** Arriba a la izquierda del reproductor: los íconos de repetir y aleatorio, solo si están encendidos. */
+    private void updateModeIndicators() {
+        if (ivModeRepeat != null) ivModeRepeat.setVisibility(isRepeat ? View.VISIBLE : View.GONE);
+        if (ivModeShuffle != null) ivModeShuffle.setVisibility(isShuffle ? View.VISIBLE : View.GONE);
+    }
+
+    private void restartPlayerMenuTimer() {
+        navTapHandler.removeCallbacks(closePlayerMenu);
+        navTapHandler.postDelayed(closePlayerMenu, PLAYER_MENU_AUTO_CLOSE_MS);
+    }
+
+    /** ON / OFF escrito y en cian lo que está encendido; el texto del explorador según esté a la vista. */
+    private void refreshPlayerMenu() {
+        if (playerMenuPopup == null) return;
+        View content = playerMenuPopup.getContentView();
+        refreshPlayerMenuRow(content, R.id.menuShuffle, R.id.menuShuffleIcon, R.id.menuShuffleTitle, R.id.menuShuffleState, isShuffle);
+        refreshPlayerMenuRow(content, R.id.menuRepeat, R.id.menuRepeatIcon, R.id.menuRepeatTitle, R.id.menuRepeatState, isRepeat);
+        boolean explorerVisible = layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE;
+        ((TextView) content.findViewById(R.id.menuExplorerTitle))
+                .setText(explorerVisible ? "Ocultar explorador" : "Mostrar explorador");
+    }
+
+    private void refreshPlayerMenuRow(View content, int rowId, int iconId, int titleId, int stateId, boolean on) {
+        int cyan = Color.parseColor("#38bdf8");
+        content.findViewById(rowId).setBackgroundResource(on ? R.drawable.bg_player_menu_row_on : R.drawable.bg_player_menu_row);
+        ((ImageView) content.findViewById(iconId)).setColorFilter(on ? cyan : Color.WHITE, PorterDuff.Mode.SRC_IN);
+        ((TextView) content.findViewById(titleId)).setTextColor(on ? cyan : getResources().getColor(R.color.text_primary));
+        TextView state = content.findViewById(stateId);
+        state.setText(on ? "ON" : "OFF");
+        state.setBackgroundResource(on ? R.drawable.bg_player_menu_state_on : R.drawable.bg_player_menu_state);
+        state.setTextColor(on ? Color.parseColor("#04121c") : getResources().getColor(R.color.text_secondary));
     }
 
     private int dp(int value) {
@@ -1198,15 +1287,10 @@ public class MainActivity extends Activity {
 
     // ==========================================
     // GESTOS ERGONÓMICOS DEL EXPLORADOR PARA EL CONDUCTOR
-    // Botón de lupa (click conmuta) y zona libre roja lateral (jalar a la izq oculta, a la der muestra; toques ignorados)
+    // Zona libre roja a la izquierda de la carátula (jalar a la izq oculta, a la der muestra; toques ignorados).
+    // También se oculta / muestra desde el menú ☰
     // ==========================================
     private void setupExplorerToggleGestures() {
-        // La lupa está dentro de la zona de gestos: no es clicable por sí misma para que el gesto
-        // de jalar funcione aunque empiece sobre ella; el toque se detecta en la zona.
-        if (btnToggleExplorer != null) {
-            btnToggleExplorer.setClickable(false);
-            btnToggleExplorer.setFocusable(false);
-        }
         // Automix está arriba a la derecha, fuera de la zona de gestos: botón normal
         if (btnAutoMix != null) {
             btnAutoMix.setOnClickListener(v -> toggleAutoMix());
@@ -1227,9 +1311,6 @@ public class MainActivity extends Activity {
                             downX = event.getRawX();
                             downY = event.getRawY();
                             gestureHandled = false;
-                            if (btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
-                                btnToggleExplorer.setPressed(true);
-                            }
                             return true;
 
                         case MotionEvent.ACTION_MOVE:
@@ -1255,7 +1336,6 @@ public class MainActivity extends Activity {
                             break;
 
                         case MotionEvent.ACTION_UP:
-                            if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
                             if (!gestureHandled && layoutExplorerPanel != null) {
                                 float totalDx = event.getRawX() - downX;
                                 float totalDy = event.getRawY() - downY;
@@ -1266,17 +1346,12 @@ public class MainActivity extends Activity {
                                     } else if (totalDx > 35 && layoutExplorerPanel.getVisibility() != View.VISIBLE) {
                                         setExplorerVisible(true);
                                     }
-                                } else if (Math.abs(totalDx) <= 35 && Math.abs(totalDy) <= 35
-                                        && btnToggleExplorer != null && isTouchOnView(btnToggleExplorer, downX, downY)) {
-                                    // Toque simple sobre la lupa: alterna el explorador
-                                    toggleExplorerVisibility();
                                 }
-                                // Un toque simple en el resto de la zona libre NO hace nada (evita toques accidentales).
+                                // Un toque simple en la zona libre NO hace nada (evita toques accidentales).
                             }
                             return true;
 
                         case MotionEvent.ACTION_CANCEL:
-                            if (btnToggleExplorer != null) btnToggleExplorer.setPressed(false);
                             gestureHandled = false;
                             break;
                     }
@@ -1325,13 +1400,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    private boolean isTouchOnView(View view, float rawX, float rawY) {
-        Rect rect = new Rect();
-        if (!view.getGlobalVisibleRect(rect)) return false;
-        rect.inset(-10, -10);
-        return rect.contains((int) rawX, (int) rawY);
-    }
-
     private void toggleExplorerVisibility() {
         hideKeyboard();
         if (layoutExplorerPanel != null) {
@@ -1339,11 +1407,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Muestra u oculta el explorador; igual que la web, la lupa queda resaltada mientras está oculto. */
+    /** Muestra u oculta el explorador (con el gesto de jalar o desde el menú ☰). */
     private void setExplorerVisible(boolean visible) {
         if (layoutExplorerPanel == null) return;
         layoutExplorerPanel.setVisibility(visible ? View.VISIBLE : View.GONE);
-        if (btnToggleExplorer != null) btnToggleExplorer.setSelected(!visible);
         // Controles más grandes con el explorador oculto (como la web); después del nuevo layout
         applyPlayerControlSizes(!visible);
         if (layoutPlayerPanel != null) layoutPlayerPanel.post(() -> applyPlayerControlSizes(!visible));
