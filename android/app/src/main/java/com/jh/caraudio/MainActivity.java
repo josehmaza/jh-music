@@ -285,9 +285,13 @@ public class MainActivity extends Activity {
         setupClock();
         setupVolumeControls();
         setupPlayerControls();
-        // Automix recuerda si quedó activado
-        autoMixer.setEnabled(getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_AUTOMIX, false));
+        // Automix, aleatorio y repetir recuerdan cómo quedaron
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        autoMixer.setEnabled(prefs.getBoolean(PREF_AUTOMIX, false));
         updateAutoMixButton();
+        isShuffle = prefs.getBoolean(PREF_SHUFFLE, false);
+        isRepeat = prefs.getBoolean(PREF_REPEAT, false);
+        updateModeIndicators();
         setupExplorerControls();
         setupProgressUpdater();
 
@@ -490,11 +494,18 @@ public class MainActivity extends Activity {
             @Override
             public void onNodeClick(TreeNode node, int position) {
                 hideKeyboard();
-                // Un toque solo explora (expande/contrae); la carpeta activa de Pistas se elige con [N ▶]
+                long now = SystemClock.uptimeMillis();
+                boolean doubleTap = node == lastTappedTreeNode && now - lastTappedTreeNodeAt <= FOLDER_DOUBLE_TAP_MS;
+                lastTappedTreeNode = doubleTap ? null : node;
+                lastTappedTreeNodeAt = now;
+                // Un toque solo explora (expande/contrae); la carpeta activa de Canciones se elige con [N ▶]
                 if (node.hasChildren()) {
                     node.setExpanded(!node.isExpanded());
                     updateVisibleTreeNodes();
                 }
+                folderTreeAdapter.flash(node); // la fila se enciende: se nota que el toque entró
+                // Dos toques = lo mismo que [N ▶] (el segundo toque deja la carpeta abierta o cerrada como estaba)
+                if (doubleTap && node.getDirectTrackCount() > 0) playFolderFromNode(node);
             }
 
             @Override
@@ -785,6 +796,8 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        // Anterior / siguiente en toda la franja de abajo del reproductor
+        if (handleNavZoneTouch(ev)) return true;
         switch (ev.getActionMasked()) {
             case MotionEvent.ACTION_DOWN: {
                 globalTouchStartX = ev.getRawX();
@@ -1001,8 +1014,8 @@ public class MainActivity extends Activity {
     private void adjustVolumeStep(boolean up) {
         if (audioManager == null) return;
         if (isMuted) setMuted(false);
-        // Incremento / decremento de 5 en 5 exacto a pedido de Hernan
-        int nextPercent = up ? Math.min(100, currentVolPercent + 5) : Math.max(0, currentVolPercent - 5);
+        // Incremento / decremento de 10 en 10 exacto a pedido de Hernan
+        int nextPercent = up ? Math.min(100, currentVolPercent + 10) : Math.max(0, currentVolPercent - 10);
         currentVolPercent = nextPercent;
 
         int max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -1045,8 +1058,6 @@ public class MainActivity extends Activity {
         }
         btnNext.setOnClickListener(v -> handleNextButtonClick());
         btnPrev.setOnClickListener(v -> handlePrevButtonClick());
-        flashOnTouch(btnPrev);
-        flashOnTouch(btnNext);
 
         // Tarjetas flotantes anterior y siguiente
         if (layoutPrevCard != null) layoutPrevCard.setOnClickListener(v -> handlePrevButtonClick());
@@ -1095,17 +1106,21 @@ public class MainActivity extends Activity {
     // ==========================================
 
     /**
-     * Tamaños de los controles como la web: con el explorador abierto play 76dp y anterior / siguiente
-     * de 76dp de alto; con el explorador oculto 88dp. Íconos: 34-38 / 50-56dp. Anterior y siguiente
-     * se ven sin caja, pero responden en todo el ancho que deja el play.
+     * Tamaños de los controles como la web: con el explorador abierto play 88dp (ícono de 40dp) y anterior /
+     * siguiente 74dp (ícono de 50dp); con el explorador oculto 100dp (ícono de 44dp) y 80dp (ícono de 56dp). Del play al ícono quedan 48dp
+     * (72dp con el explorador oculto): 12dp de margen del play + el margen de aquí + 12dp de relleno.
      */
     private void applyPlayerControlSizes(boolean expanded) {
-        sizeControl(btnPlayPause, expanded ? 88 : 76, expanded ? 38 : 34);
-        sizeNavZone(btnPrev, expanded ? 88 : 76, expanded ? 56 : 50, expanded ? 72 : 48, true);
-        sizeNavZone(btnNext, expanded ? 88 : 76, expanded ? 56 : 50, expanded ? 72 : 48, false);
+        sizeControl(btnPlayPause, expanded ? 100 : 88, expanded ? 44 : 40);
+        sizeControl(btnPrev, expanded ? 80 : 74, expanded ? 56 : 50);
+        sizeControl(btnNext, expanded ? 80 : 74, expanded ? 56 : 50);
+        int gap = dp(expanded ? 48 : 24);
+        ((ViewGroup.MarginLayoutParams) btnPrev.getLayoutParams()).setMarginEnd(gap);
+        ((ViewGroup.MarginLayoutParams) btnNext.getLayoutParams()).setMarginStart(gap);
+        btnPrev.requestLayout();
 
         // Con el explorador oculto, tarjetas y barra no pasan de 540dp (centrados), como la web. Los controles
-        // usan todo el ancho: anterior / siguiente responden hasta los bordes del reproductor
+        // quedan centrados en todo el ancho (anterior / siguiente responden hasta los bordes: handleNavZoneTouch)
         int maxWidth = expanded ? dp(540) : ViewGroup.LayoutParams.MATCH_PARENT;
         for (int id : new int[]{R.id.layoutAdjacentPreviews, R.id.layoutProgressBlock}) {
             View v = findViewById(id);
@@ -1137,39 +1152,57 @@ public class MainActivity extends Activity {
         button.setPadding(pad, pad, pad, pad);
     }
 
-    /**
-     * Anterior / siguiente: el ancho lo reparte el peso de la fila; aquí el alto y el ícono. El ícono va pegado
-     * hacia el play, a gapDp de él (fitEnd / fitStart del layout); el resto de la zona también responde.
-     */
-    private void sizeNavZone(View button, int heightDp, int iconDp, int gapDp, boolean iconAtEnd) {
-        if (button == null) return;
-        ViewGroup.LayoutParams lp = button.getLayoutParams();
-        int height = dp(heightDp);
-        if (lp.height != height) {
-            lp.height = height;
-            button.setLayoutParams(lp);
+    // ==========================================
+    // ZONAS DE ANTERIOR / PLAY / SIGUIENTE PARA EL AUTO
+    // Toda la franja de abajo del reproductor (debajo de los tiempos, hasta el borde de la pantalla) responde,
+    // en tres columnas: el play con 24dp de más a cada lado (un toque que falla por poco igual es play),
+    // a su izquierda anterior y a su derecha siguiente. Solo se ilumina el botón, mientras el dedo está
+    // encima y 180 ms más, para que un toque rápido también se vea
+    // ==========================================
+    private static final int PLAY_ZONE_EXTRA_DP = 24;
+    private View navZoneTarget;             // btnPrev / btnPlayPause / btnNext mientras el dedo está en su zona
+    private View navZoneTopView;            // la franja empieza debajo de la barra de progreso y los tiempos
+    private final Runnable navZoneUnflash = () -> {
+        btnPrev.setActivated(false);
+        btnPlayPause.setActivated(false);
+        btnNext.setActivated(false);
+    };
+
+    /** true si el toque es de una zona de anterior / play / siguiente (y ya se manejó aquí). */
+    private boolean handleNavZoneTouch(MotionEvent ev) {
+        int action = ev.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            navZoneTarget = navZoneAt(ev.getRawX(), ev.getRawY());
+            if (navZoneTarget == null) return false;
+            handler.removeCallbacks(navZoneUnflash);
+            navZoneUnflash.run();
+            navZoneTarget.setActivated(true);
+            return true;
         }
-        int vertical = (height - dp(iconDp)) / 2;
-        int gap = dp(gapDp);
-        button.setPadding(iconAtEnd ? 0 : gap, vertical, iconAtEnd ? gap : 0, vertical);
+        if (navZoneTarget == null) return false;
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            View target = navZoneTarget;
+            navZoneTarget = null;
+            handler.postDelayed(navZoneUnflash, 180);
+            // El clic pasa por el botón: un toque cambia de canción, dos seguidos = ±10 s; en el play, play / pausa
+            if (action == MotionEvent.ACTION_UP) target.performClick();
+        }
+        return true;
     }
 
-    /**
-     * La zona entera se pinta de cian al tocarla: mientras el dedo está encima (presionado) y 180 ms más,
-     * para que un toque rápido también se vea (el presionado de Android dura apenas 64 ms).
-     */
-    private void flashOnTouch(View zone) {
-        if (zone == null) return;
-        final Runnable unflash = () -> zone.setActivated(false);
-        zone.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                v.removeCallbacks(unflash);
-                v.setActivated(true);
-            } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                v.postDelayed(unflash, 180);
-            }
-            return false; // el clic lo sigue manejando el botón
-        });
+    private View navZoneAt(float x, float y) {
+        if (navZoneTopView == null) navZoneTopView = findViewById(R.id.layoutProgressBlock);
+        if (layoutPlayerPanel == null || navZoneTopView == null || btnPlayPause == null) return null;
+        Rect panel = new Rect();
+        Rect top = new Rect();
+        Rect play = new Rect();
+        if (!layoutPlayerPanel.getGlobalVisibleRect(panel) || !navZoneTopView.getGlobalVisibleRect(top)
+                || !btnPlayPause.getGlobalVisibleRect(play)) return null;
+        if (!panel.contains((int) x, (int) y) || y < top.bottom) return null;
+        int extra = dp(PLAY_ZONE_EXTRA_DP);
+        if (x < play.left - extra) return btnPrev;
+        if (x > play.right + extra) return btnNext;
+        return btnPlayPause;
     }
 
     // ==========================================
@@ -1200,6 +1233,7 @@ public class MainActivity extends Activity {
             content.findViewById(R.id.menuClose).setOnClickListener(v -> playerMenuPopup.dismiss());
             content.findViewById(R.id.menuShuffle).setOnClickListener(v -> {
                 isShuffle = !isShuffle;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_SHUFFLE, isShuffle).apply();
                 autoMixer.invalidateNext();
                 refreshPlayerMenu();
                 updateModeIndicators();
@@ -1207,6 +1241,7 @@ public class MainActivity extends Activity {
             });
             content.findViewById(R.id.menuRepeat).setOnClickListener(v -> {
                 isRepeat = !isRepeat;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_REPEAT, isRepeat).apply();
                 autoMixer.invalidateNext();
                 refreshPlayerMenu();
                 updateModeIndicators();
@@ -1689,7 +1724,7 @@ public class MainActivity extends Activity {
     private void refreshTabLabels() {
         if (tabFolders == null) return;
         setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Librería", currentTab == 0);
-        setTabLabel(tabTracks, R.drawable.ic_tab_list, "Canciones (" + currentPlaylist.size() + ")", currentTab == 1);
+        setTabLabel(tabTracks, R.drawable.ic_tab_music, "Canciones (" + currentPlaylist.size() + ")", currentTab == 1);
         setTabLabel(tabMyMix, R.drawable.ic_tab_mymix, "Mi Mix (" + (myMixLoaded ? mixTracks().size() : 0) + ")", currentTab == 2);
         addMixLiveDot();
     }
@@ -2270,6 +2305,11 @@ public class MainActivity extends Activity {
     private void updateTracksTabCount() {
         refreshTabLabels();
     }
+
+    // Dos toques seguidos en la fila de una carpeta = botón [N ▶]
+    private static final int FOLDER_DOUBLE_TAP_MS = 350;
+    private TreeNode lastTappedTreeNode;
+    private long lastTappedTreeNodeAt;
 
     private void playFolderFromNode(TreeNode node) {
         if (node == null) return;
@@ -2877,38 +2917,9 @@ public class MainActivity extends Activity {
             currentTrackIndex = indexInPlaylist;
         } else if (track.getFolder() != null && !track.getFolder().isEmpty()) {
             // Canción de otra carpeta (p. ej. desde una búsqueda): su carpeta pasa a ser la activa
-            currentSelectedFolder = track.getFolder();
-            currentSelectedFolderUsbSource = track.getUsbSource();
-            if (currentSelectedFolderUsbSource == null || currentSelectedFolderUsbSource.isEmpty()) {
-                String p = track.getFilePath() != null ? track.getFilePath().toLowerCase() : "";
-                if (p.contains("udisk2") || p.contains("usb2")) {
-                    currentSelectedFolderUsbSource = "USB 2";
-                } else if (p.contains("udisk1") || p.contains("usb1") || p.contains("usb0")) {
-                    currentSelectedFolderUsbSource = "USB 1";
-                }
-            }
-            updateFilterChipsVisibility();
-            currentPlaylist.clear();
-            for (Track t : allTracks) {
-                if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
-                    if (isTrackFromUsb(t, currentSelectedFolderUsbSource)) {
-                        currentPlaylist.add(t);
-                    }
-                }
-            }
-            int folderIdx = -1;
-            for (int i = 0; i < currentPlaylist.size(); i++) {
-                if (currentPlaylist.get(i).getFilePath().equals(track.getFilePath())) {
-                    folderIdx = i;
-                    break;
-                }
-            }
+            int folderIdx = selectFolderOf(track);
             setPlayQueueFromFolder();
             currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
-            updateTracksTabCount();
-            if (folderTreeAdapter != null) {
-                folderTreeAdapter.setSelectedFolder(currentSelectedFolder);
-            }
         } else {
             playQueue.clear();
             playQueue.addAll(displayedTracks);
@@ -2918,6 +2929,106 @@ public class MainActivity extends Activity {
         if (!startPlayback(track)) {
             Toast.makeText(this, "Error al reproducir: " + track.getTitle(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * La carpeta de esta canción pasa a ser la activa (la que muestra Canciones).
+     * Devuelve dónde quedó la canción en esa carpeta, o -1.
+     */
+    private int selectFolderOf(Track track) {
+        currentSelectedFolder = track.getFolder();
+        currentSelectedFolderUsbSource = track.getUsbSource();
+        if (currentSelectedFolderUsbSource == null || currentSelectedFolderUsbSource.isEmpty()) {
+            String p = track.getFilePath() != null ? track.getFilePath().toLowerCase() : "";
+            if (p.contains("udisk2") || p.contains("usb2")) {
+                currentSelectedFolderUsbSource = "USB 2";
+            } else if (p.contains("udisk1") || p.contains("usb1") || p.contains("usb0")) {
+                currentSelectedFolderUsbSource = "USB 1";
+            }
+        }
+        updateFilterChipsVisibility();
+        currentPlaylist.clear();
+        for (Track t : allTracks) {
+            if (t.getFolder() != null && t.getFolder().equalsIgnoreCase(currentSelectedFolder)) {
+                if (isTrackFromUsb(t, currentSelectedFolderUsbSource)) {
+                    currentPlaylist.add(t);
+                }
+            }
+        }
+        int folderIdx = -1;
+        for (int i = 0; i < currentPlaylist.size(); i++) {
+            if (currentPlaylist.get(i).getFilePath().equals(track.getFilePath())) {
+                folderIdx = i;
+                break;
+            }
+        }
+        updateTracksTabCount();
+        if (folderTreeAdapter != null) {
+            folderTreeAdapter.setSelectedFolder(currentSelectedFolder);
+        }
+        return folderIdx;
+    }
+
+    // ==========================================
+    // ÚLTIMA CANCIÓN: al volver a encender el auto, la app abre en la canción que sonaba, en pausa
+    // desde el inicio y con su lista (su carpeta o Mi Mix). Se guarda solo al empezar cada canción
+    // (no el segundo donde iba: no hace falta escribir mientras suena)
+    // ==========================================
+    private static final String PREF_LAST_PATH = "last_track_path";
+    private static final String PREF_LAST_FROM_MIX = "last_track_from_mix";
+    private static final String PREF_SHUFFLE = "shuffle_on";
+    private static final String PREF_REPEAT = "repeat_on";
+    private boolean lastPlaybackRestored = false;
+
+    private void saveLastPlayback(Track track) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putString(PREF_LAST_PATH, track.getFilePath())
+                .putBoolean(PREF_LAST_FROM_MIX, playingFromMix)
+                .apply();
+    }
+
+    /**
+     * Tras escanear los pendrives: deja cargada en pausa (desde el inicio) la última canción que sonaba. Se intenta en cada
+     * escaneo hasta lograrlo (al encender el auto el pendrive puede montarse después de abrir la app),
+     * salvo que ya se haya puesto otra canción. Devuelve false si su pendrive no está o no se pudo abrir.
+     */
+    private boolean restoreLastPlayback(Map<String, Track> tracksByPath) {
+        if (lastPlaybackRestored || mediaPlayer != null || currentTrackIndex != -1) return false;
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        Track track = tracksByPath.get(prefs.getString(PREF_LAST_PATH, ""));
+        if (track == null) return false;
+
+        List<Track> mix = mixTracks();
+        if (prefs.getBoolean(PREF_LAST_FROM_MIX, false) && mix.contains(track)) {
+            playingFromMix = true;
+            playQueue.clear();
+            playQueue.addAll(mix);
+            currentTrackIndex = mix.indexOf(track);
+        } else {
+            playingFromMix = false;
+            int folderIdx = selectFolderOf(track);
+            setPlayQueueFromFolder();
+            currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
+        }
+
+        autoMixer.onManualPlayback();
+        try {
+            mediaPlayer = createPlayer();
+            mediaPlayer.setDataSource(track.getFilePath());
+            mediaPlayer.prepare();
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (mediaPlayer != null) releasePlayerQuietly(mediaPlayer);
+            mediaPlayer = null;
+            playingFromMix = false;
+            playQueue.clear();
+            currentTrackIndex = -1;
+            return false;
+        }
+        isPlaying = false;
+        lastPlaybackRestored = true;
+        onTrackStarted(track);
+        return true;
     }
 
     // ==========================================
@@ -3030,6 +3141,7 @@ public class MainActivity extends Activity {
         refreshTabLabels(); // el punto de Mi Mix aparece o se va según lo que suena
         // En la pestaña Mi Mix: marcas ✓, resumen y la que suena fuera de la lista
         if (currentTab == 2 && etSearch != null && etSearch.getText().toString().trim().isEmpty()) showMixTab();
+        saveLastPlayback(track);
     }
 
     /** Pone en pantalla los datos de la canción que suena. */
@@ -4423,6 +4535,9 @@ public class MainActivity extends Activity {
                 tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
                 // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una)
                 updateTracksTabCount();
+
+                // La última canción que sonaba queda cargada en pausa (con su carpeta como la activa)
+                restoreLastPlayback(tracksByPath);
 
                 filterByTab();
 

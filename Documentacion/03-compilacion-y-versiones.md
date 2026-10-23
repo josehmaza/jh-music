@@ -50,11 +50,11 @@ Hay que cambiar tres lugares:
 
 1. `android/app/build.gradle`:
    ```groovy
-   versionCode 30        // entero: +1 en cada versión
-   versionName "2.8.0"   // lo que se ve y el nombre del APK
+   versionCode 31        // entero: +1 en cada versión
+   versionName "2.9.0"   // lo que se ve y el nombre del APK
    ```
-2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.8.0"` de la barra superior.
-3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.8.0</span>`.
+2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.9.0"` de la barra superior.
+3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.9.0</span>`.
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 

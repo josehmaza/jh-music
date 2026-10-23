@@ -220,7 +220,7 @@ La siguiente precargada se descarta con cualquier inicio manual, al cambiar Alea
 
 ## 7. Volumen y mute
 
-Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 5 %.
+Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 10 %.
 
 - `updateVolumeUI()` consulta el mute real del sistema (`isStreamMute`, Android 6+). En mute `getStreamVolume` devuelve 0, por eso en ese estado se muestra `MUTE` y no se pisa el último porcentaje.
 - `setMuted()` aplica `ADJUST_MUTE` / `ADJUST_UNMUTE` y luego vuelve a leer el volumen real.
@@ -264,8 +264,15 @@ La maqueta es la referencia de diseño: la app nativa debe verse igual. Muestra 
 
 `demo-animaciones.html` y `demo-mezcla.html` son muestrarios de diseño con variantes de la animación de la carátula y de las transiciones de Automix. Sirvieron para elegir el diseño y no forman parte de la app.
 
+## Última canción al abrir (2.9.0)
+
+- En `SharedPreferences` (`jh_music`): `last_track_path`, `last_track_from_mix`, `shuffle_on` y `repeat_on`. No se guarda el segundo donde iba: así no se escribe nada mientras suena.
+- `saveLastPlayback(track)` guarda solo al final de `onTrackStarted()` (una vez por canción).
+- `restoreLastPlayback()` corre al final de cada escaneo (antes de `filterByTab()`), solo si todavía no se restauró y no hay nada cargado (`mediaPlayer == null`, `currentTrackIndex == -1`). Arma la cola (Mi Mix si `last_track_from_mix` y la canción sigue en Mi Mix; si no, su carpeta con `selectFolderOf()`), prepara el `MediaPlayer` sin `start()` (queda en 00:00) y llama a `onTrackStarted()`. Si no se restaura, queda la vista previa de la primera canción como antes.
+
 ## Menú ☰ del reproductor (2.8.0)
 
 - **App:** `btnPlayerMenu` abre `showPlayerMenu()`, un `PopupWindow` con `layout/popup_player_menu.xml` del tamaño de `layoutPlayerPanel` y encima de él. Es **sin foco** (con foco Android muestra la barra de navegación, porque la app va a pantalla completa) y con `setClippingEnabled(false)` (si no, Android lo sube para no pisar la barra de navegación oculta). `refreshPlayerMenu()` pinta ON / OFF de aleatorio y repetir y el texto Ocultar / Mostrar explorador. Se cierra a los 5 s con `closePlayerMenu` en `navTapHandler`.
-- **Anterior / Siguiente:** `ImageButton` con peso 1 y fondo `bg_ctrl_zone` (transparente; cian tenue con `state_pressed` y `state_activated`). `flashOnTouch()` deja `activated` 180 ms después de soltar, porque el presionado de Android dura apenas 64 ms en un toque rápido. `sizeNavZone()` cambia el alto (76 / 88 dp) y el relleno: el ícono (50 / 56 dp) queda pegado hacia el play, a 48 / 72 dp (`scaleType` `fitEnd` / `fitStart`). `layoutTransportControls` no tiene el tope de 540 dp de las tarjetas y la barra: usa todo el ancho del reproductor (en la web, `.now-playing-card` y `.playback-controls` sin `max-width` con el explorador oculto).
+- **Anterior / Siguiente (app):** `ImageButton` de 74 / 80 dp (ícono de 50 / 56 dp) con fondo `bg_ctrl_icon` (círculo cian tenue con `state_pressed` y `state_activated`); `applyPlayerControlSizes()` los separa 24 / 48 dp del play. La zona de toque la maneja `handleNavZoneTouch()` al inicio de `dispatchTouchEvent()`: un toque que empieza dentro de `layoutPlayerPanel` y debajo de `layoutProgressBlock` se reparte en tres columnas: `btnPlayPause` con 24 dp de más a cada lado (`PLAY_ZONE_EXTRA_DP`), `btnPrev` a su izquierda y `btnNext` a su derecha. El play mide 88 / 100 dp (ícono de 40 / 44 dp). Deja el botón `activated` hasta 180 ms después de soltar (el presionado de Android dura apenas 64 ms) y llama a `performClick()`, así el doble toque ±10 s sigue igual.
+- **Anterior / Siguiente (web):** `.playback-controls` y `.now-playing-card` sin `max-width` con el explorador oculto, y cada `.btn-nav` con `flex: 1`; al tocar, el `svg` muestra un círculo cian (`box-shadow`).
 - **Web:** `#btnPlayerMenu`, `#playerMenu` y `#playerMenuBackdrop` dentro de `.player-panel`; `setPlayerMenuOpen()` y `refreshPlayerMenu()` en `app.js`. `isInsideExplorerDragZone()` va del borde izquierdo del panel hasta la carátula.

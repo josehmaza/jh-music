@@ -1451,8 +1451,8 @@ function initApp() {
     });
   }
 
-  btnVolDown.addEventListener('click', () => setVolume(currentVolume - 5));
-  btnVolUp.addEventListener('click', () => setVolume(currentVolume + 5));
+  btnVolDown.addEventListener('click', () => setVolume(currentVolume - 10));
+  btnVolUp.addEventListener('click', () => setVolume(currentVolume + 10));
   btnMute.addEventListener('click', toggleMute);
 
   // =================== BOTONES DE NAVEGACIÓN Y CONTROL ===================
@@ -1576,7 +1576,7 @@ function initApp() {
   btnNext.addEventListener('click', handleNextTouch);
   btnPrev.addEventListener('click', handlePrevTouch);
 
-  // La zona entera se pinta de cian al tocarla (en pantallas táctiles :active no siempre se ve)
+  // Al tocar la zona se ilumina el botón (en pantallas táctiles :active no siempre se ve)
   [btnPrev, btnNext].forEach(btn => {
     btn.addEventListener('pointerdown', () => {
       btn.classList.add('pressed');
@@ -2564,6 +2564,7 @@ function initApp() {
         const nodeEl = document.createElement('div');
         nodeEl.className = `tree-node-item ${isPlayingFolder ? 'is-playing-folder' : (isActive ? 'is-active-folder' : '')}`;
         nodeEl.style.paddingLeft = `${indentPx}px`;
+        nodeEl.dataset.nodeId = node.id;
 
         const isUsbRoot = !!node.isUsbRoot;
 
@@ -2640,6 +2641,10 @@ function initApp() {
         // Click en la fila: expandir / contraer y preparar pistas
         nodeEl.addEventListener('click', () => {
           searchInput.blur();
+          // Dos toques seguidos = lo mismo que [N ▶] (el segundo toque deja la carpeta abierta o cerrada como estaba)
+          const now = Date.now();
+          const doubleTap = lastTreeTap.id === node.id && now - lastTreeTap.at <= FOLDER_DOUBLE_TAP_MS;
+          lastTreeTap = doubleTap ? { id: null, at: 0 } : { id: node.id, at: now };
           if (hasChildren) {
             if (expandedTreeNodes.has(node.id)) {
               expandedTreeNodes.delete(node.id);
@@ -2667,6 +2672,13 @@ function initApp() {
           }
 
           renderList();
+          // La fila se enciende un instante: se nota que el toque entró (como en anterior / siguiente)
+          const tappedEl = trackListContainer.querySelector(`[data-node-id="${CSS.escape(String(node.id))}"]`);
+          if (tappedEl) {
+            tappedEl.classList.add('is-tapped');
+            setTimeout(() => tappedEl.classList.remove('is-tapped'), 250);
+          }
+          if (doubleTap && hasDirectMusic) playFolderTree(node);
         });
 
         trackListContainer.appendChild(nodeEl);
@@ -3364,6 +3376,10 @@ function initApp() {
     return folderTracks;
   }
 
+  // Dos toques seguidos en la fila de una carpeta = botón [N ▶] (igual que la app)
+  const FOLDER_DOUBLE_TAP_MS = 350;
+  let lastTreeTap = { id: null, at: 0 };
+
   function playFolderTree(node) {
     const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;
     const folderTracks = tracksOfFolderNode(node);
@@ -3534,10 +3550,10 @@ function initApp() {
       prevTrack();
     } else if (e.code === 'ArrowUp') {
       e.preventDefault();
-      setVolume(currentVolume + 5);
+      setVolume(currentVolume + 10);
     } else if (e.code === 'ArrowDown') {
       e.preventDefault();
-      setVolume(currentVolume - 5);
+      setVolume(currentVolume - 10);
     } else if (e.key === 'm' || e.key === 'M') {
       toggleMute();
     }

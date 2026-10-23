@@ -3,6 +3,8 @@ package com.jh.caraudio;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +33,15 @@ public class FolderTreeAdapter extends BaseAdapter {
     private Track currentPlayingTrack;
     private String selectedFolder;
 
+    // Destello al tocar una fila (para saber que el toque entró, como en anterior / siguiente)
+    private static final int FLASH_MS = 250;
+    private TreeNode flashNode;
+    private final Handler flashHandler = new Handler(Looper.getMainLooper());
+    private final Runnable clearFlash = () -> {
+        flashNode = null;
+        notifyDataSetChanged();
+    };
+
     public FolderTreeAdapter(Context context, List<TreeNode> visibleNodes, OnTreeNodeClickListener listener) {
         this.context = context;
         this.visibleNodes = visibleNodes != null ? visibleNodes : new ArrayList<>();
@@ -50,6 +61,14 @@ public class FolderTreeAdapter extends BaseAdapter {
     public void setSelectedFolder(String folder) {
         this.selectedFolder = folder;
         notifyDataSetChanged();
+    }
+
+    /** La fila de esta carpeta se enciende en cian un instante. */
+    public void flash(TreeNode node) {
+        flashNode = node;
+        flashHandler.removeCallbacks(clearFlash);
+        notifyDataSetChanged();
+        flashHandler.postDelayed(clearFlash, FLASH_MS);
     }
 
     @Override
@@ -173,7 +192,9 @@ public class FolderTreeAdapter extends BaseAdapter {
             }
             boolean isSelected = (selectedFolder != null && selectedFolder.equalsIgnoreCase(node.getName()));
 
-            if (isPlayingFolder) {
+            if (node == flashNode) {
+                holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_flash);
+            } else if (isPlayingFolder) {
                 holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_playing);
             } else if (isSelected) {
                 holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_playing);

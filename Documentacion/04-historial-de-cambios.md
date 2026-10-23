@@ -2,7 +2,19 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## 2.8.0 — 2026-10-23, pendiente de probar en el auto
+## 2.9.0 — 2026-10-23, pendiente de probar en el auto
+
+- **Abre en la última canción:** al volver a encender el auto, la app deja cargada en pausa (desde el inicio) la canción que sonaba, con su lista (su carpeta, que queda como la activa, o Mi Mix). Si el pendrive se monta después de abrir la app, se carga al aparecer. Si la canción ya no está, abre como siempre.
+- **Se recuerdan Aleatorio y Repetir canción** (Automix ya se recordaba).
+- **Anterior y Siguiente responden en toda la franja de abajo del reproductor**, desde debajo de los tiempos hasta el borde de la pantalla (a cada lado del play), también por debajo y a los costados de los botones. Al tocar se ilumina solo el botón (un círculo cian), no toda la zona.
+- **Play / pausa más grande** (88 dp; 100 dp con el explorador oculto; antes 76 / 88) y con 24 dp de tolerancia a cada lado: un toque que falla por poco ya no cambia de canción. Se borra `bg_ctrl_zone` y entra `bg_ctrl_icon`.
+- **Doble toque en una carpeta** de Librería = lo mismo que su botón `[N ▶]` (la abre en Canciones). Un toque sigue abriendo o cerrando sus subcarpetas; el segundo la deja como estaba. Cada toque enciende la fila en cian 0,25 s (`bg_tree_node_flash`), para saber que el toque entró.
+- **Carpetas de Librería más grandes para leer y tocar manejando:** nombre de 21 sp (antes 16), filas de 72 dp (antes 58) con 8 dp entre una y otra (antes 4), ícono de 44 dp, `+` de 52 × 48 dp y `[N ▶]` de 46 dp de alto con el número en 19 sp. Igual en la maqueta web.
+- **Volumen de 10 en 10:** los botones `+` / `−` (y las flechas en la maqueta web) suben o bajan 10 % en vez de 5 %.
+- **Pestaña Canciones con una nota musical** en lugar de las tres rayas, que parecían un menú o una lista. `ic_tab_list` pasa a ser `ic_tab_music`.
+- Solo en la app: la maqueta web no guarda nada entre aperturas.
+
+## 2.8.0 — 2026-10-23 (`c94a28d`), pendiente de probar en el auto
 
 Incluye los cambios que estaban sin publicar para la 2.7.1 (más abajo).
 

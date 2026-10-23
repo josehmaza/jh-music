@@ -53,7 +53,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.8.0"
+                android:text="v2.9.0"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -1200,51 +1200,47 @@
                     android:gravity="center"
                     android:layout_marginTop="4dp">
 
-                    <!-- Para el auto (igual que la web): anterior y siguiente ocupan todo el ancho que deja el play,
-                         aunque se ven como íconos sueltos (sin caja), pegados hacia el play. Aleatorio y repetir
-                         están en el menú ☰. La fila usa todo el ancho (también con el explorador oculto).
-                         Alto 76dp con el explorador abierto; con el explorador oculto el código los agranda a 88dp -->
+                    <!-- Íconos blancos sin caja; al tocar se ilumina un círculo cian detrás del ícono. Responden en toda
+                         la franja de abajo del reproductor, a cada lado del play, hasta el borde de la pantalla
+                         (handleNavZoneTouch). Aleatorio y repetir están en el menú ☰.
+                         Con el explorador oculto el código los agranda (80dp, ícono de 56dp) y los separa más -->
 
                     <!-- Pista Anterior -->
                     <ImageButton
                         android:id="@+id/btnPrev"
-                        android:layout_width="0dp"
-                        android:layout_height="76dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_ctrl_zone"
+                        android:layout_width="74dp"
+                        android:layout_height="74dp"
+                        android:layout_marginEnd="24dp"
+                        android:background="@drawable/bg_ctrl_icon"
                         android:src="@drawable/ic_ctrl_prev"
-                        android:scaleType="fitEnd"
-                        android:paddingTop="13dp"
-                        android:paddingBottom="13dp"
-                        android:paddingEnd="48dp"
+                        android:scaleType="fitCenter"
+                        android:padding="12dp"
                         android:contentDescription="Anterior" />
 
-                    <!-- Play / Pausa: círculo blanco de 76dp con el ícono oscuro -->
+                    <!-- Play / Pausa: círculo blanco de 88dp con el ícono oscuro (100dp con el explorador oculto) -->
                     <ImageButton
                         android:id="@+id/btnPlayPause"
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
                         android:layout_marginStart="12dp"
                         android:layout_marginEnd="12dp"
                         android:background="@drawable/bg_ctrl_play"
                         android:elevation="6dp"
                         android:src="@drawable/ic_ctrl_play"
                         android:scaleType="fitCenter"
-                        android:padding="21dp"
+                        android:padding="24dp"
                         android:contentDescription="Play/Pause" />
 
                     <!-- Siguiente Pista -->
                     <ImageButton
                         android:id="@+id/btnNext"
-                        android:layout_width="0dp"
-                        android:layout_height="76dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_ctrl_zone"
+                        android:layout_width="74dp"
+                        android:layout_height="74dp"
+                        android:layout_marginStart="24dp"
+                        android:background="@drawable/bg_ctrl_icon"
                         android:src="@drawable/ic_ctrl_next"
-                        android:scaleType="fitStart"
-                        android:paddingTop="13dp"
-                        android:paddingBottom="13dp"
-                        android:paddingStart="48dp"
+                        android:scaleType="fitCenter"
+                        android:padding="12dp"
                         android:contentDescription="Siguiente" />
                 </LinearLayout>
 

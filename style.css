@@ -616,6 +616,12 @@ body {
   height: 26px;
 }
 
+/* Fila de carpeta recién tocada: se enciende en cian un instante (más fuerte que la carpeta activa) */
+.tree-node-item.is-tapped {
+  background: rgba(56, 189, 248, 0.35) !important;
+  border-color: #38bdf8 !important;
+}
+
 /* Menú ☰ arriba y Automix debajo */
 .player-top-right {
   display: flex;
@@ -1857,12 +1863,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 62px;
+  min-height: 76px;
   background: #141822;
   border: 1px solid #232b3a;
   border-radius: 12px;
   padding: 8px 12px;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.18s ease;
   user-select: none;
@@ -1905,8 +1911,8 @@ body {
 }
 
 .tree-toggle-arrow {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1926,8 +1932,8 @@ body {
 }
 
 .tree-node-icon {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 9px;
   background: rgba(56, 189, 248, 0.12);
   border: 1.5px solid rgba(56, 189, 248, 0.35);
@@ -1953,8 +1959,9 @@ body {
   margin-right: 12px;
 }
 
+/* Nombre de carpeta grande para leerlo manejando */
 .tree-node-title {
-  font-size: 1.08rem;
+  font-size: 1.32rem;
   font-weight: 700;
   color: #f8fafc;
   white-space: nowrap;
@@ -1985,8 +1992,9 @@ body {
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
   border: 1.5px solid #38bdf8;
   color: #ffffff;
-  padding: 6px 14px;
-  min-width: 72px;
+  min-height: 46px;
+  padding: 6px 16px;
+  min-width: 80px;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -2007,8 +2015,8 @@ body {
 }
 
 .btn-folder-play .play-circle {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   background: #ffffff;
   border-radius: 50%;
   display: flex;
@@ -2018,14 +2026,14 @@ body {
 }
 
 .btn-folder-play .play-circle svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   fill: #0369a1;
   margin-left: 2px;
 }
 
 .btn-folder-play .track-count-num {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 800;
   letter-spacing: 0.5px;
 }
@@ -2329,8 +2337,8 @@ body {
 
 /* + de una carpeta, al lado de [N ▶] */
 .btn-folder-addmix {
-  width: 38px;
-  height: 36px;
+  width: 52px;
+  height: 48px;
   border-radius: 10px;
   background: #151922;
   border: 1.5px solid #38bdf8;
@@ -2345,8 +2353,8 @@ body {
 }
 
 .btn-folder-addmix svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
 }
 
 .btn-folder-addmix:active {
@@ -2664,7 +2672,7 @@ body {
 }
 
 /* Anterior / siguiente para el auto: se ven como íconos blancos sueltos (sin caja), pero cada uno
-   responde en todo el ancho que deja el play. Al tocar, la zona entera se ilumina en cian un instante */
+   responde en todo el ancho que deja el play */
 .btn-nav,
 .btn-ctrl.btn-nav {
   flex: 1;
@@ -2706,10 +2714,18 @@ body {
   padding-left: 72px;
 }
 
+/* Al tocar se ilumina solo el botón: un círculo cian detrás del ícono (no toda la zona) */
 .btn-ctrl.btn-nav:active,
 .btn-ctrl.btn-nav.pressed {
-  background: rgba(56, 189, 248, 0.18);
+  background: transparent;
   transform: none;
+}
+
+.btn-ctrl.btn-nav:active svg,
+.btn-ctrl.btn-nav.pressed svg {
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 0 0 12px rgba(56, 189, 248, 0.18);
 }
 
 .btn-play-main {
@@ -2741,8 +2757,13 @@ body {
 
 /* Reproductor a pantalla completa: misma escala, un poco más grande */
 .dashboard-grid.is-expanded .btn-play-main {
-  width: 88px;
-  height: 88px;
+  width: 100px;
+  height: 100px;
+}
+
+.dashboard-grid.is-expanded .btn-play-main svg {
+  width: 44px;
+  height: 44px;
 }
 
 .dashboard-grid.is-expanded .btn-nav {
@@ -2783,13 +2804,13 @@ body {
 }
 
 .dashboard-grid:not(.is-expanded) .btn-play-main {
-  width: 76px;
-  height: 76px;
+  width: 88px;
+  height: 88px;
 }
 
 .dashboard-grid:not(.is-expanded) .btn-play-main svg {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
 }
 
 .dashboard-grid:not(.is-expanded) .btn-nav {

@@ -31,8 +31,8 @@ El **fondo de toda la app** (también el explorador) toma el **color de la cará
 
 Muestra los pendrives conectados como un árbol: `USB 1 (udisk1)`, `USB 2 (udisk2)` y sus carpetas.
 
-- **Tocar una carpeta** solo la expande o contrae para explorar. No cambia lo que está en Pistas.
-- **Botón `[N ▶]`** de una carpeta: abre esa carpeta en la pestaña Pistas. `N` es la cantidad de canciones que están **directamente** en esa carpeta (sin contar subcarpetas), y es exactamente lo que se abre.
+- **Tocar una carpeta** solo la expande o contrae para explorar. No cambia lo que está en Canciones.
+- **Botón `[N ▶]`** de una carpeta, o **dos toques seguidos en su fila**: abre esa carpeta en la pestaña Canciones. `N` es la cantidad de canciones que están **directamente** en esa carpeta (sin contar subcarpetas), y es exactamente lo que se abre.
 - **Botón `+`** de una carpeta (al lado de `[N ▶]`): agrega esas mismas canciones a **Mi Mix**.
 - **Botón contraer todo** (junto a las pestañas): cierra todas las carpetas del árbol.
 - Solo aparecen los pendrives que están conectados. Si quitas uno, desaparece solo.
@@ -151,7 +151,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 ### Controles del reproductor
 
-Pensados para tocar manejando: **play/pausa en un círculo blanco grande** al centro y, a los lados, **Anterior y Siguiente** como íconos blancos grandes, sin caja. Aunque se ve solo el ícono, **cada uno responde en todo el ancho que queda a su lado del play, hasta el borde del reproductor** (también con el explorador oculto): no hace falta atinarle al ícono. Al tocar, esa zona entera se ilumina en cian un instante para confirmar el toque. Con el explorador oculto, los controles se agrandan. La barra de progreso es una línea fina blanca con un punto blanco.
+Pensados para tocar manejando: **play/pausa en un círculo blanco grande** al centro y, a los lados, **Anterior y Siguiente** como íconos blancos grandes, sin caja. Aunque se ve solo el ícono, **responden en toda la franja de abajo del reproductor**, desde debajo de los tiempos hasta el borde de la pantalla: a la izquierda del play es Anterior y a la derecha Siguiente. No hace falta atinarle al ícono. El play (88; 100 con el explorador oculto) responde también un poco a sus costados, para que un toque que falla por poco no cambie de canción. Al tocar, se ilumina un círculo cian detrás del botón para confirmar el toque. Con el explorador oculto, los controles se agrandan. La barra de progreso es una línea fina blanca con un punto blanco.
 
 | Control | Función |
 |---|---|
@@ -223,7 +223,7 @@ Abrir otra carpeta mientras suena música **no** cambia lo que viene después, h
 
 ## 5. Volumen
 
-- **`+` / `−`:** sube o baja de 5 en 5 %.
+- **`+` / `−`:** sube o baja de 10 en 10 %.
 - **Barra vertical:** arrastrar para fijar el volumen.
 - **MUTE:** silencia o restaura. En silencio se muestra `MUTE`; al quitarlo vuelve el porcentaje real.
 - Si ajustas el volumen estando en silencio, primero se quita el silencio.
@@ -237,7 +237,7 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 |---|---|
 | Play/Pausa | Reproducir / pausar |
 | Siguiente / Anterior | Cambiar de canción |
-| Volumen + / − | ±5 % |
+| Volumen + / − | ±10 % |
 | Mute | Silenciar / restaurar |
 
 ## 7. Mostrar u ocultar el explorador
@@ -262,6 +262,14 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 - Si quitas el pendrive de la canción que suena, la reproducción se detiene y la carpeta activa se limpia.
 - Se recorren hasta 6 niveles de subcarpetas. Se ignoran carpetas ocultas, `Android`, `LOST.DIR` y `System Volume Information`.
 - Si el archivo se llama `Artista - Título.mp3`, la app separa artista y título por el guion.
+
+### Al volver a encender el auto
+
+- La app abre en la **última canción que sonaba, en pausa** y desde el inicio. Toca ▶ para escucharla.
+- Anterior y Siguiente siguen con **la misma lista**: su carpeta (que queda como la activa en Canciones) o Mi Mix, si sonaba Mi Mix.
+- Si el pendrive se monta un poco después de abrir la app, la canción se carga apenas aparece.
+- Si esa canción ya no está (otro pendrive, o se borró), la app abre como siempre.
+- También se recuerdan **Aleatorio**, **Repetir canción** y **Automix**.
 
 ## 10. Duración de las canciones
 
