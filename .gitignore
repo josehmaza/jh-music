@@ -9,3 +9,6 @@ local.properties
 .idea/
 .DS_Store
 Thumbs.db
+
+# Fotos tomadas del radio: solo en la PC (pesan y muestran el auto)
+capturas/

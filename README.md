@@ -1,6 +1,6 @@
 # JH MUSIC
 
-Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantalla de 1024 × 600, sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias, gestos simples y lectura directa de uno o dos pendrives USB.
+Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantalla de 1024 × 600, sin botones en el volante; ficha completa del equipo en [Documentacion/08-radio-destino.md](Documentacion/08-radio-destino.md)), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias, gestos simples y lectura directa de uno o dos pendrives USB.
 
 - **Mi Mix:** una lista que armas con `+` y suena seguida.
 - **Automix:** mezcla las canciones e iguala su volumen.
@@ -14,8 +14,7 @@ Versión actual: **2.9.6**.
 |---|---|
 | `android/` | La app nativa (Java 8, minSdk 21, Gradle Wrapper) |
 | `index.html`, `app.js`, `style.css` | Maqueta web: la misma pantalla en un navegador, para probar el diseño |
-| `Documentacion/` | Manual de usuario, arquitectura, compilación, historial y propuestas |
-| `capturas/` | Fotos de la app en el radio |
+| `Documentacion/` | Manual de usuario, arquitectura, compilación, historial, propuestas y la ficha del radio |
 | `build.sh` | Compila el APK y lo deja en esta carpeta |
 
 ## Compilar

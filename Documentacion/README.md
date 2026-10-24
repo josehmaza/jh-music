@@ -17,8 +17,11 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin bo
 | [05 · Propuestas de mejora](05-propuestas-de-mejora.md) | Quien planifica | Mejoras y funciones pendientes, priorizadas para uso en el auto y radios de gama baja |
 | [06 · Investigación del mezclador](06-investigacion-mezclador.md) | Quien modifique Automix | Cómo mezclar entre canciones según género, formato y bitrate, cómo igualar el volumen, y qué está implementado |
 | [07 · Biblioteca y carátulas](07-biblioteca-y-caratulas.md) | Quien prepara la música del pendrive | Carpetas y nombres de `D:\musica`, carátulas oficiales y JH MUSIC (con las zonas que la app tapa), VirtualDJ y copias de seguridad |
+| [08 · El radio destino](08-radio-destino.md) | Quien diseña o programa | Ficha del radio del Tucson ix35 (pantalla 1024 × 600 a 160 dpi, AC8227L, Android 8.1 que dice ser 10) y qué implica al desarrollar |
 
 ## Requisitos del radio
+
+El radio para el que se desarrolla está descrito en [08 · El radio destino](08-radio-destino.md). La app en sí pide:
 
 - Android 5.0 o superior (`minSdk 21`).
 - Pantalla horizontal (la app se fija en modo apaisado).
@@ -28,24 +31,18 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin bo
 ## Estructura del repositorio
 
 ```
-jh-car/
-├── jh-music/                       JH MUSIC (esta app)
-│   ├── android/                    Proyecto Android nativo (la app real)
-│   │   └── app/src/main/
-│   │       ├── java/com/jh/caraudio/   Código Java
-│   │       ├── res/                    Layouts, íconos, colores y textos
-│   │       └── assets/                 Copia del simulador web (no la usa la app nativa)
-│   ├── index.html, app.js, style.css   Simulador web de la interfaz (prototipo en navegador)
-│   ├── demo-animaciones.html       Muestrario de animaciones de la carátula (diseño)
-│   ├── demo-mezcla.html            Muestrario de transiciones de Automix (diseño)
-│   ├── demo-*.html                 Otros muestrarios de diseño (Automix, Mi Mix sonando, reordenar Mi Mix,
-│   │                               controles para el auto, encabezado, sin barra, reloj en la tira)
-│   ├── build.sh                    Compila el APK (Git Bash)
-│   ├── capturas/                   Fotos de la app en el radio
-│   ├── Documentacion/              Esta documentación
-│   └── JH-MUSIC-v<versión>.apk     APK listo para instalar
-├── jh-video/                       JH VIDEO, la app de videos (ver jh-video/README.md)
-└── jh-monitor/                     Monitor JH: hardware real del radio y su gama (ver jh-monitor/README.md)
+jh-music/
+├── android/                    Proyecto Android nativo (la app real)
+│   └── app/src/main/
+│       ├── java/com/jh/caraudio/   Código Java
+│       ├── res/                    Layouts, íconos, colores y textos
+│       └── assets/                 Copia del simulador web (no la usa la app nativa)
+├── index.html, app.js, style.css   Simulador web de la interfaz (prototipo en navegador)
+├── build.sh                    Compila el APK (Git Bash)
+├── Documentacion/              Esta documentación
+└── JH-MUSIC-v<versión>.apk     APK listo para instalar (lo genera build.sh; no se versiona)
 ```
+
+JH VIDEO, la app de videos, está en su propio repositorio: [josehmaza/jh-video](https://github.com/josehmaza/jh-video).
 
 El **simulador web** (`index.html` + `app.js` + `style.css`) reproduce la pantalla de 10" (1024×600) en un navegador para probar el diseño sin el radio. La app que se instala en el auto es la nativa de `android/`.
