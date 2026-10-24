@@ -270,8 +270,8 @@ Faltan el modo **sin pausas** (fase 4) y la pantalla de **ajustes** (duración, 
 | Paso | Propuestas | Motivo |
 |---|---|---|
 | 1 | #2 Foco de audio, #4 errores y `prepareAsync`, #5 carátulas | Corrigen fallos que hoy pueden pasar manejando; poco código |
-| 2 | #1 Retomar sesión | Mejora inmediata en el uso diario · [issue 1](https://github.com/josehmaza/jh-music/issues/1) |
-| 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones · [issue 2](https://github.com/josehmaza/jh-music/issues/2) |
-| 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 · [issue 3](https://github.com/josehmaza/jh-music/issues/3) |
-| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad · [issue 4](https://github.com/josehmaza/jh-music/issues/4) |
-| 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones · [issue 5](https://github.com/josehmaza/jh-music/issues/5) |
+| 2 | #1 Retomar sesión | Mejora inmediata en el uso diario |
+| 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones |
+| 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 |
+| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad |
+| 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones |
