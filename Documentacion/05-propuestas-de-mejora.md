@@ -2,25 +2,25 @@
 
 Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.7**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
 
-Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto.
+Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto. Cada una pendiente tiene su **issue** en GitHub (etiqueta [`propuesta`](https://github.com/josehmaza/jh-music/issues?q=label%3Apropuesta)) para decidir si se hace; si se descarta, el issue se cierra como *not planned*.
 
 | # | Propuesta | Prioridad | Esfuerzo | Estado |
 |---|---|---|---|---|
 | 1 | Retomar donde quedaste al encender el auto | 🔴 Alta | Bajo | **Hecha en 2.9.0** (la última canción, en pausa y desde el inicio; no se guarda el segundo) |
-| 2 | Bajar la música con el GPS y pausar en llamadas (foco de audio) | 🔴 Alta | Bajo | Pendiente |
-| 3 | Reproducción independiente de la pantalla (servicio + MediaSession) | 🔴 Alta | Medio | Pendiente |
-| 4 | Una canción dañada no traba la reproducción | 🔴 Alta | Bajo | Pendiente |
-| 5 | Carátulas reducidas al tamaño del cuadro | 🟠 Media | Muy bajo | Pendiente |
-| 6 | Biblioteca guardada para arrancar al instante | 🟠 Media | Medio | Pendiente |
-| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | **En parte** (las animaciones de la carátula van a ~30 fps; falta el spinner de búsqueda) |
-| 8 | Carpeta siguiente / anterior con pulsación larga en pantalla | 🟡 Usabilidad | Bajo | Pendiente |
-| 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente |
-| 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente |
-| 11 | Volumen de arranque limitado | 🟡 Usabilidad | Bajo | Pendiente |
-| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fases 1, 2 y 3 hechas** (Automix: mezcla, mezcla inteligente e igualar volumen). Faltan sin pausas y ajustes |
-| 13 | Ecualizador | 🎵 Audio | Medio | Pendiente |
+| 2 | Bajar la música con el GPS y pausar en llamadas (foco de audio) | 🔴 Alta | Bajo | Pendiente · [issue 1](https://github.com/josehmaza/jh-music/issues/1) |
+| 3 | Reproducción independiente de la pantalla (servicio + MediaSession) | 🔴 Alta | Medio | Pendiente · [issue 2](https://github.com/josehmaza/jh-music/issues/2) |
+| 4 | Una canción dañada no traba la reproducción | 🔴 Alta | Bajo | Pendiente · [issue 3](https://github.com/josehmaza/jh-music/issues/3) |
+| 5 | Carátulas reducidas al tamaño del cuadro | 🟠 Media | Muy bajo | Pendiente · [issue 4](https://github.com/josehmaza/jh-music/issues/4) |
+| 6 | Biblioteca guardada para arrancar al instante | 🟠 Media | Medio | Pendiente · [issue 5](https://github.com/josehmaza/jh-music/issues/5) |
+| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | **En parte** (las animaciones de la carátula van a ~30 fps; falta el spinner de búsqueda) · [issue 6](https://github.com/josehmaza/jh-music/issues/6) |
+| 8 | Carpeta siguiente / anterior con pulsación larga en pantalla | 🟡 Usabilidad | Bajo | Pendiente · [issue 7](https://github.com/josehmaza/jh-music/issues/7) |
+| 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente · [issue 8](https://github.com/josehmaza/jh-music/issues/8) |
+| 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente · [issue 9](https://github.com/josehmaza/jh-music/issues/9) |
+| 11 | Volumen de arranque limitado | 🟡 Usabilidad | Bajo | Pendiente · [issue 10](https://github.com/josehmaza/jh-music/issues/10) |
+| 12 | Mezcla automática entre canciones (crossfade / sin pausas) | 🎵 Audio | Medio | **Fases 1, 2 y 3 hechas** (Automix: mezcla, mezcla inteligente e igualar volumen). Faltan sin pausas y ajustes · [issue 11](https://github.com/josehmaza/jh-music/issues/11) |
+| 13 | Ecualizador | 🎵 Audio | Medio | Pendiente · [issue 12](https://github.com/josehmaza/jh-music/issues/12) |
 | 14 | Extras opcionales | 🟢 Opcional | Variable | Pendiente |
-| 15 | Recortar las franjas negras de las carátulas | 🟡 Usabilidad | Bajo | Pendiente (para más adelante) |
+| 15 | Recortar las franjas negras de las carátulas | 🟡 Usabilidad | Bajo | Pendiente (para más adelante) · [issue 13](https://github.com/josehmaza/jh-music/issues/13) |
 
 ---
 
@@ -258,10 +258,10 @@ Faltan el modo **sin pausas** (fase 4) y la pantalla de **ajustes** (duración, 
 
 | Idea | Descripción |
 |---|---|
-| Recientes / Más escuchadas | Pestaña o chip con lo último y lo más reproducido |
-| Fundido al pausar o reanudar | Bajada o subida suave en lugar de un corte seco (reutiliza la lógica de la mezcla #12) |
-| Volumen normalizado | **Hecho en 2.4.0** dentro de Automix (fase 3 del mezclador). Pendiente: poder usarlo sin la mezcla |
-| Reproducción automática al encender | Retomar la música sola al prender el radio (complementa la #1) |
+| Recientes / Más escuchadas | Pestaña o chip con lo último y lo más reproducido · [issue 14](https://github.com/josehmaza/jh-music/issues/14) |
+| Fundido al pausar o reanudar | Bajada o subida suave en lugar de un corte seco (reutiliza la lógica de la mezcla #12) · [issue 15](https://github.com/josehmaza/jh-music/issues/15) |
+| Volumen normalizado | **Hecho en 2.4.0** dentro de Automix (fase 3 del mezclador). Pendiente: poder usarlo sin la mezcla · [issue 16](https://github.com/josehmaza/jh-music/issues/16) |
+| Reproducción automática al encender | Retomar la música sola al prender el radio (complementa la #1) · [issue 17](https://github.com/josehmaza/jh-music/issues/17) |
 
 ---
 
@@ -270,8 +270,8 @@ Faltan el modo **sin pausas** (fase 4) y la pantalla de **ajustes** (duración, 
 | Paso | Propuestas | Motivo |
 |---|---|---|
 | 1 | #2 Foco de audio, #4 errores y `prepareAsync`, #5 carátulas | Corrigen fallos que hoy pueden pasar manejando; poco código |
-| 2 | #1 Retomar sesión | Mejora inmediata en el uso diario |
-| 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones |
-| 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 |
-| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad |
-| 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones |
+| 2 | #1 Retomar sesión | Mejora inmediata en el uso diario · [issue 1](https://github.com/josehmaza/jh-music/issues/1) |
+| 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones · [issue 2](https://github.com/josehmaza/jh-music/issues/2) |
+| 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 · [issue 3](https://github.com/josehmaza/jh-music/issues/3) |
+| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad · [issue 4](https://github.com/josehmaza/jh-music/issues/4) |
+| 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones · [issue 5](https://github.com/josehmaza/jh-music/issues/5) |
