@@ -1,6 +1,6 @@
 # 08 · El radio para el que se desarrolla
 
-JH MUSIC (y JH VIDEO) se hacen para **un equipo concreto**: el radio Android genérico instalado en un **Hyundai Tucson ix35**. Todo el diseño parte de sus límites. Antes de proponer o revisar un cambio, tener en cuenta esta hoja.
+JH MUSIC se hace para **un equipo concreto**: el radio Android genérico instalado en un **Hyundai Tucson ix35**. Todo el diseño parte de sus límites. Antes de proponer o revisar un cambio, tener en cuenta esta hoja.
 
 ## Ficha
 
@@ -25,11 +25,37 @@ JH MUSIC (y JH VIDEO) se hacen para **un equipo concreto**: el radio Android gen
 
 ## Qué implica al desarrollar
 
-- **Diseñar y revisar a 1024 × 600.** El emulador `jhvideo` es de 1280 × 720 y engaña: lo que entra ahí puede quedar cortado en el radio (pasó con "Canciones (109)" y los nombres de carpeta). Las demos y la maqueta web se miran a ese tamaño; en el emulador conviene `wm size 1024x600` y `wm density 160`.
+- **Diseñar y revisar a 1024 × 600.** Lo que entra en una pantalla más grande puede quedar cortado en el radio (pasó con "Canciones (109)" y los nombres de carpeta). Las demos y la maqueta web se miran a ese tamaño, y la app se prueba en el emulador `radio-tucson` (ver abajo).
 - **Manejando y sin volante:** objetivos de toque grandes (filas de 60 dp o más, botones de 46 dp o más), textos de 21 sp en listas y 25 sp en el título, zonas de anterior / play / siguiente amplias, gestos simples. Nada que obligue a leer mucho.
 - **Android 8.1 de verdad:** `minSdk 21`, `targetSdk 28`. No usar APIs de Android 9 (API 28) o más nuevas sin comprobar la versión, aunque el radio diga "10".
 - **Procesador y gráficos lentos:** las animaciones propias se redibujan a ~30 cuadros por segundo (`postInvalidateDelayed(33)`) y solo mientras hacen falta; nada de desenfoques ni sombras grandes; listas con vistas recicladas; trabajo pesado (escaneo, duraciones, carátulas) en hilos de fondo.
 - **Memoria lenta:** no escribir en la memoria mientras suena (por eso la última canción se guarda solo al empezar cada una, sin el segundo).
-- **Videos (JH VIDEO):** el radio no puede mostrar AV1; suena con el dibujo de "sin video".
 - **El tema de Android del radio** pinta de naranja el resaltado al tocar (`selectableItemBackground`): usar fondos propios (`bg_pressed_cyan`).
 - **Las animaciones del sistema pueden estar desactivadas** en el radio: las animaciones que importan se hacen a mano, no con `Animator`.
+
+## Emulador que imita al radio: `radio-tucson`
+
+Para probar sin ir al auto hay un emulador de Android configurado lo más parecido posible al radio:
+
+| Qué | Emulador `radio-tucson` | Radio |
+|---|---|---|
+| Android | **8.1 (API 27)** | 8.1 (API 27), aunque diga 10 |
+| Pantalla | **1024 × 600 a 160 dpi**, horizontal | Igual |
+| Procesador | 4 núcleos, 32 bits (x86) | 4 × Cortex-A7, 32 bits (ARM) |
+| RAM | 2 GB | Sin confirmar (Ajustes dice 4 GB) |
+| Otros | GPS, audio, sin batería ni cámaras, sin Play Store | — |
+
+Imagen `system-images;android-27;default;x86`. Se abre con:
+
+```bash
+emulator -avd radio-tucson -gpu auto -no-snapshot -no-boot-anim
+```
+
+**El pendrive:** la app busca los pendrives en `/storage/udisk1` y `/mnt/udisk1`. En el emulador se simula con una carpeta: los MP3 van en `/sdcard/USB/<carpeta>` y se enlaza como `udisk1` (el enlace se pierde al reiniciar el emulador):
+
+```bash
+adb root
+adb shell ln -s /storage/emulated/0/USB /mnt/udisk1
+```
+
+**Lo que el emulador no imita:** la velocidad real del radio (corre en la CPU de la PC, mucho más rápida), la GPU Mali-400, la memoria lenta, los decodificadores de audio del radio ni el tema de Android de la fábrica. Por eso lo lento o lo que depende del formato de los archivos se confirma en el auto.
