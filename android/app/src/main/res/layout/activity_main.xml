@@ -8,13 +8,15 @@
     android:background="@color/bg_root">
 
     <!-- ======================================================== -->
-    <!-- BARRA SUPERIOR DE ESTADO DEL VEHÍCULO (38dp)              -->
-    <!-- Marca, ruta USB actual, reloj central y re-escaneo USB    -->
+    <!-- BARRA SUPERIOR: OCULTA (opción C2). El reloj va en la     -->
+    <!-- tira de volumen, Re-escanear USB y la versión en el menú ☰ -->
+    <!-- Se conserva oculta: el código compartido la sigue usando  -->
     <!-- ======================================================== -->
     <LinearLayout
         android:id="@+id/layoutCarStatusBar"
         android:layout_width="match_parent"
         android:layout_height="38dp"
+        android:visibility="gone"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="12dp"
@@ -53,7 +55,7 @@
                 android:paddingEnd="7dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:text="v2.9.0"
+                android:text="v2.9.6"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -102,10 +104,11 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Línea divisoria sutil -->
+    <!-- Línea divisoria sutil (oculta con la barra de arriba) -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
+        android:visibility="gone"
         android:background="#0fffffff" />
 
     <!-- ======================================================== -->
@@ -119,11 +122,11 @@
         android:orientation="horizontal">
 
         <!-- ======================================================== -->
-        <!-- COLUMNA 1: FRANJA DE VOLUMEN CONDUCTOR (54dp)            -->
+        <!-- COLUMNA 1: FRANJA DE VOLUMEN CONDUCTOR (72dp)            -->
         <!-- ======================================================== -->
         <LinearLayout
             android:id="@+id/layoutVolumeStrip"
-            android:layout_width="54dp"
+            android:layout_width="72dp"
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:gravity="center_horizontal"
@@ -131,11 +134,60 @@
             android:paddingBottom="2dp"
             android:background="@drawable/bg_volume_strip">
 
+            <!-- Reloj grande en dos líneas (horas arriba, minutos abajo) y el punto del pendrive: verde si hay uno
+                 conectado, gris si no. La barra de arriba ya no está (opción C2). Solo se lee, no se toca -->
+            <TextView
+                android:id="@+id/tvStripClockHour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:text="00"
+                android:textColor="@color/text_primary"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStripClockMin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:includeFontPadding="false"
+                android:text="00"
+                android:textColor="@color/text_primary"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:layout_marginBottom="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/viewUsbDot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/bg_usb_dot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="USB"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <!-- Botón HOME Táctil (Mismo comportamiento que el botón físico HOME del auto) -->
             <ImageButton
                 android:id="@+id/btnNavHome"
-                android:layout_width="44dp"
-                android:layout_height="40dp"
+                android:layout_width="60dp"
+                android:layout_height="52dp"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_btn_action"
                 android:src="@drawable/ic_nav_home"
@@ -144,25 +196,25 @@
             <!-- Botón Silencio (Mute) -->
             <ImageButton
                 android:id="@+id/btnVolMute"
-                android:layout_width="44dp"
-                android:layout_height="40dp"
+                android:layout_width="60dp"
+                android:layout_height="52dp"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_btn_mute"
                 android:src="@drawable/ic_vol_on"
                 android:scaleType="fitCenter"
-                android:padding="11dp"
+                android:padding="13dp"
                 android:contentDescription="Mute" />
 
             <!-- Botón Subir (+) -->
             <Button
                 android:id="@+id/btnVolUp"
-                android:layout_width="44dp"
-                android:layout_height="40dp"
+                android:layout_width="60dp"
+                android:layout_height="52dp"
                 android:layout_marginBottom="4dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="+"
                 android:textColor="@color/text_primary"
-                android:textSize="22sp"
+                android:textSize="26sp"
                 android:textStyle="bold" />
 
             <!-- Porcentaje de Volumen (En medio de + y -) -->
@@ -174,25 +226,25 @@
                 android:layout_marginBottom="4dp"
                 android:text="75%"
                 android:textColor="@color/accent_cyan"
-                android:textSize="14sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <!-- Botón Bajar (-) -->
             <Button
                 android:id="@+id/btnVolDown"
-                android:layout_width="44dp"
-                android:layout_height="40dp"
+                android:layout_width="60dp"
+                android:layout_height="52dp"
                 android:layout_marginBottom="14dp"
                 android:background="@drawable/bg_btn_action"
                 android:text="-"
                 android:textColor="@color/text_primary"
-                android:textSize="22sp"
+                android:textSize="26sp"
                 android:textStyle="bold" />
 
             <!-- Barra Deslizante Vertical Táctil Ergonómica (Abajo de + y -, ocupando hasta el fondo de la pantalla) -->
             <com.jh.caraudio.VerticalVolumeBar
                 android:id="@+id/seekVolume"
-                android:layout_width="44dp"
+                android:layout_width="60dp"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:layout_marginBottom="2dp" />
@@ -243,7 +295,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="Canciones (0)"
+                        android:text="Canciones"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -255,7 +307,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_tab_unselected"
-                        android:text="Mi Mix (0)"
+                        android:text="Mi Mix"
                         android:textColor="@color/text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -892,7 +944,7 @@
                         android:padding="2.5dp"
                         android:clickable="true"
                         android:focusable="true"
-                        android:foreground="?android:attr/selectableItemBackground"
+                        android:foreground="@drawable/fg_album_card_pressed"
                         android:background="@drawable/bg_album_card">
 
                         <!-- Interior (.album-art-inner): fondo oscuro con esquinas de 17,5dp -->
@@ -973,21 +1025,6 @@
                         android:layout_centerHorizontal="true"
                         android:layout_marginBottom="-19dp" />
 
-                    <!-- Zona Táctil Ergonómica (área libre marcada en cuadro rojo, a la izquierda de la carátula) -->
-                    <!-- Jalar hacia la izquierda oculta el explorador y hacia la derecha lo muestra (también desde el menú ☰) -->
-                    <View
-                        android:id="@+id/layoutExplorerToggleZone"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_alignParentTop="true"
-                        android:layout_alignParentStart="true"
-                        android:layout_toStartOf="@id/layoutAlbumArtCard"
-                        android:layout_alignBottom="@id/layoutAlbumArtCard"
-                        android:minWidth="64dp"
-                        android:background="@android:color/transparent"
-                        android:clickable="true"
-                        android:focusable="false"
-                        android:contentDescription="Área de gesto para alternar explorador" />
                 </RelativeLayout>
 
                 <!-- Título de Canción: TIPOGRAFÍA GRANDE (25sp) Y MARQUESINA CONTINUA.
@@ -995,7 +1032,8 @@
                 <com.jh.caraudio.CarMarqueeTextView
                     android:id="@+id/tvTrackTitle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="36dp"
+                    android:includeFontPadding="false"
                     android:layout_marginTop="25dp"
                     android:gravity="center"
                     android:singleLine="true"
@@ -1004,10 +1042,11 @@
                     android:textSize="25sp"
                     android:textStyle="bold" />
 
-                <!-- Artista (18sp Celeste Destacado) y Álbum (15sp) -->
+                <!-- Artista (18sp Celeste Destacado) y Álbum (15sp). Título y esta fila tienen alto fijo: si una
+                     canción trae letras de otra fuente (más altas), la fila crecía y movía los botones de abajo -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="26dp"
                     android:orientation="horizontal"
                     android:gravity="center"
                     android:layout_marginTop="2dp">
@@ -1064,7 +1103,7 @@
                         android:gravity="center_vertical"
                         android:clickable="true"
                         android:focusable="true"
-                        android:background="?android:attr/selectableItemBackground">
+                        android:background="@drawable/bg_pressed_cyan">
 
                         <ImageView
                             android:layout_width="26dp"
@@ -1104,7 +1143,7 @@
                         android:gravity="center_vertical"
                         android:clickable="true"
                         android:focusable="true"
-                        android:background="?android:attr/selectableItemBackground">
+                        android:background="@drawable/bg_pressed_cyan">
 
                         <com.jh.caraudio.CarMarqueeTextView
                             android:id="@+id/tvNextTrackPreview"

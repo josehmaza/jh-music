@@ -16,9 +16,9 @@ La pantalla tiene tres zonas:
 └──────┴───────────────────────────────┴──────────────────────┘
 ```
 
-- **Barra superior:** marca del auto, versión de la app, saludo, reloj y botón **Re-escanear USB**.
-- **Tira de volumen (izquierda):** HOME, MUTE, `+`, porcentaje, `−` y barra vertical.
-- **Explorador (centro):** pestañas, buscador y listas. Se puede ocultar para dejar solo el reproductor.
+- **Sin barra arriba:** la hora va en grande arriba de la tira de volumen (horas arriba, minutos abajo) con un punto verde si hay pendrive (gris si no). **Re-escanear USB** y la versión de la app están en el menú ☰.
+- **Tira de volumen (izquierda):** HOME, MUTE, `+`, porcentaje, `−` y barra vertical, con botones grandes para tocarlos manejando.
+- **Explorador (centro):** pestañas, buscador y listas. Se oculta o se muestra con dos toques en la carátula (o desde el menú ☰) para dejar solo el reproductor.
 - **Reproductor (derecha):** la canción que suena y sus controles. Arriba a la derecha de la carátula, el **menú ☰** (aleatorio, repetir y mostrar u ocultar el explorador) y, debajo, el botón **Automix** ⇄ (mezcla entre canciones e iguala su volumen).
 
 ### Colores de la pantalla
@@ -27,23 +27,28 @@ El **fondo de toda la app** (también el explorador) toma el **color de la cará
 
 ## 2. Pestañas
 
-### Carpetas USB
+### Librería
 
 Muestra los pendrives conectados como un árbol: `USB 1 (udisk1)`, `USB 2 (udisk2)` y sus carpetas.
 
-- **Tocar una carpeta** solo la expande o contrae para explorar. No cambia lo que está en Canciones.
-- **Botón `[N ▶]`** de una carpeta, o **dos toques seguidos en su fila**: abre esa carpeta en la pestaña Canciones. `N` es la cantidad de canciones que están **directamente** en esa carpeta (sin contar subcarpetas), y es exactamente lo que se abre.
-- **Botón `+`** de una carpeta (al lado de `[N ▶]`): agrega esas mismas canciones a **Mi Mix**.
+- Cada fila tiene la flecha (si hay subcarpetas), el ícono de carpeta y el nombre en 21, en **1 renglón**: si no entra, se desliza para leerlo. Las filas miden 60, con espacio entre una y otra, y la sangría por nivel es chica para que el nombre tenga lugar en la pantalla de 1024 × 600.
+- **Tocar una carpeta** la expande o contrae para explorar y muestra su nombre **completo en 2 renglones** (hasta que toques otra). No cambia lo que está en Canciones. Cada toque enciende la fila en cian un instante, para saber que el toque entró.
+- **Botón ▶** de una carpeta, o **dos toques seguidos en su fila**: abre esa carpeta en la pestaña Canciones, con las canciones que están **directamente** en ella (sin contar subcarpetas).
+- **Botón `+`** de una carpeta (al lado de ▶): agrega esas mismas canciones a **Mi Mix**.
+- `+` y ▶ aparecen solo en las carpetas que tienen canciones; las que solo tienen subcarpetas llevan la flecha y nada más.
+- **La carpeta que suena:** su botón ▶ muestra un **ecualizador** (tres barritas) que se mueve mientras suena y queda quieto en pausa. La fila no se pinta.
+- **La carpeta abierta en Canciones**, si no es la que suena, lleva un borde cian fino.
+- Al volver a la pestaña Librería, la lista se mueve sola hasta la carpeta que suena.
 - **Botón contraer todo** (junto a las pestañas): cierra todas las carpetas del árbol.
 - Solo aparecen los pendrives que están conectados. Si quitas uno, desaparece solo.
 - Aquí el buscador busca **carpetas** por nombre.
 
-### Pistas
+### Canciones
 
-Muestra las canciones de la **carpeta activa**.
+Muestra las canciones de la **carpeta activa** (la pestaña tiene una nota musical ♫).
 
-- Al abrir la app, Pistas está vacía (`Pistas (0)`) hasta que elijas una carpeta con `[N ▶]` o reproduzcas una canción desde una búsqueda.
-- El número de la pestaña, `Pistas (N)`, es siempre el de la carpeta activa. Una búsqueda no lo cambia.
+- Si no hay una carpeta activa, Canciones está vacía (`Canciones 0`) hasta que elijas una carpeta con ▶ o reproduzcas una canción desde una búsqueda. Al abrir la app, si se carga la última canción, su carpeta queda como la activa.
+- El número de la pestaña va en una etiqueta chica al lado del nombre (`Canciones 109`, sin paréntesis, para que entre en un renglón) y es siempre el de la carpeta activa. Una búsqueda no lo cambia.
 - Aquí el buscador busca canciones por título, artista, álbum, carpeta o ruta.
 
 ### Mi Mix (reemplaza a Favoritos desde 2.5.0)
@@ -51,11 +56,11 @@ Muestra las canciones de la **carpeta activa**.
 Una lista que armas cuando quieras y que después suena entera, seguida, con Automix. Funciona como la lista de Automix de Virtual DJ.
 
 **Agregar canciones:**
-- **+** en cualquier canción (Pistas o búsquedas). Si ya está en Mi Mix, el botón se ve cian con **✓**; tocarlo la quita.
-- **+** al lado de `[N ▶]` en una carpeta (árbol o búsqueda de carpetas): agrega la carpeta entera, en orden A-Z, sin repetir las que ya estaban.
+- **+** en cualquier canción (Canciones o búsquedas). Si ya está en Mi Mix, el botón se ve cian con **✓**; tocarlo la quita.
+- **+** al lado de ▶ en una carpeta (árbol o búsqueda de carpetas): agrega la carpeta entera, en orden A-Z, sin repetir las que ya estaban.
 - Un aviso abajo del explorador confirma: "+1 a Mi Mix", "+12 canciones de BACHATAS a Mi Mix", "Ya está en Mi Mix".
 
-**La pestaña `🎧 Mi Mix (N)`:**
+**La pestaña `🎧 Mi Mix` (con su número en la etiqueta):**
 - Arriba, una cabecera con `MI MIX` (y `● SONANDO` si es lo que suena) y un resumen: "8 canciones · 30 min · 2 sonaron".
 - **▶** (botón cian, solo con el ícono): suena desde la primera y borra las marcas ✓.
 - **Reordenar `[ ⇅ ]`**: entra al modo para cambiar el orden de las canciones sin achicar el texto:
@@ -68,14 +73,14 @@ Una lista que armas cuando quieras y que después suena entera, seguida, con Aut
 - Las que **ya sonaron** quedan en la lista, apagadas, con ✓ verde y "Ya sonó".
 
 **Cómo saber que suena Mi Mix** (desde cualquier pestaña):
-- La pestaña muestra **"Mi Mix (4) ●"**: un punto cian que **late** mientras suena y queda **quieto** en pausa. Si la pestaña Mi Mix está elegida, el punto se ve oscuro sobre el cian.
+- La pestaña muestra **"Mi Mix 4 ●"**: un punto cian que **late** mientras suena y queda **quieto** en pausa. Si la pestaña Mi Mix está elegida, el punto se ve oscuro sobre el cian.
 - En el reproductor, debajo del título, en lugar de la carpeta dice **"Mi Mix · 2 de 4"**: en qué canción de la lista vas y cuántas son. Así sabes que Siguiente va a la siguiente de Mi Mix y cuánto falta.
 
 **Cómo suena:**
 - En orden, mezclando con Automix si está encendido.
 - **Al terminar la última, se detiene.** La tarjeta Siguiente avisa `■ Fin de Mi Mix` y al final aparece el aviso "Fin de Mi Mix".
-- **Lo que agregas mientras suena entra al final de la cola en vivo**, sin cortar nada. Puedes ir a Carpetas o Pistas, buscar y agregar: lo que suena sigue siendo Mi Mix.
-- Si tocas una canción de **Pistas** o de una **búsqueda**, sales de Mi Mix y suena esa carpeta.
+- **Lo que agregas mientras suena entra al final de la cola en vivo**, sin cortar nada. Puedes ir a Librería o Canciones, buscar y agregar: lo que suena sigue siendo Mi Mix.
+- Si tocas una canción de **Canciones** o de una **búsqueda**, sales de Mi Mix y suena esa carpeta.
 - En **aleatorio** elige solo entre las que todavía no sonaron y se detiene cuando ya sonaron todas.
 - **Anterior** en la primera canción la vuelve a empezar.
 
@@ -91,7 +96,7 @@ Mi Mix **se guarda en el radio**: se conserva al cerrar la app, al re-escanear y
 - **Si escribes con ñ o tildes, primero sale lo escrito igual.** `ñaña` encuentra también `nana`, pero pone primero "Las Ñañas" y después "didi nana". Sin ñ ni tildes (`nana`, `corazon`) se ordena como siempre.
 - La **X** borra el texto. El chip elegido se mantiene y la lista vuelve a mostrar la carpeta activa.
 
-### Chips de filtro (solo en Pistas)
+### Chips de filtro (solo en Canciones)
 
 | Chip | Dónde busca |
 |---|---|
@@ -99,20 +104,20 @@ Mi Mix **se guarda en el radio**: se conserva al cerrar la app, al re-escanear y
 | **TODO** | En todos los pendrives. |
 | **USB 1** / **USB 2** | Solo en ese pendrive. Aparecen únicamente si hay **dos** pendrives conectados; con uno solo, TODO ya es ese pendrive. |
 
-Con el buscador vacío, Pistas muestra siempre la carpeta activa, sea cual sea el chip.
+Con el buscador vacío, Canciones muestra siempre la carpeta activa, sea cual sea el chip.
 
 **Encontrar la canción que suena:** si moviste la lista y no sabes si la canción quedó arriba o abajo, **toca el chip de la carpeta**: la lista vuelve a ella y deja una canción antes arriba, luego la que suena y luego las demás. Si hay una búsqueda escrita, se ubica en los resultados (si la canción está entre ellos).
 
 ### Búsqueda y cambio de pestaña
 
-- Si buscas en Pistas, vas a otra pestaña sin hacer nada y vuelves, la búsqueda sigue ahí con su texto y su chip.
-- Si en Carpetas abres otra carpeta con `[N ▶]`, la búsqueda anterior se descarta y Pistas muestra la carpeta nueva.
-- Si al volver a Pistas no hay búsqueda pendiente, se elige el chip de la carpeta activa.
-- Al volver a **Pistas** o **Mi Mix**, la lista se ubica en la canción que está sonando (si está en esa lista): una canción antes arriba, luego la que suena y luego las demás.
+- Si buscas en Canciones, vas a otra pestaña sin hacer nada y vuelves, la búsqueda sigue ahí con su texto y su chip.
+- Si en Librería abres otra carpeta con ▶, la búsqueda anterior se descarta y Canciones muestra la carpeta nueva.
+- Si al volver a Canciones no hay búsqueda pendiente, se elige el chip de la carpeta activa.
+- Al volver a **Canciones** o **Mi Mix**, la lista se ubica en la canción que está sonando (si está en esa lista): una canción antes arriba, luego la que suena y luego las demás.
 
 ### Reproducir desde una búsqueda
 
-Al reproducir una canción de los resultados, **su carpeta pasa a ser la carpeta activa**: cambia el número de Pistas y, al limpiar el buscador, verás las canciones de esa carpeta.
+Al reproducir una canción de los resultados, **su carpeta pasa a ser la carpeta activa**: cambia el número de Canciones y, al limpiar el buscador, verás las canciones de esa carpeta.
 
 ## 4. Reproducción
 
@@ -130,7 +135,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 ### Cuadro de la carátula
 
 - **Si la canción trae carátula**, se ve la imagen completa. **Si no trae**, se muestra un disco.
-- El cuadro ocupa la parte de arriba del reproductor, junto al menú ☰ y Automix. Su tamaño se ajusta solo al espacio libre de la pantalla.
+- El cuadro ocupa la parte de arriba del reproductor, junto al menú ☰ y Automix. Su tamaño se ajusta solo al espacio libre de la pantalla (hasta 300; en el radio, unos 298).
 - **Pegada a la esquina de arriba a la derecha**, la etiqueta de formato (`MP3 320K`), con la misma curva de la esquina: tapa lo mínimo de la carátula.
 - **Sobre el borde de abajo** (mitad sobre la carátula y mitad fuera), una cápsula con el estado y un ecualizador. Así no tapa el contenido de la carátula; el título queda debajo, en su lugar de siempre:
 
@@ -141,7 +146,9 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
   | Mezclando (Automix) | `MIXING ⇄`, barras magenta | Además, un haz magenta gira en sentido contrario |
 
 - Alrededor del cuadro hay un **resplandor del color de la canción** (cian si no tiene carátula).
-- **Tocar el cuadro** pausa o reanuda.
+- **Un toque en el cuadro** no hace nada (para pausar están ▶ / ⏸ y su franja).
+- **Dos toques en el cuadro** ocultan o muestran el explorador, como la pantalla completa en JH VIDEO.
+- Al tocarlo, el cuadro se achica apenas y su borde se ilumina en cian (sin tapar la imagen).
 
 ### Título y tarjetas Anterior / Siguiente
 
@@ -155,13 +162,13 @@ Pensados para tocar manejando: **play/pausa en un círculo blanco grande** al ce
 
 | Control | Función |
 |---|---|
-| ⏯ (botón central) o **tocar la carátula** | Reproducir / pausar |
+| ⏯ (botón central, o la franja alrededor) | Reproducir / pausar |
 | ⏮ / ⏭ o tarjetas **Anterior / Siguiente**, **un toque** | Canción anterior / siguiente |
 | ⏮ / ⏭ o tarjetas, **doble toque** | Retrocede / adelanta **10 s**. Cada toque extra seguido suma otros 10 s. Se muestra un aviso `+10s` / `-10s` en el centro |
 | Barra de progreso | Arrastrar para adelantar o retroceder |
 | **Menú ☰ → Aleatorio** | Alterna orden aleatorio y secuencial |
 | **Menú ☰ → Repetir canción** | Alterna repetir la canción actual o seguir con la lista |
-| **▶ Reproducir Todo** (Canciones) | Reproduce la lista mostrada desde la primera. Mi Mix tiene su propio **▶ Reproducir** |
+| **▶ Reproducir Todo** (pestaña Canciones) | Reproduce la lista mostrada desde la primera. Mi Mix tiene su propio **▶ Reproducir** |
 
 Un toque en Siguiente o Anterior espera un instante (0,28 s) para saber si es un doble toque, y recién ahí cambia de canción.
 
@@ -174,6 +181,9 @@ Arriba a la derecha del reproductor, encima de Automix. Se abre sobre el reprodu
 | **Aleatorio** | Lo prende o apaga. Dice **ON** (en cian) u **OFF** |
 | **Repetir canción** | Lo prende o apaga. Dice **ON** (en cian) u **OFF** |
 | **Ocultar / Mostrar explorador** | Oculta o muestra el explorador y cierra el menú |
+| **Re-escanear USB** | Vuelve a buscar canciones en los pendrives y cierra el menú |
+
+Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.9.6`).
 
 El menú se cierra solo a los 5 s sin tocarlo (cada toque en Aleatorio o Repetir vuelve a contar), tocando fuera del panel o en **✕**.
 
@@ -215,8 +225,8 @@ La cola (lo que usan Anterior y Siguiente) se fija **en el momento en que reprod
 
 | Reproduces desde… | La cola es… |
 |---|---|
-| Pistas, carpeta activa | Esa carpeta |
-| Pistas, resultado de búsqueda | La carpeta de esa canción |
+| Canciones, carpeta activa | Esa carpeta |
+| Canciones, resultado de búsqueda | La carpeta de esa canción |
 | Mi Mix | Mi Mix, en su orden; lo que agregues entra al final en vivo, y al terminar la última se detiene |
 
 Abrir otra carpeta mientras suena música **no** cambia lo que viene después, hasta que reproduzcas algo de la carpeta nueva.
@@ -225,6 +235,7 @@ Abrir otra carpeta mientras suena música **no** cambia lo que viene después, h
 
 - **`+` / `−`:** sube o baja de 10 en 10 %.
 - **Barra vertical:** arrastrar para fijar el volumen.
+- **Gesto sin mirar:** arrastrar el dedo hacia arriba o hacia abajo sobre el reproductor sube o baja el volumen. Aparece un indicador grande al centro con el porcentaje. No funciona sobre el explorador (ahí se recorre la lista) ni sobre las barras.
 - **MUTE:** silencia o restaura. En silencio se muestra `MUTE`; al quitarlo vuelve el porcentaje real.
 - Si ajustas el volumen estando en silencio, primero se quita el silencio.
 - Si el silencio lo puso el sistema o quedó activo al salir con HOME, la app lo detecta al volver.
@@ -242,23 +253,23 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 
 ## 7. Mostrar u ocultar el explorador
 
-- **Jalar en la franja libre a la izquierda de la carátula:** hacia la izquierda lo oculta, hacia la derecha lo muestra.
+- **Dos toques en la carátula:** lo oculta o lo muestra.
 - **Menú ☰ → Ocultar explorador / Mostrar explorador.**
-- Un toque simple en esa franja no hace nada, para evitar toques accidentales al conducir.
+- Ya no se jala de costado: la franja libre junto a la carátula sirve para el gesto de volumen.
 
 ## 8. Botón Atrás y HOME
 
 **Atrás** (físico) actúa en este orden:
 1. Si hay texto en el buscador, lo borra.
-2. Si estás en Pistas o Mi Mix, vuelve a Carpetas USB.
-3. Si ya estás en Carpetas, sale al launcher del auto.
+2. Si estás en Canciones o Mi Mix, vuelve a Librería.
+3. Si ya estás en Librería, sale al launcher del auto.
 
 **HOME** (en la tira de volumen) sale al launcher como el botón físico del radio. La música sigue sonando.
 
 ## 9. Pendrives
 
 - La app escanea al abrirse y **vuelve a escanear sola** cuando conectas o quitas un pendrive (espera ~1,5 s a que el sistema termine de montarlo).
-- Si tu radio no avisa de esos cambios, usa **Re-escanear USB** en la barra superior.
+- Si tu radio no avisa de esos cambios, usa **Menú ☰ → Re-escanear USB**.
 - Si quitas el pendrive de la canción que suena, la reproducción se detiene y la carpeta activa se limpia.
 - Se recorren hasta 6 niveles de subcarpetas. Se ignoran carpetas ocultas, `Android`, `LOST.DIR` y `System Volume Information`.
 - Si el archivo se llama `Artista - Título.mp3`, la app separa artista y título por el guion.
@@ -281,9 +292,9 @@ Tras escanear, la lista muestra la duración real de cada canción:
 
 ## 11. Limitaciones conocidas
 
-- **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema. Si no lo hace, usa **Re-escanear USB**.
+- **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema. Si no lo hace, usa **Menú ☰ → Re-escanear USB**.
 - **Misma ruta en dos pendrives:** dos pendrives con un archivo en la misma ruta interna (por ejemplo `Musica/tema.mp3` en ambos) cuentan como la misma canción en Mi Mix.
 - **Marcas ✓ de Mi Mix:** se borran al cerrar la app o al tocar el **▶** de Mi Mix.
 - **Indicaciones del GPS y llamadas:** la música todavía no baja sola cuando habla el navegador ni se pausa con una llamada (ver propuesta #2).
-- **Al prender el auto** la app arranca de cero: no recuerda la última canción ni el punto donde quedó (ver propuesta #1).
+- **Al prender el auto** se carga la última canción, pero desde el inicio: no se guarda el segundo donde iba (a propósito, para no escribir en la memoria mientras suena).
 - **Volumen igualado** solo funciona con Automix encendido.

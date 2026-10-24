@@ -2,7 +2,46 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
-## 2.9.0 — 2026-10-23, pendiente de probar en el auto
+## 2.9.6 — 2026-10-24, pendiente de probar en el auto
+
+Diseño revisado a la pantalla real del radio (1024 × 600 a 160 dpi, medida con Monitor JH). Igual en la maqueta web y en JH VIDEO 1.1.1.
+
+- **Pestañas:** el número va en una etiqueta chica al lado, sin paréntesis (`Canciones 109`, `Mi Mix 4`). Antes "Canciones (109)" no entraba y se partía en dos renglones.
+- **Filas de Librería:** menos sangría por nivel, ícono de carpeta chico y fijo (la raíz USB conserva su cuadro verde), nombre en 21 en 1 renglón que se desliza si es largo, `+` de 46 y ▶ cuadrado sin número. Sin la línea de cantidad: filas de 60 (antes 72); entra una carpeta más a la vista.
+- **La carpeta tocada** muestra su nombre completo en 2 renglones hasta que se toque otra. Ya no queda pintada: solo destella al tocarla.
+- **La carpeta que suena:** su ▶ muestra un ecualizador que se mueve mientras suena y queda quieto en pausa (`MiniEqualizerView`). La abierta en Canciones, si no es la que suena, lleva solo un borde cian fino.
+- **Al volver a Librería** la lista se mueve hasta la carpeta que suena.
+- **Arreglo:** anterior / play / siguiente se movían un poco según la canción. Título y artista tienen ahora alto fijo.
+- **Arreglo:** al tocar las tarjetas de anterior / siguiente (y filas de listas) salía un recuadro naranja de Android; ahora es cian translúcido (`bg_pressed_cyan`).
+- **Maqueta:** el árbol marcaba como "la que suena" la carpeta recién abierta; ahora usa la canción cargada (`loadedTrack`).
+- Recursos nuevos: `bg_tree_node_open`, `bg_pressed_cyan`, `MiniEqualizerView`. Se quitó `bg_tree_node_playing`.
+
+## 2.9.5 — 2026-10-23, pendiente de probar en el auto
+
+- **Sin barra arriba (opción C2):** la barra de arriba (marca, versión, saludo, reloj y Re-escanear USB) se oculta y su alto pasa al resto de la pantalla.
+  - **Reloj grande en la tira de volumen:** horas arriba y minutos abajo (30 sp), y debajo un punto **verde si hay pendrive, gris si no**, con "USB". Solo se lee, no se toca.
+  - **La carátula crece de 260 a 298 dp** (su tope pasa de 260 a 300); título, tarjetas, barra y botones quedan donde estaban. En la maqueta, de 221 a 263 px.
+  - **Menú ☰ → Re-escanear USB** (cierra el menú) y la **versión** al pie del menú (`JH MUSIC v2.9.5`).
+  - La barra queda en el layout oculta, porque el código la sigue usando (reloj, versión y botón).
+- La 2.9.3, la 2.9.4 y la 2.9.5 las subió otra herramienta al ajustar el gesto de volumen, sin anotarlas aquí.
+- El gesto de volumen no funciona en ningún lugar del explorador, tampoco en el espacio vacío debajo de la lista: ahí deslizar arriba / abajo es el scroll. Igual en las dos maquetas.
+- **Carátula al tocarla:** se achica apenas (97 %) y el borde se ilumina en cian, como en la maqueta. Antes Android la tapaba entera con un naranja (`selectableItemBackground`). Recurso nuevo: `fg_album_card_pressed`.
+- **Arreglo del gesto de volumen:** si empezaba sobre la carátula, la carátula quedaba presionada (se ponía naranja). Ahora, cuando el gesto toma el toque, lo que estaba debajo del dedo recibe un cancelar. Igual en JH VIDEO.
+- **El explorador se oculta o muestra con doble toque en la carátula**, como la pantalla completa en JH VIDEO (y desde el menú ☰). Un toque en la carátula ya no pausa (se confundía con el doble toque): para pausar están ▶ / ⏸ y su franja. El doble toque cuenta si los dos toques llegan en menos de 0,35 s. Ya no se jala de costado: la franja junto a la carátula queda libre para el gesto de volumen. Igual en la maqueta.
+- Recursos nuevos: `bg_usb_dot`, `ic_rescan`.
+
+## 2.9.2 — 2026-10-23, pendiente de probar en el auto
+
+- **Volumen con un gesto, sin mirar:** arrastrar el dedo hacia arriba o hacia abajo sobre el reproductor sube o baja el volumen (240 dp de recorrido = 100 %). Al moverlo aparece un indicador grande al centro (ícono, barra y porcentaje) que se va solo. El gesto arranca después de 14 dp de movimiento vertical; si el movimiento es horizontal (jalar el explorador) no toca el volumen. No empieza sobre las barras de progreso y de volumen, ni en el buscador. Igual en la maqueta web y en JH VIDEO.
+- **Arreglo del gesto:** no empieza sobre el explorador. Ahí un arrastre vertical es para recorrer la lista (o reordenar Mi Mix): antes, al buscar una canción, la lista se trababa y el volumen cambiaba.
+- Recursos nuevos: `layout_blind_volume_hud.xml`, `bg_blind_volume_hud`, `bg_hud_track` y `bg_hud_fill`.
+
+## 2.9.1 — 2026-10-23, pendiente de probar en el auto
+
+- **Maqueta web igual que la app:** anterior / play / siguiente responden en toda la franja de abajo del reproductor (hasta el borde, con 24 px de margen alrededor del play), y aleatorio y repetir se recuerdan en el navegador.
+- **Tira de volumen más ancha para no fallar al tocar:** 72 dp (antes 54), con HOME, MUTE, `+` y `−` de 60 × 52 dp (antes 44 × 40), el `+` / `−` en 26 sp y el porcentaje en 16 sp. La barra vertical responde en 60 dp de ancho y su pista mide 16 dp (pomo de 13 dp de radio). Igual en la maqueta web y en JH VIDEO.
+
+## 2.9.0 — 2026-10-23 (`087ee51`), pendiente de probar en el auto
 
 - **Abre en la última canción:** al volver a encender el auto, la app deja cargada en pausa (desde el inicio) la canción que sonaba, con su lista (su carpeta, que queda como la activa, o Mi Mix). Si el pendrive se monta después de abrir la app, se carga al aparecer. Si la canción ya no está, abre como siempre.
 - **Se recuerdan Aleatorio y Repetir canción** (Automix ya se recordaba).

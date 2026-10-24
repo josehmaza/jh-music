@@ -19,7 +19,7 @@
     <header class="car-status-bar">
       <div class="status-left">
         <span class="brand-badge"><span class="dot"></span> HYUNDAI TUCSON IX</span>
-        <span class="version-badge" id="appVersionBadge">v2.9.0</span>
+        <span class="version-badge" id="appVersionBadge">v2.9.6</span>
         <span class="source-badge" id="sourceBadge">
           <span id="currentPathLabel">Q hubo jefe 😉</span>
         </span>
@@ -45,6 +45,13 @@
 
       <!-- COLUMNA 1: TIRA LATERAL DEL CONDUCTOR ULTRA-SLIM (54px) -->
       <aside class="driver-volume-strip">
+        <!-- Reloj grande en dos líneas (horas y minutos) y el punto del pendrive. La barra de arriba ya no está
+             (opción C2, igual que la app). Solo se lee, no se toca -->
+        <div class="strip-clock">
+          <span class="strip-clock-num" id="stripClockH">00</span>
+          <span class="strip-clock-num" id="stripClockM">00</span>
+          <span class="strip-usb"><span class="strip-usb-dot" id="stripUsbDot"></span>USB</span>
+        </div>
         <!-- 0. Botón HOME Táctil de Pantalla (Misma función que el botón físico HOME del auto) -->
         <button class="btn-driver-back" id="btnNavHome" title="Inicio / Home (Botón físico en pantalla)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -96,12 +103,14 @@
               </button>
               <button class="tab-btn" data-tab="playlist">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                <span>Canciones (<span id="songCount">0</span>)</span>
+                <span>Canciones</span>
+                <b class="tab-count" id="songCount">0</b>
               </button>
               <!-- Mi Mix: lista que armas con + y suena entera, en orden, con Automix (reemplaza Favoritos) -->
               <button class="tab-btn" data-tab="mymix">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="3" y1="12" x2="14" y2="12"/><line x1="3" y1="18" x2="10" y2="18"/><line x1="18" y1="13" x2="18" y2="21"/><line x1="14" y1="17" x2="22" y2="17"/></svg>
-                <span>Mi Mix (<span id="mixCount">0</span>)</span>
+                <span>Mi Mix</span>
+                <b class="tab-count" id="mixCount">0</b>
                 <!-- Punto cian que late mientras suena Mi Mix (quieto en pausa) -->
                 <span class="tab-live-dot hidden" id="mixLiveDot"></span>
               </button>
@@ -243,8 +252,15 @@
           </button>
           <button class="player-menu-row" id="menuExplorer">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
-            <span class="player-menu-text"><b id="menuExplorerLabel">Ocultar explorador</b><small>También se hace jalando a la izquierda de la carátula</small></span>
+            <span class="player-menu-text"><b id="menuExplorerLabel">Ocultar explorador</b><small>También con doble toque en la carátula</small></span>
           </button>
+          <!-- Re-escanear USB (antes en la barra de arriba): es una acción, cierra el menú -->
+          <button class="player-menu-row" id="menuRescan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4v5h-5"/><path d="M20.2 9A8.5 8.5 0 1 0 20.5 15"/></svg>
+            <span class="player-menu-text"><b>Re-escanear USB</b><small>Buscar canciones nuevas en los pendrives</small></span>
+          </button>
+          <!-- Versión instalada (antes en la barra de arriba) -->
+          <div class="player-menu-version" id="menuVersion"></div>
         </div>
 
         <div class="now-playing-card">
@@ -344,8 +360,21 @@
         </div>
 
       </section>
-
     </main>
+
+    <!-- HUD Flotante de Volumen para Gestos Ciegos en Auto -->
+    <div class="blind-volume-hud" id="blindVolumeHud">
+      <div class="blind-hud-icon" id="blindHudIcon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </div>
+      <div class="blind-hud-bar-wrap">
+        <div class="blind-hud-bar-fill" id="blindHudFill" style="height: 75%;"></div>
+      </div>
+      <div class="blind-hud-percent" id="blindHudPercent">75%</div>
+    </div>
 
   </div>
 

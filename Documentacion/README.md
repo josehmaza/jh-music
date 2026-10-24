@@ -1,8 +1,8 @@
 # JH MUSIC — Documentación
 
-Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantalla de 1024×600, sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, gestos simples, lectura directa de uno o dos pendrives USB **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen.
+Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias (anterior / play / siguiente responden en toda la franja de abajo), gestos simples (doble toque en la carátula, volumen deslizando el dedo), lectura directa de uno o dos pendrives USB, **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen. Al encender el auto abre en la última canción.
 
-- **Versión actual:** 2.7.0 (`versionCode 29`). Hay cambios sin publicar, pendientes de probar en el auto, que serán la 2.7.1 (ver [historial](04-historial-de-cambios.md)).
+- **Versión actual:** 2.9.6 (`versionCode 37`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
 - **Paquete Android:** `com.jh.caraudio`
 - **APK:** `JH-MUSIC-v<versión>.apk` en la carpeta `jh-music/`
 
@@ -10,8 +10,8 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantal
 
 | Documento | Para quién | Contenido |
 |---|---|---|
-| [01 · Manual de usuario](01-manual-de-usuario.md) | Quien usa la app en el auto | Pantalla, pestañas, búsqueda, reproducción, volumen, pendrives |
-| [02 · Arquitectura técnica](02-arquitectura-tecnica.md) | Quien modifica el código | Clases, flujo de datos, escaneo, buscador, cola de reproducción |
+| [01 · Manual de usuario](01-manual-de-usuario.md) | Quien usa la app en el auto | Pantalla, pestañas, búsqueda, reproducción, menú ☰, Automix, volumen y gesto, pendrives, última canción |
+| [02 · Arquitectura técnica](02-arquitectura-tecnica.md) | Quien modifica el código | Clases, flujo de datos, escaneo, buscador, cola de reproducción, gestos, menú ☰, zonas de toque, gesto de volumen, maqueta web |
 | [03 · Compilación y versiones](03-compilacion-y-versiones.md) | Quien genera el APK | Requisitos, comandos, cómo subir la versión, instalación |
 | [04 · Historial de cambios](04-historial-de-cambios.md) | Todos | Qué cambió en cada versión |
 | [05 · Propuestas de mejora](05-propuestas-de-mejora.md) | Quien planifica | Mejoras y funciones pendientes, priorizadas para uso en el auto y radios de gama baja |
@@ -38,12 +38,14 @@ jh-car/
 │   ├── index.html, app.js, style.css   Simulador web de la interfaz (prototipo en navegador)
 │   ├── demo-animaciones.html       Muestrario de animaciones de la carátula (diseño)
 │   ├── demo-mezcla.html            Muestrario de transiciones de Automix (diseño)
-│   ├── demo-*.html                 Otros muestrarios de diseño (Automix, Mi Mix sonando, reordenar Mi Mix)
+│   ├── demo-*.html                 Otros muestrarios de diseño (Automix, Mi Mix sonando, reordenar Mi Mix,
+│   │                               controles para el auto, encabezado, sin barra, reloj en la tira)
 │   ├── build.sh                    Compila el APK (Git Bash)
 │   ├── capturas/                   Fotos de la app en el radio
 │   ├── Documentacion/              Esta documentación
 │   └── JH-MUSIC-v<versión>.apk     APK listo para instalar
-└── jh-video/                       JH VIDEO, la app de videos (ver jh-video/README.md)
+├── jh-video/                       JH VIDEO, la app de videos (ver jh-video/README.md)
+└── jh-monitor/                     Monitor JH: hardware real del radio y su gama (ver jh-monitor/README.md)
 ```
 
 El **simulador web** (`index.html` + `app.js` + `style.css`) reproduce la pantalla de 10" (1024×600) en un navegador para probar el diseño sin el radio. La app que se instala en el auto es la nativa de `android/`.

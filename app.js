@@ -405,6 +405,9 @@ function initApp() {
 
   let masterTracks = [...sampleTracks];
   let currentPlaylist = [...sampleTracks];
+  // La canción cargada en el reproductor. Abrir una carpeta cambia currentPlaylist, pero no lo que suena:
+  // el árbol usa esta para saber cuál es la carpeta que suena (ecualizador)
+  let loadedTrack = null;
   let currentTrackIndex = 0;
   let isPlaying = false;
   let isShuffle = false;
@@ -961,6 +964,9 @@ function initApp() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     clockDisplay.textContent = `${hours}:${minutes}`;
+    // Reloj de la tira de volumen (la barra de arriba está oculta): horas arriba, minutos abajo
+    document.getElementById('stripClockH').textContent = hours;
+    document.getElementById('stripClockM').textContent = minutes;
   }
   setInterval(updateClock, 1000);
   updateClock();
@@ -973,6 +979,7 @@ function initApp() {
     currentTrackIndex = index;
     const track = currentPlaylist[currentTrackIndex];
     if (!track) return;
+    loadedTrack = track;
 
     // Actualizar UI
     trackTitle.textContent = track.title;
@@ -1194,6 +1201,8 @@ function initApp() {
 
   function updatePlayStateUI() {
     updateMixLiveDot();
+    // El ecualizador del botón de la carpeta que suena se mueve solo mientras suena
+    document.body.classList.toggle('is-playing', isPlaying);
     const pillStatusText = document.getElementById('pillStatusText');
     if (isPlaying) {
       playIcon.classList.add('hidden');
@@ -1365,7 +1374,40 @@ function initApp() {
   const volMeterFill = document.getElementById('volMeterFill');
   const volMeterThumb = document.getElementById('volMeterThumb');
 
-  function setVolume(val) {
+  const blindVolumeHud = document.getElementById('blindVolumeHud');
+  const blindHudFill = document.getElementById('blindHudFill');
+  const blindHudPercent = document.getElementById('blindHudPercent');
+  const blindHudIcon = document.getElementById('blindHudIcon');
+  let hudTimeout = null;
+
+  function updateVolumeHud(vol, show = true) {
+    if (!blindVolumeHud) return;
+    if (blindHudFill) blindHudFill.style.height = `${vol}%`;
+    if (blindHudPercent) blindHudPercent.textContent = `${vol}%`;
+
+    if (blindHudIcon) {
+      if (vol === 0 || isMuted) {
+        blindHudIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+        blindHudIcon.style.color = '#ef4444';
+      } else if (vol < 35) {
+        blindHudIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+        blindHudIcon.style.color = '#38bdf8';
+      } else {
+        blindHudIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+        blindHudIcon.style.color = '#38bdf8';
+      }
+    }
+
+    if (show) {
+      blindVolumeHud.classList.add('is-visible');
+      if (hudTimeout) clearTimeout(hudTimeout);
+      hudTimeout = setTimeout(() => {
+        blindVolumeHud.classList.remove('is-visible');
+      }, 1100);
+    }
+  }
+
+  function setVolume(val, showHud = false) {
     currentVolume = Math.max(0, Math.min(100, Math.round(val)));
     volPercent.textContent = `${currentVolume}%`;
     if (volMeterFill) volMeterFill.style.height = `${currentVolume}%`;
@@ -1380,6 +1422,10 @@ function initApp() {
 
     audio.volume = isMuted ? 0 : (currentVolume / 100);
 
+    if (showHud) {
+      updateVolumeHud(currentVolume, true);
+    }
+
     // Integración directa con el sistema de audio de la pantalla del auto
     if (window.AndroidBridge && window.AndroidBridge.setSystemVolume) {
       try { window.AndroidBridge.setSystemVolume(currentVolume); } catch(e) {}
@@ -1389,7 +1435,7 @@ function initApp() {
   function toggleMute() {
     if (isMuted) {
       isMuted = false;
-      setVolume(previousVolume > 0 ? previousVolume : 50);
+      setVolume(previousVolume > 0 ? previousVolume : 50, true);
     } else {
       previousVolume = currentVolume;
       isMuted = true;
@@ -1397,6 +1443,7 @@ function initApp() {
       volPercent.textContent = "0%";
       if (volMeterFill) volMeterFill.style.height = "0%";
       if (volMeterThumb) volMeterThumb.style.bottom = "0%";
+      updateVolumeHud(0, true);
     }
     updateMuteUI();
 
@@ -1428,7 +1475,7 @@ function initApp() {
       const offsetY = clientY - rect.top;
       const ratio = 1 - (offsetY / rect.height);
       const val = Math.max(0, Math.min(100, Math.round(ratio * 100)));
-      setVolume(val);
+      setVolume(val, true);
     }
 
     volMeterWrap.addEventListener('pointerdown', (e) => {
@@ -1451,18 +1498,117 @@ function initApp() {
     });
   }
 
-  btnVolDown.addEventListener('click', () => setVolume(currentVolume - 10));
-  btnVolUp.addEventListener('click', () => setVolume(currentVolume + 10));
+  btnVolDown.addEventListener('click', () => setVolume(currentVolume - 10, true));
+  btnVolUp.addEventListener('click', () => setVolume(currentVolume + 10, true));
   btnMute.addEventListener('click', toggleMute);
+
+  // =================== GESTO CIEGO VERTICAL: CONTROL DE VOLUMEN EN PANTALLA ===================
+  let isBlindVolDragging = false;
+  let blindVolStartX = 0;
+  let blindVolStartY = 0;
+  let blindVolStartVal = 0;
+  let blindVolPointerId = null;
+  let hasPassedDeadzone = false;
+  let suppressClickAfterDrag = false;
+
+  function canStartBlindVolumeGesture(target, clientX, clientY) {
+    if (!target) return false;
+    // Solo excluir si se está escribiendo activamente en la caja de búsqueda
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      return false;
+    }
+    // No interferir si se arrastra horizontalmente la barra de avance de canción (seekbar)
+    if (target.closest('#progressBarContainer')) {
+      return false;
+    }
+    // No en el explorador (igual que la app): ahí deslizar arriba / abajo es el scroll de la lista
+    if (target.closest('.explorer-panel')) {
+      return false;
+    }
+    // Toda la pantalla restante responde al gesto ciego (también la franja junto a la carátula)
+    return true;
+  }
+
+  window.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (!canStartBlindVolumeGesture(e.target, e.clientX, e.clientY)) return;
+
+    isBlindVolDragging = true;
+    hasPassedDeadzone = false;
+    blindVolStartX = e.clientX;
+    blindVolStartY = e.clientY;
+    blindVolStartVal = currentVolume;
+    blindVolPointerId = e.pointerId;
+  }, { passive: true });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isBlindVolDragging || e.pointerId !== blindVolPointerId) return;
+
+    const dx = e.clientX - blindVolStartX;
+    const dy = blindVolStartY - e.clientY; // Hacia arriba = subir (+), hacia abajo = bajar (-)
+
+    if (!hasPassedDeadzone) {
+      // Si el movimiento es horizontal (ej. jalar panel o deslizar): CANCELAR volumen de inmediato
+      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy)) {
+        isBlindVolDragging = false;
+        return;
+      }
+      // Solo activar si el gesto es netamente VERTICAL (bloqueo direccional)
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        hasPassedDeadzone = true;
+        suppressClickAfterDrag = true;
+      } else {
+        return;
+      }
+    }
+
+    // 240px de recorrido vertical = 100% de volumen (progresión suave y controlable)
+    const deltaPercent = (dy / 240) * 100;
+    const targetVol = Math.max(0, Math.min(100, Math.round(blindVolStartVal + deltaPercent)));
+    setVolume(targetVol, true);
+  }, { passive: true });
+
+  const endBlindVolDrag = (e) => {
+    if (isBlindVolDragging && (!e || e.pointerId === blindVolPointerId)) {
+      isBlindVolDragging = false;
+      hasPassedDeadzone = false;
+      blindVolPointerId = null;
+      if (suppressClickAfterDrag) {
+        setTimeout(() => { suppressClickAfterDrag = false; }, 120);
+      }
+    }
+  };
+
+  window.addEventListener('pointerup', endBlindVolDrag, { passive: true });
+  window.addEventListener('pointercancel', endBlindVolDrag, { passive: true });
+
+  // Evitar clicks accidentales (ej. en la carátula o play) si se soltó tras un arrastre de volumen
+  window.addEventListener('click', (e) => {
+    if (suppressClickAfterDrag) {
+      e.stopPropagation();
+      e.preventDefault();
+      suppressClickAfterDrag = false;
+    }
+  }, true);
 
   // =================== BOTONES DE NAVEGACIÓN Y CONTROL ===================
   btnPlayPause.addEventListener('click', togglePlayPause);
 
-  // Click en el cuadro grande de la carátula: Pausa / Reproduce rápido (fácil toque en conducción)
+  // Carátula (igual que la app y que el video de JH VIDEO): 1 toque no hace nada; 2 toques (en menos de
+  // 350 ms) ocultan o muestran el explorador. Para pausar están ▶ / ⏸ y su franja
   if (albumContainer) {
     albumContainer.style.cursor = 'pointer';
-    albumContainer.setAttribute('title', 'Tocar para Pausar / Reproducir');
-    albumContainer.addEventListener('click', togglePlayPause);
+    albumContainer.setAttribute('title', 'Doble toque: ocultar / mostrar explorador');
+    let lastCoverTapAt = 0;
+    albumContainer.addEventListener('click', () => {
+      const now = Date.now();
+      if (lastCoverTapAt && now - lastCoverTapAt <= 350) {
+        lastCoverTapAt = 0;
+        toggleExplorer();
+      } else {
+        lastCoverTapAt = now;
+      }
+    });
   }
 
   // Feedback visual de adelanto/retroceso centrado en el reproductor
@@ -1576,13 +1722,38 @@ function initApp() {
   btnNext.addEventListener('click', handleNextTouch);
   btnPrev.addEventListener('click', handlePrevTouch);
 
-  // Al tocar la zona se ilumina el botón (en pantallas táctiles :active no siempre se ve)
-  [btnPrev, btnNext].forEach(btn => {
-    btn.addEventListener('pointerdown', () => {
-      btn.classList.add('pressed');
-      setTimeout(() => btn.classList.remove('pressed'), 180);
-    });
-  });
+  // =================== ZONAS DE ANTERIOR / PLAY / SIGUIENTE PARA EL AUTO (igual que la app) ===================
+  // Toda la franja de abajo del reproductor (debajo de los tiempos, hasta el borde) responde, en tres
+  // columnas: el play con 24px de más a cada lado, a su izquierda anterior y a su derecha siguiente.
+  // Solo se ilumina el botón (en pantallas táctiles :active no siempre se ve)
+  const PLAY_ZONE_EXTRA = 24;
+  const navPanel = document.getElementById('playerPanel');
+  const navZoneTop = document.querySelector('.progress-section');
+
+  function navZoneAt(x, y) {
+    const panel = navPanel.getBoundingClientRect();
+    const top = navZoneTop.getBoundingClientRect().bottom;
+    const play = btnPlayPause.getBoundingClientRect();
+    if (x < panel.left || x > panel.right || y < top || y > panel.bottom) return null;
+    if (x < play.left - PLAY_ZONE_EXTRA) return btnPrev;
+    if (x > play.right + PLAY_ZONE_EXTRA) return btnNext;
+    return btnPlayPause;
+  }
+
+  navPanel.addEventListener('pointerdown', (e) => {
+    const target = navZoneAt(e.clientX, e.clientY);
+    if (!target) return;
+    target.classList.add('pressed');
+    setTimeout(() => target.classList.remove('pressed'), 180);
+  }, true);
+
+  // Un clic fuera de los botones, dentro de la franja, va al botón de su columna
+  navPanel.addEventListener('click', (e) => {
+    const target = navZoneAt(e.clientX, e.clientY);
+    if (!target || target.contains(e.target)) return;
+    e.stopPropagation();
+    target.click();
+  }, true);
 
   // Clicks directos en las tarjetas flotantes
   if (adjPrevCard) {
@@ -1641,106 +1812,48 @@ function initApp() {
     toggleExplorer();
   });
 
-  // =================== ZONA EXCLUSIVA DE GESTOS TÁCTILES / ARRASTRE ===================
-  // El área de touch y arrastrar para alternar el explorador se restringe ÚNICAMENTE
-  // a la franja libre a la izquierda de la carátula (área roja)
-  let isDragGestureActive = false;
-  let touchStartX = 0;
-  let touchStartY = 0;
-
-  function isInsideExplorerDragZone(clientX, clientY) {
-    const albumContainer = document.getElementById('albumContainer');
-    if (!playerPanel || !albumContainer) return false;
-    const playerRect = playerPanel.getBoundingClientRect();
-    const albumRect = albumContainer.getBoundingClientRect();
-
-    // Área roja delimitada por Hernan (igual que la app):
-    // - Horizontal: Desde el borde izquierdo del panel del reproductor hasta la carátula
-    // - Vertical: Desde arriba del panel hasta el fondo de la carátula (+10px)
-    const minX = playerRect.left;
-    const maxX = albumRect.left;
-    const minY = playerRect.top;
-    const maxY = albumRect.bottom + 10;
-
-    return clientX >= minX && clientX <= maxX && clientY >= minY && clientY <= maxY;
-  }
-
-  function handleSwipeAction(dx, dy) {
-    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 1.1) return;
-
-    // Con el explorador en la izquierda:
-    // Si el explorador está ABIERTO: arrastrar hacia la izquierda (<-) lo CIERRA (expande reproductor)
-    if (!isPlayerExpanded && dx < -35) {
-      setPlayerExpanded(true);
-    }
-    // Si el explorador está CERRADO: arrastrar hacia la derecha (->) lo ABRE
-    else if (isPlayerExpanded && dx > 35) {
-      setPlayerExpanded(false);
-    }
-  }
-
-  // Toques en pantalla táctil (solo inician si el dedo cayó en el área roja)
-  window.addEventListener('touchstart', (e) => {
-    if (e.touches && e.touches.length === 1) {
-      const x = e.touches[0].clientX;
-      const y = e.touches[0].clientY;
-      if (isInsideExplorerDragZone(x, y)) {
-        isDragGestureActive = true;
-        touchStartX = x;
-        touchStartY = y;
-      } else {
-        isDragGestureActive = false;
-      }
-    }
-  }, { passive: true });
-
-  window.addEventListener('touchend', (e) => {
-    if (isDragGestureActive && e.changedTouches && e.changedTouches.length === 1) {
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      const dy = e.changedTouches[0].clientY - touchStartY;
-      isDragGestureActive = false;
-      handleSwipeAction(dx, dy);
-    }
-  }, { passive: true });
-
-  // Arrastre con ratón en PC (solo en el área roja)
-  let isMouseDraggingZone = false;
-  let mouseStartX = 0;
-  let mouseStartY = 0;
-
-  window.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && isInsideExplorerDragZone(e.clientX, e.clientY)) {
-      isMouseDraggingZone = true;
-      mouseStartX = e.clientX;
-      mouseStartY = e.clientY;
-    }
-  });
-
-  window.addEventListener('mouseup', (e) => {
-    if (isMouseDraggingZone) {
-      const dx = e.clientX - mouseStartX;
-      const dy = e.clientY - mouseStartY;
-      isMouseDraggingZone = false;
-      handleSwipeAction(dx, dy);
-    }
-  });
+  // El explorador ya no se jala de costado (esa franja es para el gesto de volumen):
+  // se oculta o muestra con doble toque en la carátula o desde el menú ☰
 
   window.addEventListener('resize', () => {
     refreshAllMarquees();
   });
 
+  // Aleatorio y repetir recuerdan cómo quedaron (en la app, en sus preferencias)
+  function saveModes() {
+    try {
+      localStorage.setItem('jhmusic_shuffle', isShuffle ? '1' : '0');
+      localStorage.setItem('jhmusic_repeat', isRepeat ? '1' : '0');
+    } catch (err) {}
+  }
+  try {
+    isShuffle = localStorage.getItem('jhmusic_shuffle') === '1';
+    isRepeat = localStorage.getItem('jhmusic_repeat') === '1';
+  } catch (err) {}
+  refreshPlayerMenu();
+
   // Aleatorio y repetir dejan el menú abierto 5 s más, para cambiar los dos de una vez
   menuShuffle.addEventListener('click', () => {
     isShuffle = !isShuffle;
+    saveModes();
     refreshPlayerMenu();
     setPlayerMenuOpen(true);
   });
 
   menuRepeat.addEventListener('click', () => {
     isRepeat = !isRepeat;
+    saveModes();
     refreshPlayerMenu();
     setPlayerMenuOpen(true);
   });
+
+  // Re-escanear USB (antes en la barra de arriba): cierra el menú y hace lo mismo que aquel botón
+  document.getElementById('menuRescan').addEventListener('click', () => {
+    setPlayerMenuOpen(false);
+    document.getElementById('btnRescanUsb').click();
+  });
+  document.getElementById('menuVersion').textContent =
+    'JH MUSIC ' + document.getElementById('appVersionBadge').textContent.replace('JH MUSIC ', '');
 
   // =================== UTILIDADES DE BÚSQUEDA Y ALMACENAMIENTO ===================
   function normalizeText(text) {
@@ -2109,7 +2222,7 @@ function initApp() {
   // =================== PESTAÑAS Y RENDERIZADO ===================
   // Función para revelar y desplegar automáticamente la carpeta de la canción que está sonando
   function revealPlayingFolderInTree() {
-    const currentTrack = currentPlaylist[currentTrackIndex];
+    const currentTrack = loadedTrack || currentPlaylist[currentTrackIndex];
     if (!currentTrack) return;
 
     const targetFolder = currentTrack.folder || currentFolder;
@@ -2545,13 +2658,13 @@ function initApp() {
       function renderTreeNode(node, level = 0) {
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expandedTreeNodes.has(node.id);
-        const currentTrack = currentPlaylist[currentTrackIndex];
+        const currentTrack = loadedTrack || currentPlaylist[currentTrackIndex];
         const isPlayingFolder = currentTrack && (
           (node.name === currentTrack.folder) ||
           (currentTrack.path && node.path && !node.isUsbRoot && (currentTrack.path.replace(/\/+$/, '') === node.path.replace(/\/+$/, '')))
         );
         const isActive = isPlayingFolder || (currentFolder === node.name);
-        const indentPx = 10 + (level * 20);
+        const indentPx = 4 + (level * 14); // poca sangría: el nombre necesita el ancho en 1024x600
 
         // Si la carpeta tiene 0 músicas directas (ej: es solo contenedor de subcarpetas o raíz),
         // se lista normalmente pero NO debe salir el botón de play.
@@ -2562,7 +2675,8 @@ function initApp() {
         const hasDirectMusic = directTracksCount > 0;
 
         const nodeEl = document.createElement('div');
-        nodeEl.className = `tree-node-item ${isPlayingFolder ? 'is-playing-folder' : (isActive ? 'is-active-folder' : '')}`;
+        // La que suena lleva un ecualizador en su botón ▶; la abierta (si no suena), borde fino
+        nodeEl.className = `tree-node-item ${isPlayingFolder ? 'is-playing-folder' : (isActive ? 'is-active-folder' : '')} ${fullTitleNodeId === node.id ? 'show-full-title' : ''}`;
         nodeEl.style.paddingLeft = `${indentPx}px`;
         nodeEl.dataset.nodeId = node.id;
 
@@ -2572,21 +2686,18 @@ function initApp() {
         if (hasDirectMusic) {
           playBtnHtml = `
             <button class="btn-folder-addmix" title="Agregar ${escapeHtml(node.name)} a Mi Mix">${MIX_PLUS_SVG}</button>
-            <button class="btn-folder-play" title="Reproducir música de ${escapeHtml(node.name)}">
-              <span class="track-count-num">${directTracksCount}</span>
-              <div class="play-circle">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              </div>
+            <button class="btn-folder-play is-square" title="Reproducir ${escapeHtml(node.name)}">
+              ${isPlayingFolder
+                ? '<span class="folder-eq"><i></i><i></i><i></i></span>'
+                : '<div class="play-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>'}
             </button>
           `;
         }
 
-        // Límite prudente para evitar scrolls kilométricos si hay carpetas con nombres excesivos
-        const MAX_FOLDER_CHARS = 26;
+        // Nombre en 1 renglón (el CSS lo corta con "…"; tocado, completo en 2 renglones). Sin la línea de
+        // cantidad: si tiene canciones lo dicen + y ▶; si solo tiene subcarpetas, la flecha
         const rawFolderName = node.name || '';
-        const displayFolderName = rawFolderName.length > MAX_FOLDER_CHARS 
-          ? rawFolderName.slice(0, MAX_FOLDER_CHARS) + '…' 
-          : rawFolderName;
+        const folderGlyph = `<svg class="tree-folder-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
 
         nodeEl.innerHTML = `
           <div class="tree-node-left">
@@ -2599,22 +2710,18 @@ function initApp() {
                 <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(148,163,184,0.35);"></span>
               `}
             </div>
-            <div class="tree-node-icon ${isUsbRoot ? 'is-usb-root' : ''}">
-              ${isUsbRoot ? `
+            ${isUsbRoot ? `
+            <div class="tree-node-icon is-usb-root">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
                   <rect x="6" y="2" width="12" height="20" rx="2"></rect>
                   <line x1="9" y1="6" x2="9" y2="8"></line>
                   <line x1="15" y1="6" x2="15" y2="8"></line>
                   <line x1="9" y1="18" x2="15" y2="18"></line>
                 </svg>
-              ` : `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-              `}
-            </div>
+            </div>` : ''}
+            ${isUsbRoot ? '' : `<span class="tree-fixed-glyph">${folderGlyph}</span>`}
             <div class="tree-node-info" title="${escapeHtml(rawFolderName)}">
-              <span class="tree-node-title">${escapeHtml(displayFolderName)}</span>
+              <span class="tree-node-title">${escapeHtml(rawFolderName)}</span>
             </div>
           </div>
           ${playBtnHtml}
@@ -2645,6 +2752,7 @@ function initApp() {
           const now = Date.now();
           const doubleTap = lastTreeTap.id === node.id && now - lastTreeTap.at <= FOLDER_DOUBLE_TAP_MS;
           lastTreeTap = doubleTap ? { id: null, at: 0 } : { id: node.id, at: now };
+          fullTitleNodeId = node.id;
           if (hasChildren) {
             if (expandedTreeNodes.has(node.id)) {
               expandedTreeNodes.delete(node.id);
@@ -3379,6 +3487,8 @@ function initApp() {
   // Dos toques seguidos en la fila de una carpeta = botón [N ▶] (igual que la app)
   const FOLDER_DOUBLE_TAP_MS = 350;
   let lastTreeTap = { id: null, at: 0 };
+  // Carpeta tocada por última vez: su nombre se muestra completo, en hasta 2 renglones
+  let fullTitleNodeId = null;
 
   function playFolderTree(node) {
     const allPool = masterTracks.length > 0 ? masterTracks : sampleTracks;

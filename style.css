@@ -220,7 +220,7 @@ body {
 .dashboard-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 54px 1.18fr 1fr; /* Col 1: Vol (54px), Col 2: Explorador (ahora a la izquierda), Col 3: Reproductor (derecha) */
+  grid-template-columns: 72px 1.18fr 1fr; /* Col 1: Vol (72px), Col 2: Explorador (ahora a la izquierda), Col 3: Reproductor (derecha) */
   overflow: hidden;
   position: relative;
   transition: grid-template-columns 0.3s ease;
@@ -228,7 +228,7 @@ body {
 
 /* Modo Reproductor Expandido / Pantalla Completa (Explorador colapsado a la izquierda) */
 .dashboard-grid.is-expanded {
-  grid-template-columns: 54px 1fr;
+  grid-template-columns: 72px 1fr;
 }
 
 .dashboard-grid.is-expanded .explorer-panel,
@@ -256,8 +256,8 @@ body {
 }
 
 .dashboard-grid.is-expanded .album-art-container {
-  width: 221px; /* 240 - 19: la cápsula sobresale 19px y el título no se mueve */
-  height: 221px;
+  width: 263px; /* 221 + los 42px de la barra de arriba, que ya no está (opción C2) */
+  height: 263px;
   border-radius: 20px;
 }
 
@@ -334,8 +334,8 @@ body {
 
 /* Botón Atrás Táctil Conductor (Misma función que el botón físico para visión nocturna) */
 .btn-driver-back {
-  width: 42px;
-  height: 40px;
+  width: 60px;
+  height: 52px;
   background: #181d26;
   border: 1.5px solid var(--border-light);
   border-radius: 10px;
@@ -362,14 +362,14 @@ body {
 }
 
 .btn-driver-back svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 /* Botones Compactos de Volumen (Solo iconos limpios) */
 .btn-driver-vol {
-  width: 42px;
-  height: 40px;
+  width: 60px;
+  height: 52px;
   background: #1c212b;
   border: 1.5px solid #2d3444;
   border-radius: 10px;
@@ -394,8 +394,8 @@ body {
 }
 
 .btn-driver-vol svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 /* Barra Vertical Táctil de Nivel (Ocupa hasta abajo del término de la pantalla) */
@@ -413,7 +413,7 @@ body {
 }
 
 .vol-meter-track {
-  width: 12px;
+  width: 16px;
   height: 100%;
   background: #11141a;
   border-radius: 6px;
@@ -616,6 +616,11 @@ body {
   height: 26px;
 }
 
+/* Play tocado desde su zona: un poco gris un instante, como al presionarlo */
+.btn-ctrl.btn-play-main.pressed {
+  background: #d9dee6;
+}
+
 /* Fila de carpeta recién tocada: se enciende en cian un instante (más fuerte que la carpeta activa) */
 .tree-node-item.is-tapped {
   background: rgba(56, 189, 248, 0.35) !important;
@@ -671,8 +676,8 @@ body {
 /* Carátula: 221px (240 - 19). La cápsula PLAYING sobresale 19px por debajo; la carátula se achica
    eso mismo para que el título y lo de abajo no se muevan (igual que en la app nativa) */
 .album-art-container {
-  width: 221px;
-  height: 221px;
+  width: 263px; /* 221 + los 42px de la barra de arriba, que ya no está (opción C2) */
+  height: 263px;
   border-radius: 20px;
   background: #11141a;
   position: relative;
@@ -1322,11 +1327,6 @@ body {
 
 .tab-btn.active .tab-icon {
   stroke: #0c0e12;
-}
-
-.tab-btn.active #songCount {
-  color: #0c0e12;
-  font-weight: 800;
 }
 
 .tab-icon {
@@ -3135,4 +3135,307 @@ body {
 .mix-source-pos {
   color: #94a3b8;
   font-weight: 700;
+}
+
+/* ==========================================================================
+   HUD FLOTANTE DE VOLUMEN (GESTOS CIEGOS EN AUTO)
+   ========================================================================== */
+.blind-volume-hud {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  background: rgba(13, 17, 23, 0.94);
+  border: 2px solid rgba(56, 189, 248, 0.55);
+  border-radius: 22px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.85), 0 0 35px rgba(56, 189, 248, 0.28);
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  min-width: 130px;
+}
+
+.blind-volume-hud.is-visible,
+.blind-volume-hud.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.blind-hud-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+}
+
+.blind-hud-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.blind-hud-bar-wrap {
+  width: 22px;
+  height: 140px;
+  background: #11141a;
+  border: 1.5px solid #283244;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.blind-hud-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(180deg, #60a5fa 0%, #38bdf8 100%);
+  border-radius: 10px;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.7);
+  transition: height 0.05s linear;
+}
+
+.blind-hud-percent {
+  font-family: var(--font-mono, monospace);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  text-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+  letter-spacing: -1px;
+}
+
+/* ==========================================================================
+   OPCIÓN C2 (igual que la app): sin barra de arriba; reloj grande en la tira de volumen.
+   Re-escanear USB y la versión pasan al menú ☰
+   ========================================================================== */
+.car-status-bar {
+  display: none !important;
+}
+
+.strip-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+
+.strip-clock-num {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: #f8fafc;
+}
+
+.strip-usb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.strip-usb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.strip-usb-dot.off {
+  background: #475569;
+  box-shadow: none;
+}
+
+.player-menu-version {
+  margin-top: 10px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   Pantalla del radio (1024x600): número de las pestañas en una etiqueta chica y
+   filas de carpeta "opción B" (nombre en 1 renglón, sin la línea de cantidad,
+   filas de 60, + y ▶ cuadrados).
+   ========================================================================== */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 7px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.tab-btn.active .tab-count {
+  background: rgba(12, 14, 18, 0.2);
+  color: #0c0e12;
+}
+
+.tree-node-item {
+  min-width: 0;
+  min-height: 60px;
+  padding: 4px 8px 4px 4px;
+}
+
+.tree-node-left {
+  gap: 4px;
+}
+
+.tree-toggle-arrow {
+  width: 24px;
+}
+
+.tree-node-info {
+  margin-left: 4px;
+  margin-right: 6px;
+}
+
+.tree-node-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* La carpeta tocada por última vez muestra el nombre completo, en hasta 2 renglones */
+.tree-node-item.show-full-title .tree-node-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  line-height: 1.18;
+}
+
+/* Ícono de carpeta dentro del nombre, del alto del texto, como una letra más */
+.tree-folder-glyph {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.12em;
+  margin-right: 0.3em;
+  color: var(--accent-blue);
+}
+
+.tree-node-item .btn-folder-addmix {
+  width: 46px;
+  height: 46px;
+}
+
+.btn-folder-play.is-square {
+  width: 52px;
+  min-width: 52px;
+  min-height: 48px;
+  height: 48px;
+  padding: 0;
+}
+
+.btn-folder-play.is-square .play-circle {
+  width: 30px;
+  height: 30px;
+}
+
+/* Colores de las carpetas: la que suena no se pinta (lleva un ecualizador en su botón ▶);
+   la tocada solo destella; la abierta en la pestaña de canciones, si no suena, solo borde fino */
+.tree-node-item.is-playing-folder {
+  background: rgba(10, 12, 17, 0.5);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+
+.tree-node-item.is-active-folder {
+  background: rgba(10, 12, 17, 0.5);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: none;
+}
+
+
+/* Título y artista con alto fijo: una canción con letras de otra fuente (más altas) agrandaba
+   la línea y movía hacia abajo anterior / play / siguiente */
+.track-meta .marquee-wrapper {
+  height: 2.3rem;
+  line-height: 2.3rem;
+}
+
+.track-meta .track-title {
+  margin-bottom: 0;
+  line-height: inherit;
+}
+
+.track-details {
+  height: 26px;
+  overflow: hidden;
+}
+
+/* Ícono de carpeta fijo (no se desliza con el nombre), del alto del texto */
+.tree-fixed-glyph {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.tree-fixed-glyph .tree-folder-glyph {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+/* Botón ▶ de la carpeta que suena: ecualizador blanco, se mueve mientras suena y queda quieto en pausa */
+.folder-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+
+.folder-eq i {
+  display: block;
+  width: 5px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.folder-eq i:nth-child(1) { height: 45%; }
+.folder-eq i:nth-child(2) { height: 80%; }
+.folder-eq i:nth-child(3) { height: 55%; }
+
+body.is-playing .folder-eq i {
+  animation: folder-eq 0.9s ease-in-out infinite;
+}
+
+body.is-playing .folder-eq i:nth-child(2) { animation-delay: -0.3s; }
+body.is-playing .folder-eq i:nth-child(3) { animation-delay: -0.6s; }
+
+@keyframes folder-eq {
+  0%, 100% { height: 25%; }
+  50% { height: 100%; }
 }

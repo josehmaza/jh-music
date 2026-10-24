@@ -1,12 +1,12 @@
 # Propuestas de mejora — JH MUSIC
 
-Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.4.0**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
+Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.6**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
 
 Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto.
 
 | # | Propuesta | Prioridad | Esfuerzo | Estado |
 |---|---|---|---|---|
-| 1 | Retomar donde quedaste al encender el auto | 🔴 Alta | Bajo | Pendiente |
+| 1 | Retomar donde quedaste al encender el auto | 🔴 Alta | Bajo | **Hecha en 2.9.0** (la última canción, en pausa y desde el inicio; no se guarda el segundo) |
 | 2 | Bajar la música con el GPS y pausar en llamadas (foco de audio) | 🔴 Alta | Bajo | Pendiente |
 | 3 | Reproducción independiente de la pantalla (servicio + MediaSession) | 🔴 Alta | Medio | Pendiente |
 | 4 | Una canción dañada no traba la reproducción | 🔴 Alta | Bajo | Pendiente |
@@ -28,7 +28,9 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 ### 1. Retomar donde quedaste al encender el auto
 
-**Problema.** Cada vez que se apaga y prende el auto, la app arranca de cero: sin carpeta, sin canción y con Pistas en 0. No guarda la sesión; lo único que guarda es Mi Mix.
+**Estado (2.9.0).** Hecha: al abrir, queda cargada en pausa la última canción con su lista (su carpeta o Mi Mix), y se recuerdan aleatorio, repetir y Automix. No se guarda el segundo donde iba: se decidió no escribir en la memoria mientras suena (ver [arquitectura §11](02-arquitectura-tecnica.md#11-última-canción-al-abrir-290)).
+
+**Problema (antes).** Cada vez que se apaga y prende el auto, la app arranca de cero: sin carpeta, sin canción y con la pestaña de canciones en 0. No guarda la sesión; lo único que guarda es Mi Mix.
 
 **Por qué importa.** Hay mixes de más de 14 minutos. Perder el punto cada vez que se baja del auto es molesto.
 
