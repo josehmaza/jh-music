@@ -2,6 +2,10 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.9.7 — 2026-10-24, pendiente de probar en el auto
+
+- **Arreglo: al abrir sin última canción** (la primera vez, o si su pendrive no está) el reproductor mostraba el nombre de la primera canción del pendrive, pero no la cargaba: ▶ no hacía nada, la pestaña decía "Canciones 0" y su carpeta no tenía el ecualizador. Ahora esa primera canción queda cargada en pausa con su carpeta abierta en Canciones. Si el pendrive de la última canción monta un momento después y no se tocó nada, la última la reemplaza. Probado en el emulador `radio-tucson` (Android 8.1, 1024 × 600).
+
 ## 2.9.6 — 2026-10-24, pendiente de probar en el auto
 
 Diseño revisado a la pantalla real del radio (1024 × 600 a 160 dpi, medida con Monitor JH). Igual en la maqueta web y en JH VIDEO 1.1.1.

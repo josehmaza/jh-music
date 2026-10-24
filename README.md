@@ -6,7 +6,7 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantal
 - **Automix:** mezcla las canciones e iguala su volumen.
 - Al encender el auto abre en la última canción, en pausa.
 
-Versión actual: **2.9.6**.
+Versión actual: **2.9.7**.
 
 ## Contenido
 

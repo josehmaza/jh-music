@@ -2,7 +2,7 @@
 
 Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias (anterior / play / siguiente responden en toda la franja de abajo), gestos simples (doble toque en la carátula, volumen deslizando el dedo), lectura directa de uno o dos pendrives USB, **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen. Al encender el auto abre en la última canción.
 
-- **Versión actual:** 2.9.6 (`versionCode 37`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
+- **Versión actual:** 2.9.7 (`versionCode 38`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
 - **Paquete Android:** `com.jh.caraudio`
 - **APK:** `JH-MUSIC-v<versión>.apk` en la carpeta `jh-music/`
 

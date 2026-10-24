@@ -183,7 +183,7 @@ Arriba a la derecha del reproductor, encima de Automix. Se abre sobre el reprodu
 | **Ocultar / Mostrar explorador** | Oculta o muestra el explorador y cierra el menú |
 | **Re-escanear USB** | Vuelve a buscar canciones en los pendrives y cierra el menú |
 
-Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.9.6`).
+Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.9.7`).
 
 El menú se cierra solo a los 5 s sin tocarlo (cada toque en Aleatorio o Repetir vuelve a contar), tocando fuera del panel o en **✕**.
 
@@ -277,6 +277,7 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 ### Al volver a encender el auto
 
 - La app abre en la **última canción que sonaba, en pausa** y desde el inicio. Toca ▶ para escucharla.
+- Si no hay última canción (la primera vez, o si su pendrive no está), queda en pausa la **primera canción del pendrive**, con su carpeta abierta en Canciones. Si el pendrive de la última canción aparece un momento después y no tocaste nada, la app cambia a la última.
 - Anterior y Siguiente siguen con **la misma lista**: su carpeta (que queda como la activa en Canciones) o Mi Mix, si sonaba Mi Mix.
 - Si el pendrive se monta un poco después de abrir la app, la canción se carga apenas aparece.
 - Si esa canción ya no está (otro pendrive, o se borró), la app abre como siempre.

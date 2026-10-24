@@ -317,7 +317,8 @@ Las páginas `demo-*.html` (animaciones de la carátula, transiciones de Automix
 
 - En `SharedPreferences` (`jh_music`): `last_track_path`, `last_track_from_mix`, `shuffle_on` y `repeat_on`. No se guarda el segundo donde iba: así no se escribe nada mientras suena.
 - `saveLastPlayback(track)` guarda solo al final de `onTrackStarted()` (una vez por canción).
-- `restoreLastPlayback()` corre al final de cada escaneo (antes de `filterByTab()`), solo si todavía no se restauró y no hay nada cargado (`mediaPlayer == null`, `currentTrackIndex == -1`). Arma la cola (Mi Mix si `last_track_from_mix` y la canción sigue en Mi Mix; si no, su carpeta con `selectFolderOf()`), prepara el `MediaPlayer` sin `start()` (queda en 00:00) y llama a `onTrackStarted()`. Si no se restaura, queda la vista previa de la primera canción como antes.
+- `restoreLastPlayback()` corre al final de cada escaneo (antes de `filterByTab()`), solo si todavía no se restauró y no hay nada cargado (`mediaPlayer == null`, `currentTrackIndex == -1`), o si lo cargado es la primera canción de respaldo sin tocar (`firstTrackFallbackPath`), que se libera. Arma la cola (Mi Mix si `last_track_from_mix` y la canción sigue en Mi Mix; si no, su carpeta con `selectFolderOf()`), y llama a `preparePaused()`: prepara el `MediaPlayer` sin `start()` (queda en 00:00) y llama a `onTrackStarted()` con `skipSaveLast` (cargar en pausa no cuenta como "la última que sonó").
+- **Sin última canción (2.9.7):** `loadFirstTrackPaused()` carga igual la primera canción del pendrive con su carpeta (`selectFolderOf()`) y anota su ruta en `firstTrackFallbackPath`. Antes solo se escribía su nombre ("vista previa") sin cola: ▶ no hacía nada y la pestaña decía Canciones 0. Al tocar ▶ sobre ella, `togglePlayPause()` la guarda como última y borra `firstTrackFallbackPath`.
 
 ## 12. Menú ☰ del reproductor (2.8.0)
 

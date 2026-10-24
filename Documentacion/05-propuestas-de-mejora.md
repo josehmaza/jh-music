@@ -1,6 +1,6 @@
 # Propuestas de mejora — JH MUSIC
 
-Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.6**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
+Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.7**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
 
 Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto.
 

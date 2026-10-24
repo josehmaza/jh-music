@@ -3151,6 +3151,13 @@ public class MainActivity extends Activity {
     private static final String PREF_SHUFFLE = "shuffle_on";
     private static final String PREF_REPEAT = "repeat_on";
     private boolean lastPlaybackRestored = false;
+    /**
+     * Ruta de la primera canción del pendrive cargada en pausa porque no había última canción. Si después
+     * aparece la última (su pendrive montó tarde) y esta sigue sin tocar, la última la reemplaza.
+     */
+    private String firstTrackFallbackPath;
+    /** Cargar una canción en pausa no cuenta como "la última que sonó". */
+    private boolean skipSaveLast;
 
     private void saveLastPlayback(Track track) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
@@ -3165,10 +3172,26 @@ public class MainActivity extends Activity {
      * salvo que ya se haya puesto otra canción. Devuelve false si su pendrive no está o no se pudo abrir.
      */
     private boolean restoreLastPlayback(Map<String, Track> tracksByPath) {
-        if (lastPlaybackRestored || mediaPlayer != null || currentTrackIndex != -1) return false;
+        if (lastPlaybackRestored) return false;
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         Track track = tracksByPath.get(prefs.getString(PREF_LAST_PATH, ""));
         if (track == null) return false;
+
+        // Estaba la primera del pendrive en pausa, sin tocar: la reemplaza la última de verdad
+        Track current = getCurrentTrack();
+        if (firstTrackFallbackPath != null && !isPlaying && current != null
+                && firstTrackFallbackPath.equals(current.getFilePath())
+                && !firstTrackFallbackPath.equals(track.getFilePath())) {
+            if (mediaPlayer != null) {
+                autoMixer.forgetPlayer(mediaPlayer);
+                releasePlayerQuietly(mediaPlayer);
+                mediaPlayer = null;
+            }
+            playQueue.clear();
+            currentTrackIndex = -1;
+            firstTrackFallbackPath = null;
+        }
+        if (mediaPlayer != null || currentTrackIndex != -1) return false;
 
         List<Track> mix = mixTracks();
         if (prefs.getBoolean(PREF_LAST_FROM_MIX, false) && mix.contains(track)) {
@@ -3183,6 +3206,33 @@ public class MainActivity extends Activity {
             currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
         }
 
+        if (!preparePaused(track)) return false;
+        lastPlaybackRestored = true;
+
+        int savedTab = prefs.getInt(PREF_LAST_TAB, playingFromMix ? 2 : 1);
+        selectTab(savedTab);
+        if (listViewContent != null) {
+            listViewContent.post(() -> scrollToPlayingTrack());
+        }
+        return true;
+    }
+
+    /**
+     * Sin última canción (instalación nueva, o su pendrive no está): queda cargada en pausa la primera
+     * del pendrive, con su carpeta como la activa. Así ▶ la reproduce y Canciones muestra su carpeta.
+     */
+    private void loadFirstTrackPaused() {
+        if (allTracks.isEmpty() || mediaPlayer != null || currentTrackIndex != -1) return;
+        Track first = allTracks.get(0);
+        playingFromMix = false;
+        int folderIdx = selectFolderOf(first);
+        setPlayQueueFromFolder();
+        currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
+        if (preparePaused(first)) firstTrackFallbackPath = first.getFilePath();
+    }
+
+    /** Abre la canción (ya ubicada en la cola) y la deja en pausa desde el inicio. */
+    private boolean preparePaused(Track track) {
         autoMixer.onManualPlayback();
         try {
             mediaPlayer = createPlayer();
@@ -3198,14 +3248,9 @@ public class MainActivity extends Activity {
             return false;
         }
         isPlaying = false;
-        lastPlaybackRestored = true;
+        skipSaveLast = true;
         onTrackStarted(track);
-
-        int savedTab = prefs.getInt(PREF_LAST_TAB, playingFromMix ? 2 : 1);
-        selectTab(savedTab);
-        if (listViewContent != null) {
-            listViewContent.post(() -> scrollToPlayingTrack());
-        }
+        skipSaveLast = false;
         return true;
     }
 
@@ -3319,7 +3364,7 @@ public class MainActivity extends Activity {
         refreshTabLabels(); // el punto de Mi Mix aparece o se va según lo que suena
         // En la pestaña Mi Mix: marcas ✓, resumen y la que suena fuera de la lista
         if (currentTab == 2 && etSearch != null && etSearch.getText().toString().trim().isEmpty()) showMixTab();
-        saveLastPlayback(track);
+        if (!skipSaveLast) saveLastPlayback(track);
     }
 
     /** Pone en pantalla los datos de la canción que suena. */
@@ -4188,6 +4233,12 @@ public class MainActivity extends Activity {
         } else {
             mediaPlayer.start();
             isPlaying = true;
+            if (firstTrackFallbackPath != null) {
+                // Era la primera del pendrive cargada en pausa: desde ahora cuenta como la última que sonó
+                firstTrackFallbackPath = null;
+                Track current = getCurrentTrack();
+                if (current != null) saveLastPlayback(current);
+            }
         }
         updatePlaybackStateUI();
     }
@@ -4717,21 +4768,12 @@ public class MainActivity extends Activity {
                 // La última canción que sonaba queda cargada en pausa (con su carpeta como la activa)
                 boolean restored = restoreLastPlayback(tracksByPath);
                 if (!restored) {
+                    // Sin última canción (instalación nueva, o su pendrive no está): queda cargada en pausa la
+                    // primera del pendrive. Antes solo se mostraba su nombre y ▶ no hacía nada
+                    loadFirstTrackPaused();
                     SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
                     int savedTab = prefs.getInt(PREF_LAST_TAB, 0);
                     selectTab(savedTab);
-                }
-
-                if (!allTracks.isEmpty() && currentTrackIndex == -1) {
-                    // Cargar primera canción en vista previa
-                    Track first = allTracks.get(0);
-                    tvTrackTitle.setText(first.getTitle());
-                    tvTrackArtist.setText(first.getArtist());
-                    tvTrackAlbum.setText(first.getAlbum());
-                    tvFormatBadge.setText(first.getFormat());
-                    tvTimeTotal.setText(first.getFormattedDuration());
-                    loadAlbumArt(first);
-                    updatePreviews();
                 }
             });
         });
