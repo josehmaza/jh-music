@@ -976,8 +976,8 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // 4. Si ya estamos en la raíz (tab 0), realizar la acción física del sistema (salir / minimizar al launcher del auto)
-        super.onBackPressed();
+        // 4. Si ya estamos en la raíz (tab 0), minimizar al launcher del auto sin matar la reproducción
+        moveTaskToBack(true);
     }
 
     /**
