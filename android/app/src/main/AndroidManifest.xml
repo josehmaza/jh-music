@@ -30,6 +30,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".MusicRemoteReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.jh.music.action.PLAY_PAUSE" />
+                <action android:name="com.jh.music.action.NEXT" />
+                <action android:name="com.jh.music.action.PREV" />
+                <action android:name="com.jh.music.action.REQUEST_STATE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

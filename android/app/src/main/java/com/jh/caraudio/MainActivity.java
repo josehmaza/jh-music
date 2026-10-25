@@ -95,6 +95,12 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
+    private static MainActivity sInstance;
+
+    public static MainActivity getInstance() {
+        return sInstance;
+    }
+
     private static final int PERM_REQUEST_CODE = 2024;
 
     // Barra Superior
@@ -279,6 +285,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        sInstance = this;
+
+        if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
+            moveTaskToBack(true);
+            overridePendingTransition(0, 0);
+        }
 
         handler = new Handler(Looper.getMainLooper());
         audioAnalyzer = new AudioAnalyzer();
@@ -4288,7 +4300,7 @@ public class MainActivity extends Activity {
         startPlayback(queue.get(index), quickFade);
     }
 
-    private void togglePlayPause() {
+    public void togglePlayPause() {
         if (mediaPlayer == null) {
             List<Track> queue = getQueue();
             if (!queue.isEmpty()) {
@@ -4315,7 +4327,7 @@ public class MainActivity extends Activity {
         updatePlaybackStateUI();
     }
 
-    private void playNextTrack() {
+    public void playNextTrack() {
         // Automix: si la siguiente ya está precargada, usarla directo (instantáneo con pendrive lento)
         if (autoMixer.skipToPreparedNext()) return;
         List<Track> queue = getQueue();
@@ -4339,7 +4351,7 @@ public class MainActivity extends Activity {
         playTrackFromQueue(queue, nextIndex, true);
     }
 
-    private void playPreviousTrack() {
+    public void playPreviousTrack() {
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
         // En Mi Mix, Anterior en la primera la vuelve a empezar (no salta a la última)
@@ -5031,6 +5043,16 @@ public class MainActivity extends Activity {
         }
         if (searchExecutor != null) {
             searchExecutor.shutdown();
+        }
+        if (sInstance == this) {
+            sInstance = null;
+        }
+    }
+
+    public void requestCurrentStateBroadcast() {
+        Track current = getCurrentTrack();
+        if (current != null) {
+            broadcastTrackState(current, isPlaying);
         }
     }
 }
