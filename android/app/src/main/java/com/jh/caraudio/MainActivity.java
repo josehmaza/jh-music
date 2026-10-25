@@ -89,6 +89,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
@@ -320,6 +323,14 @@ public class MainActivity extends Activity {
         usbFilter.addAction(Intent.ACTION_MEDIA_EJECT);
         usbFilter.addDataScheme("file");
         registerReceiver(usbMountReceiver, usbFilter);
+
+        // Control remoto desde JH Launcher
+        IntentFilter launcherFilter = new IntentFilter();
+        launcherFilter.addAction("com.jh.music.action.PLAY_PAUSE");
+        launcherFilter.addAction("com.jh.music.action.NEXT");
+        launcherFilter.addAction("com.jh.music.action.PREV");
+        launcherFilter.addAction("com.jh.music.action.REQUEST_STATE");
+        registerReceiver(launcherCommandReceiver, launcherFilter);
 
         // Ocultar teclado por defecto y remover foco del buscador al abrir la app
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
@@ -3159,11 +3170,68 @@ public class MainActivity extends Activity {
     /** Cargar una canción en pausa no cuenta como "la última que sonó". */
     private boolean skipSaveLast;
 
+    private final BroadcastReceiver launcherCommandReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || intent.getAction() == null) return;
+            String action = intent.getAction();
+            if ("com.jh.music.action.PLAY_PAUSE".equals(action)) {
+                togglePlayPause();
+            } else if ("com.jh.music.action.NEXT".equals(action)) {
+                playNextTrack();
+            } else if ("com.jh.music.action.PREV".equals(action)) {
+                playPreviousTrack();
+            } else if ("com.jh.music.action.REQUEST_STATE".equals(action)) {
+                Track current = getCurrentTrack();
+                if (current != null) {
+                    broadcastTrackState(current, isPlaying);
+                }
+            }
+        }
+    };
+
+    private void broadcastTrackState(Track track, boolean isPlaying) {
+        if (track == null) return;
+        try {
+            File stateFile = new File(Environment.getExternalStorageDirectory(), ".jh_music_state.json");
+            JSONObject json = new JSONObject();
+            json.put("title", track.getTitle());
+            json.put("artist", track.getArtist() != null ? track.getArtist() : "");
+            json.put("path", track.getFilePath());
+            int durationSec = track.getDurationSec();
+            if (durationSec <= 0 && mediaPlayer != null) {
+                try {
+                    durationSec = mediaPlayer.getDuration() / 1000;
+                } catch (Exception ignored) {}
+            }
+            json.put("duration", formatMs(durationSec * 1000));
+            json.put("totalSec", durationSec);
+            json.put("isPlaying", isPlaying);
+            json.put("timestamp", System.currentTimeMillis());
+
+            try (FileOutputStream fos = new FileOutputStream(stateFile)) {
+                fos.write(json.toString().getBytes(StandardCharsets.UTF_8));
+            }
+
+            Intent intent = new Intent("com.jh.music.action.TRACK_CHANGED");
+            intent.putExtra("extra_title", track.getTitle());
+            intent.putExtra("extra_artist", track.getArtist() != null ? track.getArtist() : "");
+            intent.putExtra("extra_path", track.getFilePath());
+            intent.putExtra("extra_is_playing", isPlaying);
+            intent.putExtra("extra_duration", formatMs(durationSec * 1000));
+            intent.putExtra("extra_total_sec", durationSec);
+            sendBroadcast(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void saveLastPlayback(Track track) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                 .putString(PREF_LAST_PATH, track.getFilePath())
                 .putBoolean(PREF_LAST_FROM_MIX, playingFromMix)
                 .apply();
+        broadcastTrackState(track, isPlaying);
     }
 
     /**
@@ -3208,6 +3276,7 @@ public class MainActivity extends Activity {
 
         if (!preparePaused(track)) return false;
         lastPlaybackRestored = true;
+        broadcastTrackState(track, false);
 
         int savedTab = prefs.getInt(PREF_LAST_TAB, playingFromMix ? 2 : 1);
         selectTab(savedTab);
@@ -3228,7 +3297,10 @@ public class MainActivity extends Activity {
         int folderIdx = selectFolderOf(first);
         setPlayQueueFromFolder();
         currentTrackIndex = folderIdx >= 0 ? folderIdx : 0;
-        if (preparePaused(first)) firstTrackFallbackPath = first.getFilePath();
+        if (preparePaused(first)) {
+            firstTrackFallbackPath = first.getFilePath();
+            broadcastTrackState(first, false);
+        }
     }
 
     /** Abre la canción (ya ubicada en la cola) y la deja en pausa desde el inicio. */
@@ -4940,6 +5012,9 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(seekFeedbackRunnable);
         try {
             unregisterReceiver(usbMountReceiver);
+        } catch (Exception ignored) {}
+        try {
+            unregisterReceiver(launcherCommandReceiver);
         } catch (Exception ignored) {}
         durationGeneration++;
         durationExecutor.shutdownNow();
