@@ -5,7 +5,7 @@
 set -e
 export JAVA_HOME="/c/Program Files/Java/jdk-11.0.30"
 export PATH="$JAVA_HOME/bin:$PATH"
-echo "Usando Java: $($JAVA_HOME/bin/java -version 2>&1 | head -n 1)"
+echo "Usando Java: $(java -version 2>&1 | head -n 1)"
 cd android
 ./gradlew clean assembleDebug
 cd ..

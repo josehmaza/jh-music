@@ -23,12 +23,15 @@ public class MusicRemoteReceiver extends BroadcastReceiver {
                 act.requestCurrentStateBroadcast();
             }
         } else {
-            // Si la app de música estaba cerrada y el usuario presiona Play en el Launcher,
-            // se inicia en modo segundo plano protegido sin tapar la pantalla del launcher
-            if ("com.jh.music.action.PLAY_PAUSE".equals(action)) {
+            // Si la app de música estaba cerrada y el usuario presiona Play, Next o Prev en el Launcher,
+            // se inicia en segundo plano protegido ejecutando la acción solicitada
+            if ("com.jh.music.action.PLAY_PAUSE".equals(action) ||
+                "com.jh.music.action.NEXT".equals(action) ||
+                "com.jh.music.action.PREV".equals(action)) {
                 Intent i = new Intent(context, MainActivity.class);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 i.putExtra("extra_from_launcher_bg", true);
+                i.putExtra("extra_pending_action", action);
                 context.startActivity(i);
             }
         }

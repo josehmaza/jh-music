@@ -4325,6 +4325,10 @@ public class MainActivity extends Activity {
             }
         }
         updatePlaybackStateUI();
+        Track current = getCurrentTrack();
+        if (current != null) {
+            broadcastTrackState(current, isPlaying);
+        }
     }
 
     public void playNextTrack() {
@@ -4859,6 +4863,22 @@ public class MainActivity extends Activity {
                     int savedTab = prefs.getInt(PREF_LAST_TAB, 0);
                     selectTab(savedTab);
                 }
+
+                // Si fue iniciada en segundo plano por el Launcher, ejecutar la acción solicitada
+                if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
+                    String pendingAction = getIntent().getStringExtra("extra_pending_action");
+                    if ("com.jh.music.action.NEXT".equals(pendingAction)) {
+                        playNextTrack();
+                    } else if ("com.jh.music.action.PREV".equals(pendingAction)) {
+                        playPreviousTrack();
+                    } else {
+                        if (!isPlaying) {
+                            togglePlayPause();
+                        }
+                    }
+                    getIntent().removeExtra("extra_from_launcher_bg");
+                    getIntent().removeExtra("extra_pending_action");
+                }
             });
         });
     }
@@ -4984,6 +5004,24 @@ public class MainActivity extends Activity {
         if (hasFocus) {
             setImmersiveMode();
             updateVolumeUI();
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && intent.getBooleanExtra("extra_from_launcher_bg", false)) {
+            moveTaskToBack(true);
+            overridePendingTransition(0, 0);
+            String pendingAction = intent.getStringExtra("extra_pending_action");
+            if ("com.jh.music.action.NEXT".equals(pendingAction)) {
+                playNextTrack();
+            } else if ("com.jh.music.action.PREV".equals(pendingAction)) {
+                playPreviousTrack();
+            } else if ("com.jh.music.action.PLAY_PAUSE".equals(pendingAction)) {
+                togglePlayPause();
+            }
         }
     }
 
