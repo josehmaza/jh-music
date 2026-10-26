@@ -288,6 +288,10 @@ public class MainActivity extends Activity {
         sInstance = this;
 
         if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
+            overridePendingTransition(0, 0);
+            try {
+                getWindow().setWindowAnimations(0);
+            } catch (Exception ignored) {}
             moveTaskToBack(true);
             overridePendingTransition(0, 0);
         }

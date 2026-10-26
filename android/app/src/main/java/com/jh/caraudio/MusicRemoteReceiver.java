@@ -29,10 +29,15 @@ public class MusicRemoteReceiver extends BroadcastReceiver {
                 "com.jh.music.action.NEXT".equals(action) ||
                 "com.jh.music.action.PREV".equals(action)) {
                 Intent i = new Intent(context, MainActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
                 i.putExtra("extra_from_launcher_bg", true);
                 i.putExtra("extra_pending_action", action);
-                context.startActivity(i);
+                try {
+                    android.app.ActivityOptions opts = android.app.ActivityOptions.makeCustomAnimation(context, 0, 0);
+                    context.startActivity(i, opts.toBundle());
+                } catch (Exception e) {
+                    context.startActivity(i);
+                }
             }
         }
     }
