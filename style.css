@@ -684,12 +684,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
   overflow: hidden;
   cursor: pointer;
   user-select: none;
-  padding: 2.5px;
-  transition: transform 0.15s ease, box-shadow 0.25s ease;
+  padding: 2px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.15s ease, box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
 .album-art-container:active {
@@ -697,46 +698,22 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
-/* Spinner de haz láser que gira alrededor en el borde (Opción 4) */
-.laser-spinner {
-  position: absolute;
-  inset: -60%;
-  background: conic-gradient(from 0deg, transparent 0deg 280deg, rgba(0, 210, 255, 0.3) 320deg, #00d2ff 350deg, #ffffff 360deg);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-  z-index: 1;
+/* Borde cian tenue de precisión al reproducir (0 FPS continuos en GPU) */
+.album-art-container.is-playing {
+  border-color: rgba(56, 189, 248, 0.85);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
-.album-art-container.is-playing .laser-spinner {
-  opacity: 1;
-  animation: rotateLaser 2.2s linear infinite;
+/* Borde magenta neón al mezclar en Automix */
+.album-art-container.is-mixing {
+  border-color: rgba(244, 63, 94, 0.9);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 18px rgba(244, 63, 94, 0.4);
 }
 
-@keyframes rotateLaser {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Segundo haz láser Deck B (Magenta Neón) que entra en mezcla Automix */
+/* Los láseres giratorios continuos quedan desactivados para eliminar consumo de GPU */
+.laser-spinner,
 .laser-spinner-mix {
-  position: absolute;
-  inset: -60%;
-  background: conic-gradient(from 180deg, transparent 0deg 280deg, rgba(244, 63, 94, 0.3) 320deg, #f43f5e 350deg, #ffffff 360deg);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-  z-index: 1;
-}
-
-.album-art-container.is-mixing .laser-spinner-mix {
-  opacity: 1;
-  animation: rotateLaserReverse 1.5s linear infinite;
-}
-
-@keyframes rotateLaserReverse {
-  0% { transform: rotate(360deg); }
-  100% { transform: rotate(0deg); }
+  display: none !important;
 }
 
 /* Contenedor interior que oculta el centro del láser y sostiene la carátula */

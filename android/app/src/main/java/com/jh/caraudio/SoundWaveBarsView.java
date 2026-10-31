@@ -95,7 +95,7 @@ public class SoundWaveBarsView extends View {
         }
 
         if (isPlaying) {
-            postInvalidateOnAnimation();
+            postInvalidateDelayed(FrameGrid.delayToNext()); // ~20 fps, en la rejilla común
         }
     }
 

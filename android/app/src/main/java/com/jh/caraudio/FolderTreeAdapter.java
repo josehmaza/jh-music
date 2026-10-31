@@ -113,7 +113,7 @@ public class FolderTreeAdapter extends BaseAdapter {
         ImageView ivTreeArrow;
         FrameLayout frameTreeIcon;
         ImageView ivTreeIcon;
-        TextView tvTreeTitle;
+        CarMarqueeTextView tvTreeTitle;
         View btnFolderPlay;
         View frameFolderPlayCircle;
         MiniEqualizerView eqFolderPlaying;
@@ -188,14 +188,14 @@ public class FolderTreeAdapter extends BaseAdapter {
             // Nombre en 1 renglón que se desliza de derecha a izquierda si no entra; la carpeta
             // tocada por última vez lo muestra completo, en hasta 2 renglones
             if (node == fullTitleNode) {
+                holder.tvTreeTitle.setCarMarqueeEnabled(false);
                 holder.tvTreeTitle.setSingleLine(false);
                 holder.tvTreeTitle.setMaxLines(2);
                 holder.tvTreeTitle.setEllipsize(TextUtils.TruncateAt.END);
-                holder.tvTreeTitle.setSelected(false);
             } else {
+                // Marquesina propia en vez de la nativa (que repinta la pantalla en cada VSYNC)
                 holder.tvTreeTitle.setSingleLine(true);
-                holder.tvTreeTitle.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-                holder.tvTreeTitle.setSelected(true);
+                holder.tvTreeTitle.setCarMarqueeEnabled(true);
             }
 
             int count = node.getDirectTrackCount();

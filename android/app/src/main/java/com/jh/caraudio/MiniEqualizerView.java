@@ -55,7 +55,7 @@ public class MiniEqualizerView extends View {
             canvas.drawRoundRect(bar, barW / 2f, barW / 2f, paint);
         }
         if (animating && isShown()) {
-            postInvalidateDelayed(33);
+            postInvalidateDelayed(FrameGrid.delayToNext());
         }
     }
 }

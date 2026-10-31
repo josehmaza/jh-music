@@ -57,16 +57,12 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="6dp">
 
-        <TextView
+        <!-- Marquesina propia (20 fps, alineada): la nativa de Android se anima en cada VSYNC -->
+        <com.jh.caraudio.CarMarqueeTextView
             android:id="@+id/tvTreeTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
             android:text="Nombre Carpeta"
             android:textColor="#f8fafc"
             android:textSize="21sp"

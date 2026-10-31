@@ -25,8 +25,7 @@ import android.view.View;
 final class AmbientTheme {
 
     static final int DEFAULT_FADE_MS = 1200;
-    private static final long FRAME_MS = 33;
-    private static final int GLOW_EVERY_FRAMES = 3;   // el resplandor (difuminado) se redibuja menos seguido
+    private static final long FRAME_MS = 50; // ~20 fps: transición suave de fondo sin saturar CPU
 
     private static final float[] THEME_DEFAULT = {23, 60, 92};    // sin carátula
     private static final float[] GLOW_DEFAULT = {56, 189, 248};   // resplandor cian de siempre
@@ -95,7 +94,9 @@ final class AmbientTheme {
             glowRgb[i] = fromGlow[i] + (toGlow[i] - fromGlow[i]) * e;
         }
         frame++;
-        render(t >= 1f || frame % GLOW_EVERY_FRAMES == 0);
+        // El fondo radial/linear (GPU) se interpola fluido a 20 FPS; el resplandor difuso pesado (CPU)
+        // se actualiza solo a mitad de camino y al terminar, evitando saturar un núcleo con BlurMaskFilter
+        render(t >= 1f || frame == 12);
         if (t < 1f) handler.postDelayed(stepRunnable, FRAME_MS);
     }
 

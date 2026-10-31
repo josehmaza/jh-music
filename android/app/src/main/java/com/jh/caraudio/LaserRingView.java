@@ -3,144 +3,145 @@ package com.jh.caraudio;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
-import android.graphics.SweepGradient;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * Borde láser giratorio del cuadro de la carátula, igual que la web (.laser-spinner):
+ * Borde cian tenue de precisión para el cuadro de la carátula (Optimizado para bajo consumo):
  *
- * - Reproduciendo: un haz cian con cola que da la vuelta al borde cada 2,2 s (sentido horario).
- * - Mezclando (Automix): además, un haz magenta desde el lado opuesto que gira al revés cada 1,5 s.
+ * - En pausa: borde tenue casi imperceptible (alpha 0.12).
+ * - Reproduciendo: borde cian nítido y elegante (alpha 0.75).
+ * - Mezclando (Automix): transición suave a magenta neón (alpha 0.85).
  *
- * Se dibuja solo en un anillo de 2,5 dp por el borde (como el relleno del contenedor en la web) y
- * aparece/desaparece en 0,4 s. Se anima con postInvalidateDelayed (no con Animator: en radios
- * con animaciones desactivadas los Animator no se mueven) y deja de redibujar cuando no se ve.
+ * Transición suave de 300 ms al cambiar de estado y DETENCIÓN TOTAL:
+ * Durante la reproducción estable no ejecuta bucles de redibujado (0 FPS continuos),
+ * eliminando por completo la carga gráfica en la GPU Mali-400 y el procesador.
  */
 public class LaserRingView extends View {
 
-    private static final long CYAN_PERIOD_MS = 2200;
-    private static final long MAGENTA_PERIOD_MS = 1500;
-    private static final long FADE_MS = 400;
-    private static final long FRAME_MS = 33; // ~30 fps: suficiente y liviano en gama baja
+    private static final long FADE_MS = 300;
+    private static final long FRAME_MS = 33; // Solo durante la transición activa (300 ms)
 
-    private static final float RING_DP = 2.5f;
-    private static final float OUTER_RADIUS_DP = 20f;
+    private static final int CYAN = Color.rgb(0, 210, 255);
+    private static final int MAGENTA = Color.rgb(244, 63, 94);
 
-    // conic-gradient de la web: transparente 0°-280°, tenue en 320°, color en 350°, blanco en 360°
-    private static final float[] STOPS = {0f, 280f / 360f, 320f / 360f, 350f / 360f, 1f};
-
-    private final Paint cyanPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint magentaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Path ringPath = new Path();
-    private final Matrix matrix = new Matrix();
-    private SweepGradient cyanGradient;
-    private SweepGradient magentaGradient;
+    private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF strokeRect = new RectF();
 
     private boolean playing = false;
     private boolean mixing = false;
-    private float cyanAlpha = 0f;
-    private float magentaAlpha = 0f;
+
+    private float currentAlpha = 0.12f;
+    private float targetAlpha = 0.12f;
+
+    private float mixProgress = 0f; // 0 = cian, 1 = magenta
+    private float targetMixProgress = 0f;
+
     private long lastFrameMs = 0;
+    private float strokeWidth = 2f;
+    private float cornerRadius = 20f;
 
     public LaserRingView(Context context) {
-        super(context);
+        this(context, null);
     }
 
     public LaserRingView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init();
+    }
+
+    private void init() {
+        float density = getResources().getDisplayMetrics().density;
+        strokeWidth = 2f * density;
+        cornerRadius = 20f * density;
+
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setStrokeWidth(strokeWidth);
     }
 
     public void setPlaying(boolean playing) {
         if (this.playing == playing) return;
         this.playing = playing;
-        kick();
+        updateTargets();
     }
 
     public void setMixing(boolean mixing) {
         if (this.mixing == mixing) return;
         this.mixing = mixing;
-        kick();
+        updateTargets();
     }
 
-    private void kick() {
-        lastFrameMs = 0;
+    private void updateTargets() {
+        if (mixing) {
+            targetAlpha = 0.85f;
+            targetMixProgress = 1f;
+        } else if (playing) {
+            targetAlpha = 0.75f;
+            targetMixProgress = 0f;
+        } else {
+            targetAlpha = 0.12f;
+            targetMixProgress = 0f;
+        }
+        lastFrameMs = SystemClock.uptimeMillis();
         invalidate();
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        float density = getResources().getDisplayMetrics().density;
-        float ring = RING_DP * density;
-        float outerRadius = OUTER_RADIUS_DP * density;
-
-        // Anillo = rectángulo exterior menos el interior (como el relleno de 2,5 px de la web)
-        ringPath.reset();
-        ringPath.setFillType(Path.FillType.EVEN_ODD);
-        ringPath.addRoundRect(new RectF(0, 0, w, h), outerRadius, outerRadius, Path.Direction.CW);
-        ringPath.addRoundRect(new RectF(ring, ring, w - ring, h - ring),
-                outerRadius - ring, outerRadius - ring, Path.Direction.CW);
-
-        float cx = w / 2f;
-        float cy = h / 2f;
-        cyanGradient = new SweepGradient(cx, cy,
-                new int[]{Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(77, 0, 210, 255),
-                        Color.rgb(0, 210, 255), Color.WHITE}, STOPS);
-        magentaGradient = new SweepGradient(cx, cy,
-                new int[]{Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(77, 244, 63, 94),
-                        Color.rgb(244, 63, 94), Color.WHITE}, STOPS);
-        cyanPaint.setShader(cyanGradient);
-        magentaPaint.setShader(magentaGradient);
+        float half = strokeWidth / 2f;
+        strokeRect.set(half, half, w - half, h - half);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (cyanGradient == null) return;
+        if (strokeRect.isEmpty()) return;
 
         long now = SystemClock.uptimeMillis();
-        float step = lastFrameMs == 0 ? 0f : (now - lastFrameMs) / (float) FADE_MS;
+        float dt = lastFrameMs == 0 ? 0f : (now - lastFrameMs) / (float) FADE_MS;
         lastFrameMs = now;
-        cyanAlpha = approach(cyanAlpha, playing ? 1f : 0f, step);
-        magentaAlpha = approach(magentaAlpha, mixing ? 1f : 0f, step);
 
-        float cx = getWidth() / 2f;
-        float cy = getHeight() / 2f;
+        currentAlpha = approach(currentAlpha, targetAlpha, dt);
+        mixProgress = approach(mixProgress, targetMixProgress, dt);
 
-        if (cyanAlpha > 0f) {
-            // La web empieza el degradado arriba (12 en punto); Android a las 3: se gira -90°
-            float angle = 360f * (now % CYAN_PERIOD_MS) / CYAN_PERIOD_MS - 90f;
-            matrix.setRotate(angle, cx, cy);
-            cyanGradient.setLocalMatrix(matrix);
-            cyanPaint.setAlpha(Math.round(255 * cyanAlpha));
-            canvas.drawPath(ringPath, cyanPaint);
-        }
-        if (magentaAlpha > 0f) {
-            // Haz magenta: empieza en el lado opuesto (from 180deg) y gira al revés
-            float angle = 90f - 360f * (now % MAGENTA_PERIOD_MS) / MAGENTA_PERIOD_MS;
-            matrix.setRotate(angle, cx, cy);
-            magentaGradient.setLocalMatrix(matrix);
-            magentaPaint.setAlpha(Math.round(255 * magentaAlpha));
-            canvas.drawPath(ringPath, magentaPaint);
-        }
+        // Interpolar color entre cian y magenta
+        int color = interpolateColor(CYAN, MAGENTA, mixProgress);
+        int alphaInt = Math.round(255 * currentAlpha);
+        borderPaint.setColor((color & 0x00FFFFFF) | (alphaInt << 24));
 
-        // Seguir animando mientras algún haz esté visible o apareciendo/desapareciendo
-        if (playing || mixing || cyanAlpha > 0f || magentaAlpha > 0f) {
+        canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, borderPaint);
+
+        // Continuar animando ÚNICAMENTE si está en transición de opacidad o color
+        boolean animating = (Math.abs(currentAlpha - targetAlpha) > 0.005f) ||
+                            (Math.abs(mixProgress - targetMixProgress) > 0.005f);
+
+        if (animating) {
             postInvalidateDelayed(FRAME_MS);
         } else {
+            currentAlpha = targetAlpha;
+            mixProgress = targetMixProgress;
             lastFrameMs = 0;
+            // ¡Se detiene por completo! 0 FPS en reproducción estable.
         }
     }
 
     private static float approach(float value, float target, float step) {
+        if (step <= 0f) return value;
         if (value < target) return Math.min(target, value + step);
         if (value > target) return Math.max(target, value - step);
         return value;
+    }
+
+    private static int interpolateColor(int c1, int c2, float ratio) {
+        float r1 = Color.red(c1), g1 = Color.green(c1), b1 = Color.blue(c1);
+        float r2 = Color.red(c2), g2 = Color.green(c2), b2 = Color.blue(c2);
+        int r = Math.round(r1 + (r2 - r1) * ratio);
+        int g = Math.round(g1 + (g2 - g1) * ratio);
+        int b = Math.round(b1 + (b2 - b1) * ratio);
+        return Color.rgb(r, g, b);
     }
 }

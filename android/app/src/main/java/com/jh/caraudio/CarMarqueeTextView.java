@@ -22,7 +22,7 @@ import android.widget.TextView;
  */
 public class CarMarqueeTextView extends TextView {
 
-    private static final long FRAME_MS = 33;
+    private static final long FRAME_MS = 50; // ~20 fps: movimiento fluido y 33% menos repintados de UI
     private static final float START_HOLD = 0.20f;
     private static final float SCROLL_END = 0.65f;
     private static final float END_HOLD = 0.82f;
@@ -123,7 +123,17 @@ public class CarMarqueeTextView extends TextView {
         canvas.drawText(text, 0, text.length(), left - offset, getBaseline(), paint);
         canvas.restore();
 
-        postInvalidateDelayed(FRAME_MS);
+        // En las pausas (inicio y final) el texto está quieto: no hay nada que repintar hasta que
+        // termine la pausa. Mientras se mueve, o al salir de la pausa, el repintado se alinea a una
+        // rejilla global de FRAME_MS para que todas las marquesinas coincidan en el mismo cuadro
+        // (en este radio cada repintado dibuja la ventana entera).
+        long wait = 0;
+        if (phase <= START_HOLD) {
+            wait = Math.round((START_HOLD - phase) * durationMs);
+        } else if (phase > SCROLL_END && phase <= END_HOLD) {
+            wait = Math.round((END_HOLD - phase) * durationMs);
+        }
+        postInvalidateDelayed(FrameGrid.delayTo(wait));
     }
 
     /** Suavizado ida y vuelta, equivalente a cubic-bezier(0.42, 0, 0.58, 1) de la web. */

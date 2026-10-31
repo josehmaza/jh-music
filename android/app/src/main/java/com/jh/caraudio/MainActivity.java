@@ -1834,6 +1834,8 @@ public class MainActivity extends Activity {
     // Grande y sin brillo difuso, para que se vea nítido en la pantalla del radio
     private GradientDrawable mixLiveDot;
     private long mixLiveDotStartMs;
+    // Cada paso repinta la ventana entera en este radio: 200 ms (5/s) en vez de 60 ms (16/s)
+    private static final long MIX_DOT_STEP_MS = 200;
     private final Runnable mixLiveDotPulse = new Runnable() {
         @Override
         public void run() {
@@ -1842,7 +1844,7 @@ public class MainActivity extends Activity {
             float wave = (float) (0.5 + 0.5 * Math.cos(2 * Math.PI * t)); // 1 → 0 → 1
             mixLiveDot.setAlpha(Math.round(255 * (0.3f + 0.7f * wave)));
             if (tabMyMix != null) tabMyMix.invalidate();
-            handler.postDelayed(this, 60);
+            handler.postDelayed(this, MIX_DOT_STEP_MS);
         }
     };
 
