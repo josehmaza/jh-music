@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparativa Visual: Borde Láser vs. Borde Cian Tenue · JH Music</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #07090c;
+      --card-bg: #0f131a;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #38bdf8;
+      --accent-cyan-glow: rgba(56, 189, 248, 0.35);
+      --accent-magenta: #f43f5e;
+      --accent-magenta-glow: rgba(244, 63, 94, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #64748b;
+      --green-ok: #22c55e;
+      --red-warn: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Cabecera */
+    .header-bar {
+      width: 100%;
+      max-width: 1080px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .header-title h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-auto {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Controles de prueba globales */
+    .controls-panel {
+      display: flex;
+      gap: 10px;
+      background: #11151e;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-ctrl {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-ctrl:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-ctrl.active-play {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 12px var(--accent-cyan-glow);
+    }
+
+    .btn-ctrl.active-mix {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: var(--accent-magenta);
+      color: var(--accent-magenta);
+      box-shadow: 0 0 12px var(--accent-magenta-glow);
+    }
+
+    .btn-ctrl.active-pause {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: #94a3b8;
+      color: #fff;
+    }
+
+    /* Grid de comparación lado a lado */
+    .comparison-grid {
+      width: 100%;
+      max-width: 1080px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .card-column {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--border-subtle);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-column.winner {
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.1);
+    }
+
+    .card-badge-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .col-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+
+    .tag-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tag-status.heavy {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: var(--red-warn);
+    }
+
+    .tag-status.light {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: var(--green-ok);
+    }
+
+    /* ======================================================== */
+    /* VISTA 1: LA CARÁTULA ACTUAL CON ANILLO LÁSER GIRATORIO   */
+    /* ======================================================== */
+    .art-stage {
+      position: relative;
+      margin: 20px 0 35px 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .album-art-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Cuadro de la carátula */
+    .art-card-base {
+      width: 240px;
+      height: 240px;
+      border-radius: 20px;
+      background: #11141a;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      padding: 2.5px;
+    }
+
+    /* El anillo láser giratorio (Opción Actual) */
+    .laser-spinner-a {
+      position: absolute;
+      inset: -60%;
+      background: conic-gradient(from 0deg, transparent 0deg 280deg, rgba(0, 210, 255, 0.3) 320deg, #00d2ff 350deg, #ffffff 360deg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 1;
+    }
+
+    .is-playing .laser-spinner-a {
+      opacity: 1;
+      animation: rotateLaser 2.2s linear infinite;
+    }
+
+    @keyframes rotateLaser {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Segundo haz láser magenta para mezcla */
+    .laser-spinner-mix-a {
+      position: absolute;
+      inset: -60%;
+      background: conic-gradient(from 180deg, transparent 0deg 280deg, rgba(244, 63, 94, 0.3) 320deg, #f43f5e 350deg, #ffffff 360deg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 1;
+    }
+
+    .is-mixing .laser-spinner-mix-a {
+      opacity: 1;
+      animation: rotateLaserReverse 1.5s linear infinite;
+    }
+
+    @keyframes rotateLaserReverse {
+      0% { transform: rotate(360deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    /* ======================================================== */
+    /* VISTA 2: LA CARÁTULA PROPUESTA CON BORDE CIAN TENUE      */
+    /* ======================================================== */
+    .art-card-proposed {
+      width: 240px;
+      height: 240px;
+      border-radius: 20px;
+      background: #11141a;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+      padding: 2px;
+      /* BORDE CIAN TENUE FIJO: 1.5px / 2px sin giros, cero CPU */
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    /* En reproducción: el borde adquiere un resplandor elegante */
+    .is-playing .art-card-proposed {
+      border-color: rgba(56, 189, 248, 0.85);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.35);
+    }
+
+    /* En mezcla Automix: pasa suavemente a magenta tenue sin rotaciones locas */
+    .is-mixing .art-card-proposed {
+      border-color: rgba(244, 63, 94, 0.9);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8), 0 0 18px rgba(244, 63, 94, 0.4);
+    }
+
+    /* En pausa: borde atenuado discreto */
+    .is-paused .art-card-proposed {
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Interior de la carátula */
+    .album-art-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 17px;
+      background: linear-gradient(135deg, #161b26 0%, #0d1017 100%);
+      overflow: hidden;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .vinyl-art {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #222938 18%, #0d1017 20%, #161c28 50%, #0d1017 52%, #1b2230 75%, #090c12 100%);
+      border: 3px solid #2a344a;
+      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8), 0 4px 15px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .vinyl-art::after {
+      content: '';
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    }
+
+    .audio-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom-left-radius: 10px;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 9px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ======================================================== */
+    /* CÁPSULA PLAYING / MIXING / PAUSED                        */
+    /* ======================================================== */
+    .now-playing-pill {
+      position: absolute;
+      bottom: -19px;
+      height: 38px;
+      border-radius: 19px;
+      background: rgba(10, 14, 22, 0.94);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    .pill-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .pill-eq-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3.5px;
+      height: 18px;
+    }
+
+    .pill-eq-bars span {
+      width: 4px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.25);
+      transition: height 0.2s ease, background 0.3s ease;
+    }
+
+    /* Estado Reproduciendo */
+    .is-playing .now-playing-pill {
+      border-color: rgba(56, 189, 248, 0.65);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .is-playing .pill-label {
+      color: var(--accent-cyan);
+    }
+
+    .is-playing .pill-eq-bars span {
+      background: linear-gradient(to top, var(--accent-cyan), #67e8f9);
+      animation: pillWave 0.8s ease-in-out infinite alternate;
+    }
+
+    .pill-eq-bars span:nth-child(1) { animation-duration: 0.7s; animation-delay: 0s; }
+    .pill-eq-bars span:nth-child(2) { animation-duration: 0.5s; animation-delay: 0.15s; }
+    .pill-eq-bars span:nth-child(3) { animation-duration: 0.8s; animation-delay: 0.3s; }
+    .pill-eq-bars span:nth-child(4) { animation-duration: 0.6s; animation-delay: 0.2s; }
+    .pill-eq-bars span:nth-child(5) { animation-duration: 0.75s; animation-delay: 0.05s; }
+
+    @keyframes pillWave {
+      0% { height: 4px; }
+      100% { height: 18px; }
+    }
+
+    /* Estado Mezclando */
+    .is-mixing .now-playing-pill {
+      border-color: rgba(244, 63, 94, 0.75);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(244, 63, 94, 0.35);
+    }
+
+    .is-mixing .pill-label {
+      color: var(--accent-magenta);
+    }
+
+    .is-mixing .pill-eq-bars span {
+      background: linear-gradient(to top, var(--accent-magenta), #fb7185);
+    }
+
+    /* Estado Pausa */
+    .is-paused .pill-eq-bars span {
+      animation: none !important;
+      height: 4px !important;
+      background: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    /* Fichas técnicas de rendimiento */
+    .specs-box {
+      width: 100%;
+      background: #090c12;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 15px;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .spec-row:last-child {
+      border-bottom: none;
+    }
+
+    .spec-label {
+      color: var(--text-muted);
+    }
+
+    .spec-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .val-bad {
+      color: var(--red-warn);
+    }
+
+    .val-good {
+      color: var(--green-ok);
+    }
+
+    /* Comparador de ventajas para el auto */
+    .features-list {
+      margin-top: 14px;
+      list-style: none;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .features-list li {
+      margin-bottom: 6px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-cross {
+      color: var(--red-warn);
+      font-weight: bold;
+    }
+
+    .icon-check {
+      color: var(--green-ok);
+      font-weight: bold;
+    }
+
+    /* Botón de cambio de vista completa */
+    .full-preview-banner {
+      width: 100%;
+      max-width: 1080px;
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 16px;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .banner-text h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .banner-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-apply-view {
+      background: var(--accent-cyan);
+      color: #07090c;
+      font-weight: 800;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-apply-view:hover {
+      background: #7dd3fc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de título -->
+  <header class="header-bar">
+    <div class="header-title">
+      <h1>
+        JH Music · Hyundai Tucson ix35
+        <span class="badge-auto">DIAGNÓSTICO & DISEÑO</span>
+      </h1>
+      <p>Comparativa visual: Anillo Láser giratorio (Actual) vs. Borde Cian Tenue de precisión (Propuesto)</p>
+    </div>
+
+    <!-- Botones interactivos para probar estados -->
+    <div class="controls-panel">
+      <button class="btn-ctrl active-play" id="btnPlay" onclick="setMode('playing')">
+        ▶ Reproduciendo
+      </button>
+      <button class="btn-ctrl" id="btnMix" onclick="setMode('mixing')">
+        ⇄ Mezclando (AutoMix)
+      </button>
+      <button class="btn-ctrl" id="btnPause" onclick="setMode('paused')">
+        ⏸ En Pausa
+      </button>
+    </div>
+  </header>
+
+  <!-- Lado a Lado -->
+  <section class="comparison-grid" id="mainGrid">
+
+    <!-- COLUMNA 1: ACTUAL CON LÁSER GIRATORIO -->
+    <div class="card-column" id="colActual">
+      <div class="card-badge-header">
+        <span class="col-title">1. Versión Actual (Con Anillo Láser)</span>
+        <span class="tag-status heavy">⚠ Alto Consumo GPU</span>
+      </div>
+
+      <!-- Carátula con láser -->
+      <div class="art-stage">
+        <div class="album-art-wrap">
+          <div class="art-card-base is-playing" id="stageActual">
+            <!-- Haz cian giratorio -->
+            <div class="laser-spinner-a"></div>
+            <!-- Haz magenta para mezcla -->
+            <div class="laser-spinner-mix-a"></div>
+
+            <div class="album-art-inner">
+              <div class="vinyl-art"></div>
+              <div class="audio-badge">MP3 320K</div>
+            </div>
+          </div>
+
+          <!-- Cápsula estado -->
+          <div class="now-playing-pill" id="pillActual">
+            <span class="pill-label" id="labelActual">PLAYING</span>
+            <div class="pill-eq-bars">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ficha de Rendimiento -->
+      <div class="specs-box">
+        <div class="spec-row">
+          <span class="spec-label">Cuadros redibujados:</span>
+          <span class="spec-val val-bad">~30 FPS continuos</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Carga en GPU (Mali-400):</span>
+          <span class="spec-val val-bad">Alta (SweepGradient angular)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">En mezcla AutoMix:</span>
+          <span class="spec-val val-bad">2 haces cruzados a 60 FPS acum.</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Distracción visual de noche:</span>
+          <span class="spec-val val-bad">Alta (gira cada 2.2 seg)</span>
+        </div>
+      </div>
+
+      <ul class="features-list">
+        <li><span class="icon-cross">✕</span> El trazado EVEN_ODD obliga al chip gráfico a calcular stencil en cada frame.</li>
+        <li><span class="icon-cross">✕</span> El movimiento circular continuo atrae el ojo involuntariamente al volante.</li>
+      </ul>
+    </div>
+
+    <!-- COLUMNA 2: PROPUESTA CON BORDE CIAN TENUE -->
+    <div class="card-column winner" id="colPropuesta">
+      <div class="card-badge-header">
+        <span class="col-title">2. Propuesta (Borde Cian Tenue OEM)</span>
+        <span class="tag-status light">✓ 0 FPS en Borde · Frío</span>
+      </div>
+
+      <!-- Carátula con borde cian tenue -->
+      <div class="art-stage">
+        <div class="album-art-wrap">
+          <div class="art-card-proposed" id="stageProposed">
+            <div class="album-art-inner">
+              <div class="vinyl-art"></div>
+              <div class="audio-badge">MP3 320K</div>
+            </div>
+          </div>
+
+          <!-- Cápsula estado -->
+          <div class="now-playing-pill" id="pillProposed">
+            <span class="pill-label" id="labelProposed">PLAYING</span>
+            <div class="pill-eq-bars">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ficha de Rendimiento -->
+      <div class="specs-box">
+        <div class="spec-row">
+          <span class="spec-label">Cuadros en el borde:</span>
+          <span class="spec-val val-good">0 FPS (Se dibuja 1 sola vez)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Carga en GPU (Mali-400):</span>
+          <span class="spec-val val-good">Casi NULA (Drawable nativo)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">En mezcla AutoMix:</span>
+          <span class="spec-val val-good">Transición suave cian → magenta</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Estilo en cabina del auto:</span>
+          <span class="spec-val val-good">Limpio, elegante, estilo Audi / Tucson</span>
+        </div>
+      </div>
+
+      <ul class="features-list">
+        <li><span class="icon-check">✓</span> Elimina por completo el ahogo térmico de la GPU y la CPU en el radio.</li>
+        <li><span class="icon-check">✓</span> El borde iluminado enmarca la carátula con nitidez perfecta sin marear.</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- Banner para abrir la maqueta principal -->
+  <div class="full-preview-banner">
+    <div class="banner-text">
+      <h3>¿Quieres ver cómo luce en la pantalla completa de 10 pulgadas?</h3>
+      <p>Puedes abrir la maqueta completa interactiva de JH Music para ver todo el tablero con el nuevo borde.</p>
+    </div>
+    <a href="index.html" class="btn-apply-view" style="text-decoration: none;">
+      Abrir Pantalla Completa
+    </a>
+  </div>
+
+  <script>
+    let currentMode = 'playing';
+
+    function setMode(mode) {
+      currentMode = mode;
+      const stageA = document.getElementById('stageActual');
+      const stageP = document.getElementById('stageProposed');
+      const pillA = document.getElementById('pillActual');
+      const pillP = document.getElementById('pillProposed');
+      const lblA = document.getElementById('labelActual');
+      const lblP = document.getElementById('labelProposed');
+
+      const btnPlay = document.getElementById('btnPlay');
+      const btnMix = document.getElementById('btnMix');
+      const btnPause = document.getElementById('btnPause');
+
+      btnPlay.className = 'btn-ctrl' + (mode === 'playing' ? ' active-play' : '');
+      btnMix.className = 'btn-ctrl' + (mode === 'mixing' ? ' active-mix' : '');
+      btnPause.className = 'btn-ctrl' + (mode === 'paused' ? ' active-pause' : '');
+
+      // Remover clases
+      stageA.classList.remove('is-playing', 'is-mixing', 'is-paused');
+      stageP.classList.remove('is-playing', 'is-mixing', 'is-paused');
+      pillA.classList.remove('is-playing', 'is-mixing', 'is-paused');
+      pillP.classList.remove('is-playing', 'is-mixing', 'is-paused');
+
+      if (mode === 'playing') {
+        stageA.classList.add('is-playing');
+        stageP.classList.add('is-playing');
+        pillA.classList.add('is-playing');
+        pillP.classList.add('is-playing');
+        lblA.textContent = 'PLAYING';
+        lblP.textContent = 'PLAYING';
+      } else if (mode === 'mixing') {
+        stageA.classList.add('is-playing', 'is-mixing');
+        stageP.classList.add('is-playing', 'is-mixing');
+        pillA.classList.add('is-playing', 'is-mixing');
+        pillP.classList.add('is-playing', 'is-mixing');
+        lblA.textContent = 'MIXING ⇄';
+        lblP.textContent = 'MIXING ⇄';
+      } else {
+        stageA.classList.add('is-paused');
+        stageP.classList.add('is-paused');
+        pillA.classList.add('is-paused');
+        pillP.classList.add('is-paused');
+        lblA.textContent = 'PAUSED';
+        lblP.textContent = 'PAUSED';
+      }
+    }
+
+    // Inicializar en playing
+    setMode('playing');
+  </script>
+</body>
+</html>

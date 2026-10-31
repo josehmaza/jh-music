@@ -19,30 +19,30 @@ La forma más simple, desde la carpeta `jh-music/` en Git Bash:
 bash build.sh
 ```
 
-`build.sh` fija `JAVA_HOME` en el JDK 11, entra a `android/`, ejecuta `./gradlew clean assembleDebug` y muestra el APK generado.
+`build.sh` fija `JAVA_HOME` en el JDK 11, entra a `android/`, ejecuta `./gradlew clean assembleRelease` y muestra el APK generado.
 
 También se puede hacer a mano, desde `android/`:
 
 ```bash
 # Git Bash
 export JAVA_HOME="/c/Program Files/Java/jdk-11.0.30"
-./gradlew clean assembleDebug
+./gradlew clean assembleRelease
 ```
 
 ```powershell
 # PowerShell
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-11.0.30"
-.\gradlew.bat clean assembleDebug
+.\gradlew.bat clean assembleRelease
 ```
 
-Al terminar `assembleDebug`, la tarea `copyApkToRoot` (en `android/app/build.gradle`):
+Al terminar `assembleRelease`, la tarea `copyApkToRoot` (en `android/app/build.gradle`):
 
 1. Borra de `jh-music/` **todos** los APK `JH-MUSIC-v*.apk`, también los que tengan otro sufijo en el nombre. Así siempre queda uno solo, el de la versión actual.
 2. Copia el nuevo como **`JH-MUSIC-v<versionName>.apk`** en `jh-music/`.
 
-El APK también queda en `android/app/build/outputs/apk/debug/`.
+El APK también queda en `android/app/build/outputs/apk/release/`.
 
-> Es un build **debug**, firmado con la clave de depuración de la PC. Se instala encima de versiones anteriores firmadas con la misma clave. Si se compila en otra PC, habrá que desinstalar la versión anterior del radio antes de instalar.
+> Es un build **release** (el sistema lo ejecuta optimizado; el debug arrancaba la pantalla hasta 10 veces más lento), pero firmado con la **clave de depuración** de la PC (`signingConfig signingConfigs.debug`). Se instala encima de versiones anteriores firmadas con la misma clave. El aviso de lint `ExpiredTargetSdkVersion` está desactivado porque es una exigencia de Google Play que no aplica a una app instalada a mano. Si se compila en otra PC, habrá que desinstalar la versión anterior del radio antes de instalar.
 
 ## 3. Subir la versión
 
@@ -58,7 +58,7 @@ Hay que cambiar tres lugares:
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 
-Luego se compila con `bash build.sh` (o `clean assembleDebug`) y se hace commit del código y del APK nuevo. Los APK anteriores quedan en el historial de git.
+Luego se compila con `bash build.sh` (o `clean assembleRelease`) y se hace commit del código y del APK nuevo. Los APK anteriores quedan en el historial de git.
 
 Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo: se ve al pie del menú ☰ (`JH MUSIC v2.9.7`).
 

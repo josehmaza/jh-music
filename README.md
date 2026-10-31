@@ -17,13 +17,15 @@ Versión actual: **2.9.7**.
 | `Documentacion/` | Manual de usuario, arquitectura, compilación, historial, propuestas y la ficha del radio |
 | `build.sh` | Compila el APK y lo deja en esta carpeta |
 
-## Compilar
+## Compilar y Probar en Emulador
 
 ```bash
 bash build.sh
 ```
 
 Requiere JDK 11. Detalles en [Documentacion/03-compilacion-y-versiones.md](Documentacion/03-compilacion-y-versiones.md).
+
+- **Probar en el emulador (1024 × 600 px) y medir con ADB:** seguir [Documentacion/10-emulador-y-adb.md](Documentacion/10-emulador-y-adb.md). Es la única guía; explica cómo abrir el emulador rápido, enlazar los pendrives, instalar el APK y medir.
 
 ## Documentación
 

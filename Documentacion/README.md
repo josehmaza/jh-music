@@ -18,6 +18,7 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin bo
 | [06 · Investigación del mezclador](06-investigacion-mezclador.md) | Quien modifique Automix | Cómo mezclar entre canciones según género, formato y bitrate, cómo igualar el volumen, y qué está implementado |
 | [07 · Biblioteca y carátulas](07-biblioteca-y-caratulas.md) | Quien prepara la música del pendrive | Carpetas y nombres de `D:\musica`, carátulas oficiales y JH MUSIC (con las zonas que la app tapa), VirtualDJ y copias de seguridad |
 | [08 · El radio destino](08-radio-destino.md) | Quien diseña o programa | Ficha del radio del Tucson ix35 (pantalla 1024 × 600 a 160 dpi, AC8227L, Android 8.1 que dice ser 10) y qué implica al desarrollar |
+| [10 · Emulador y ADB](10-emulador-y-adb.md) | Quien prueba o mide | La única forma de abrir el emulador `radio-tucson`, enlazar los pendrives, instalar el APK, controlarlo por ADB y medir el rendimiento |
 
 ## Requisitos del radio
 

@@ -45,17 +45,8 @@ Para probar sin ir al auto hay un emulador de Android configurado lo más pareci
 | RAM | 2 GB | Sin confirmar (Ajustes dice 4 GB) |
 | Otros | GPS, audio, sin batería ni cámaras, sin Play Store | — |
 
-Imagen `system-images;android-27;default;x86`. Se abre con:
+Imagen `system-images;android-27;default;x86`.
 
-```bash
-emulator -avd radio-tucson -gpu auto -no-snapshot -no-boot-anim
-```
-
-**El pendrive:** la app busca los pendrives en `/storage/udisk1` y `/mnt/udisk1`. En el emulador se simula con una carpeta: los MP3 van en `/sdcard/USB/<carpeta>` y se enlaza como `udisk1` (el enlace se pierde al reiniciar el emulador):
-
-```bash
-adb root
-adb shell ln -s /storage/emulated/0/USB /mnt/udisk1
-```
+**Cómo abrirlo, instalar el APK, simular los pendrives y medir:** ver [10 · Emulador y ADB](10-emulador-y-adb.md), la única guía de prueba.
 
 **Lo que el emulador no imita:** la velocidad real del radio (corre en la CPU de la PC, mucho más rápida), la GPU Mali-400, la memoria lenta, los decodificadores de audio del radio ni el tema de Android de la fábrica. Por eso lo lento o lo que depende del formato de los archivos se confirma en el auto.
