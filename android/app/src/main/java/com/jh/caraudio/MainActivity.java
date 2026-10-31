@@ -214,6 +214,10 @@ public class MainActivity extends Activity {
     private boolean isRepeat = false;
     private boolean isMuted = false;
     private int currentTab = 0; // 0: Carpetas, 1: Pistas, 2: Mi Mix
+    // Pestaña pedida por quien abrió la app (p. ej. "ABRIR JH MUSIC" del launcher). Si la app
+    // arranca de cero se aplica al terminar el primer escaneo, que restaura la última pestaña
+    public static final String EXTRA_OPEN_TAB = "extra_open_tab";
+    private int pendingOpenTab = -1;
     // Búsqueda de Pistas guardada al cambiar de pestaña (se descarta al abrir otra carpeta con [N ▶])
     private String savedTracksQuery = "";
     private int savedTracksFilter = FILTER_FOLDER;
@@ -295,6 +299,8 @@ public class MainActivity extends Activity {
             moveTaskToBack(true);
             overridePendingTransition(0, 0);
         }
+
+        pendingOpenTab = tabFromIntent(getIntent());
 
         handler = new Handler(Looper.getMainLooper());
         audioAnalyzer = new AudioAnalyzer();
@@ -2072,6 +2078,16 @@ public class MainActivity extends Activity {
         }
 
         updateFilterChipsUI();
+    }
+
+    /** "folders", "tracks" o "mix" del extra EXTRA_OPEN_TAB; -1 si no se pidió ninguna. */
+    private static int tabFromIntent(Intent intent) {
+        if (intent == null) return -1;
+        String tab = intent.getStringExtra(EXTRA_OPEN_TAB);
+        if ("folders".equals(tab)) return 0;
+        if ("tracks".equals(tab)) return 1;
+        if ("mix".equals(tab)) return 2;
+        return -1;
     }
 
     private void selectTab(int tabIndex) {
@@ -4867,6 +4883,10 @@ public class MainActivity extends Activity {
                     int savedTab = prefs.getInt(PREF_LAST_TAB, 0);
                     selectTab(savedTab);
                 }
+                if (pendingOpenTab >= 0) {
+                    selectTab(pendingOpenTab);
+                    pendingOpenTab = -1;
+                }
 
                 // Si fue iniciada en segundo plano por el Launcher, ejecutar la acción solicitada
                 if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
@@ -5015,6 +5035,11 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        int openTab = tabFromIntent(intent);
+        if (openTab >= 0) {
+            intent.removeExtra(EXTRA_OPEN_TAB);
+            selectTab(openTab);
+        }
         if (intent != null && intent.getBooleanExtra("extra_from_launcher_bg", false)) {
             moveTaskToBack(true);
             overridePendingTransition(0, 0);
