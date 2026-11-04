@@ -2,6 +2,11 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.10.1 — 2026-11-04, pendiente de probar en el auto
+
+- **MUTE sin el silencio de Android:** ahora baja el volumen a 0 y al quitarlo lo devuelve al de antes (guardado en disco, por si la app se cierra en silencio). Antes usaba `ADJUST_MUTE`, que en el Tucson dejó mudo el audio Bluetooth del teléfono (hallazgo con el MUTE de JH Launcher, 3/11/2026). Al quitarlo también se limpia un silencio de Android que haya quedado pegado. `MUTE` se muestra también si el volumen quedó en 0 desde el launcher. Probado en el emulador: MUTE → volumen 0; quitarlo → vuelve a 9 de 15, también tras cerrar y abrir la app.
+- **Documentación al día:** manual (control desde JH Launcher, aviso de carga), arquitectura (§15 enlace con el launcher), compilación (GitHub y Releases), ficha del radio (apps de fábrica, Android 8.1 aunque la huella diga 6.0) e índice.
+
 ## 2.10.0 — 2026-11-03, pendiente de probar en el auto
 
 - **Barra de tiempo del launcher (JH Launcher 1.6.0):** el aviso `TRACK_CHANGED` y el archivo de estado llevan la posición real (`extra_position_sec` / `positionSec`), también al adelantar o retroceder desde JH Music. Orden nueva `com.jh.music.action.SEEK` (`extra_position_sec`): salta a ese segundo (como la barra propia: cancela una mezcla en curso) y avisa dónde quedó. Probado en el emulador: tocar la mitad de la barra del launcher llevó la canción a 2:40.

@@ -1051,14 +1051,13 @@ public class MainActivity extends Activity {
 
     private void updateVolumeUI() {
         if (audioManager == null) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // El mute pudo quedar activo al salir con HOME o venir del sistema del radio: leer el estado real
-            isMuted = audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
-        }
+        // El MUTE es el volumen en 0 (también el del launcher). Un silencio de Android pegado (de versiones
+        // anteriores o del sistema del radio) también cuenta: tocar MUTE lo quita
+        isMuted = isSystemMuteStuck() || audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0;
         btnVolMute.setSelected(isMuted);
         btnVolMute.setImageResource(isMuted ? R.drawable.ic_vol_muted : R.drawable.ic_vol_on);
         if (isMuted) {
-            // En mute getStreamVolume devuelve 0: se conserva el último porcentaje real para restaurarlo al desmutear
+            // se conserva el último porcentaje real; al quitar el MUTE se devuelve el volumen guardado
             tvVolPercent.setText("MUTE");
             return;
         }
@@ -1150,22 +1149,44 @@ public class MainActivity extends Activity {
 
     private void toggleMute() {
         if (audioManager == null) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            isMuted = audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
-        }
+        updateVolumeUI(); // estado real: el volumen pudo cambiar desde el launcher o el radio
         setMuted(!isMuted);
     }
 
+    private static final String PREF_VOLUME_BEFORE_MUTE = "volume_before_mute";
+
+    private boolean isSystemMuteStuck() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager.isStreamMute(AudioManager.STREAM_MUSIC);
+    }
+
+    /**
+     * MUTE bajando el volumen a 0 y devolviéndolo, sin el silencio de Android: en el radio del Tucson
+     * ADJUST_MUTE dejó mudo para siempre el audio Bluetooth del teléfono (el volumen sí funciona con todo).
+     */
+    @SuppressWarnings("deprecation")
     private void setMuted(boolean mute) {
         if (audioManager == null) return;
-        isMuted = mute;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                    mute ? AudioManager.ADJUST_MUTE : AudioManager.ADJUST_UNMUTE, 0);
-        } else {
-            audioManager.setStreamMute(AudioManager.STREAM_MUSIC, mute);
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int max = Math.max(1, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        try {
+            if (mute) {
+                int now = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                // en disco, por si la app se cierra estando en silencio
+                if (now > 0) prefs.edit().putInt(PREF_VOLUME_BEFORE_MUTE, now).apply();
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
+            } else {
+                // limpia un silencio de Android que haya quedado pegado y devuelve el volumen de antes
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0);
+                } else {
+                    audioManager.setStreamMute(AudioManager.STREAM_MUSIC, false);
+                }
+                int back = prefs.getInt(PREF_VOLUME_BEFORE_MUTE, Math.round(max / 2f));
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(1, Math.min(max, back)), 0);
+            }
+        } catch (RuntimeException e) {
+            e.printStackTrace();
         }
-        // Al desmutear se lee el volumen real restaurado por el sistema (no el valor guardado en la app)
         updateVolumeUI();
     }
 

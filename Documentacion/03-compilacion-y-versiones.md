@@ -50,30 +50,32 @@ Hay que cambiar tres lugares:
 
 1. `android/app/build.gradle`:
    ```groovy
-   versionCode 38        // entero: +1 en cada versión
-   versionName "2.9.7"   // lo que se ve y el nombre del APK
+   versionCode 42         // entero: +1 en cada versión
+   versionName "2.10.1"   // lo que se ve y el nombre del APK
    ```
-2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.9.7"` de la barra superior (oculta; la versión que se ve sale del APK, al pie del menú ☰).
-3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.9.7</span>`.
+2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.10.1"` de la barra superior (oculta; la versión que se ve sale del APK, al pie del menú ☰).
+3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.10.1</span>`.
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 
-Luego se compila con `bash build.sh` (o `clean assembleRelease`) y se hace commit del código y del APK nuevo. Los APK anteriores quedan en el historial de git.
+Luego se compila con `bash build.sh` (o `clean assembleRelease`), se anota la versión en el [historial](04-historial-de-cambios.md) y se hace commit del código. El APK **no** va en git: se publica en una **Release** de GitHub (ver §5).
 
-Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo: se ve al pie del menú ☰ (`JH MUSIC v2.9.7`).
+Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo: se ve al pie del menú ☰ (`JH MUSIC v2.10.1`).
 
 ## 4. Instalar en el radio
 
-1. Copia `JH-MUSIC-v<versión>.apk` a un pendrive.
-2. En el radio, ábrelo con el explorador de archivos y acepta instalar de origen desconocido si lo pide.
+1. Copia `JH-MUSIC-v<versión>.apk` a un pendrive (se descarga de las [Releases](https://github.com/josehmaza/jh-music/releases) o sale de `build.sh`).
+2. En el radio, ábrelo con el explorador de archivos y acepta instalar de origen desconocido si lo pide. Se instala **encima** de la versión anterior: no se pierde Mi Mix ni la configuración.
 3. La primera vez, acepta el permiso de almacenamiento: sin él la app no ve los pendrives.
+
+Si el radio dice **«App no instalada»**, **no desinstales** la versión anterior para forzarla: se perdería Mi Mix. Suele pasar con un APK firmado en otra PC (§2) o con un `versionCode` que no subió; hay que revisar eso primero.
 
 Si después de actualizar sigue apareciendo el ícono anterior, reinicia el radio: algunos launchers guardan el ícono en caché.
 
 ## 5. Convenciones del repositorio
 
-- **Ramas:** `master` es la principal; también existen `hotfix/automix` (trabajo de Automix y diseño), `feature/recyclerview-mimix-drag` (reordenar Mi Mix) y `mix`. El repositorio no tiene remoto configurado.
-- **Mensajes de commit:** en español, con prefijo `feat:`, `fix:` o `build:`.
-- **El APK se versiona en git** junto con el código, para tener siempre a mano el de cada versión. Mientras se prueba en el auto, se hacen commits solo del código; el APK se agrega en el commit final de la versión, junto con el borrado del APK anterior.
+- **Repositorio:** [josehmaza/jh-music](https://github.com/josehmaza/jh-music) en GitHub, rama única `main`.
+- **Mensajes de commit:** en español, con prefijo `feat:`, `fix:`, `perf:`, `docs:` o `build:`.
+- **El APK no se versiona en git** (`*.apk` está en `.gitignore`). Cada versión se publica como **Release** de GitHub con la etiqueta `v<versión>` (por ejemplo `v2.10.0`) y el APK adjunto, con notas de qué cambió y cómo instalar.
 - **Simulador web:** si se cambia `index.html`, `app.js` o `style.css` de `jh-music/`, copiarlos también a `android/app/src/main/assets/`.
 - **Saltos de línea:** git convierte a CRLF en Windows (`core.autocrlf=true`); los scripts que reescriban archivos deben respetarlo.

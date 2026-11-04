@@ -35,6 +35,8 @@ Todas están en `android/app/src/main/java/com/jh/caraudio/`.
 | `CarMarqueeTextView` | Texto de una línea que se desplaza como la marquesina de la web (título, tarjetas y fila que suena) |
 | `AmbientTheme` | Fondo de toda la app con el color de la carátula (degradados sobre la raíz) y fundido entre canciones; también da el color al resplandor |
 | `AlbumGlowView` | Sombra y resplandor detrás de la carátula (el box-shadow de la web), con BlurMaskFilter en software |
+| `FrameGrid` | Rejilla común de ~20 cuadros/s (50 ms) para las animaciones propias (marquesinas, cápsula, ondas, ecualizador): repintan en el mismo cuadro en vez de cada una con su temporizador (2.9.8) |
+| `MusicRemoteReceiver` | Recibe las órdenes de JH Launcher (`PLAY_PAUSE`, `NEXT`, `PREV`, `REQUEST_STATE`, `SEEK`); ver §15 |
 | `SoundWaveBarsView` | Barras de ecualizador antiguas. **Sin uso desde 2.3.0** (las reemplazó `NowPlayingPillView`); se puede borrar |
 
 ## 2. Estado principal en `MainActivity`
@@ -63,9 +65,11 @@ playQueue        →  qué suena después (Anterior / Siguiente)
 
 Así, explorar o abrir otra carpeta no altera lo que suena, y una búsqueda no cambia el número de Canciones.
 
-## 3. Escaneo de pendrives — `startUsbScan()`
+## 3. Escaneo de pendrives — `startUsbScan()` / `scanUsbNow()`
 
 Se ejecuta en `scanExecutor` (hilo de fondo) al abrir la app, con **Menú ☰ → Re-escanear USB** y automáticamente al conectar o quitar un pendrive.
+
+**Aviso «Cargando librería…» (2.9.9):** `startUsbScan()` suma uno a `scansPending`, muestra `layoutLibraryLoading` sobre la lista (`setLibraryLoading(true)`: indicador y la lista sin poder tocarse) y llama a `scanUsbNow()`, que hace el escaneo. Al terminar cada escaneo, también si falla, `scanFinished()` resta uno y quita el aviso cuando ya no queda ninguno en cola.
 
 1. **Recorrido de carpetas:** `scanDirectory()` recorre cada raíz conocida (`/storage/udisk1`, `/storage/udisk2`, `/storage/udisk3`, `/storage/usb0`, `/storage/usb1`, `/mnt/media_rw/udiskN`, `/mnt/udiskN`) hasta 6 niveles, buscando `.mp3 .flac .wav .m4a .ogg .aac`. Las rutas con `udisk2` o `usb1` son **USB 2**; el resto, **USB 1**.
 2. **Complemento con MediaStore:** consulta la biblioteca de música del sistema y agrega solo las pistas de rutas con `udisk`/`usb` que aún no estén y cuyo archivo exista.
@@ -223,8 +227,8 @@ La siguiente precargada se descarta con cualquier inicio manual, al cambiar Alea
 
 Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 10 %.
 
-- `updateVolumeUI()` consulta el mute real del sistema (`isStreamMute`, Android 6+). En mute `getStreamVolume` devuelve 0, por eso en ese estado se muestra `MUTE` y no se pisa el último porcentaje.
-- `setMuted()` aplica `ADJUST_MUTE` / `ADJUST_UNMUTE` y luego vuelve a leer el volumen real.
+- **MUTE = volumen en 0 (2.10.1).** `setMuted(true)` guarda el volumen actual en `SharedPreferences` (`volume_before_mute`, sobrevive si la app se cierra) y pone `STREAM_MUSIC` en 0. `setMuted(false)` limpia un silencio de Android que haya quedado pegado (`ADJUST_UNMUTE`) y devuelve el volumen guardado (la mitad si no hay ninguno). Antes usaba `ADJUST_MUTE`, que en el radio del Tucson dejó mudo el audio Bluetooth del teléfono (ver [08](08-radio-destino.md)). Es el mismo método que JH Launcher y JH RADIO.
+- `updateVolumeUI()` muestra `MUTE` si el volumen está en 0 (también cuando lo silenció el launcher) o si quedó un silencio de Android pegado (`isStreamMute`); en ese estado no se pisa el último porcentaje. `toggleMute()` lee ese estado real antes de cambiarlo.
 - Subir, bajar o arrastrar la barra estando en mute primero lo quita.
 
 ## 8. Pantalla, gestos e interfaz
@@ -319,7 +323,7 @@ Las páginas `demo-*.html` (animaciones de la carátula, transiciones de Automix
 - `saveLastPlayback(track)` guarda solo al final de `onTrackStarted()` (una vez por canción).
 - `restoreLastPlayback()` corre al final de cada escaneo (antes de `filterByTab()`), solo si todavía no se restauró y no hay nada cargado (`mediaPlayer == null`, `currentTrackIndex == -1`), o si lo cargado es la primera canción de respaldo sin tocar (`firstTrackFallbackPath`), que se libera. Arma la cola (Mi Mix si `last_track_from_mix` y la canción sigue en Mi Mix; si no, su carpeta con `selectFolderOf()`), y llama a `preparePaused()`: prepara el `MediaPlayer` sin `start()` (queda en 00:00) y llama a `onTrackStarted()` con `skipSaveLast` (cargar en pausa no cuenta como "la última que sonó").
 - **Última canción de otro pendrive (2.9.8):** si hay `last_track_path` guardado, hay canciones escaneadas, no se restauró y no hay nada cargado, pero la ruta no está entre las canciones encontradas (`lastSongMissing`), no se carga ninguna: `selectTab(0)` + `collapseAllTreeNodes()` abren Librería con los pendrives cerrados. Con nada cargado, `togglePlayPause()` no hace nada (la cola está vacía). Se publica una sola vez el estado "sin canción" (`publishNoTrackState()`: archivo `.jh_music_state.json` con título vacío + aviso `TRACK_CHANGED` vacío) para que el launcher deje de mostrar la canción vieja; mientras `noTrackState` sea verdadero, `REQUEST_STATE` se responde con ese mismo estado vacío. El siguiente escaneo reintenta `restoreLastPlayback()`, que sigue valiendo si el pendrive aparece tarde.
-- **Estado hacia el launcher (2.9.8):** `publishTrackState(track, isPlaying, writeFile)`. Canción nueva, pausa y reanudación escriben el archivo y avisan; `REQUEST_STATE` (el launcher lo pide cada vez que vuelve a pantalla) solo avisa, sin reescribir el archivo (`replyTrackState()`), porque no cambió nada. La ruta guardada incluye el punto de montaje (`/mnt/udisk1/...`): el mismo pendrive en otro puerto cuenta como ausente.
+- **Estado hacia el launcher (2.9.8, posición desde 2.10.0):** `publishTrackState(track, isPlaying, writeFile, positionMs)`; detalle en §15. Canción nueva, pausa y reanudación escriben el archivo y avisan; `REQUEST_STATE` (el launcher lo pide cada vez que vuelve a pantalla) solo avisa, sin reescribir el archivo (`replyTrackState()`), porque no cambió nada. La ruta guardada incluye el punto de montaje (`/mnt/udisk1/...`): el mismo pendrive en otro puerto cuenta como ausente.
 - **Sin última canción (2.9.7), instalación nueva:** `loadFirstTrackPaused()` carga igual la primera canción del pendrive con su carpeta (`selectFolderOf()`) y anota su ruta en `firstTrackFallbackPath`. Antes solo se escribía su nombre ("vista previa") sin cola: ▶ no hacía nada y la pestaña decía Canciones 0. Al tocar ▶ sobre ella, `togglePlayPause()` la guarda como última y borra `firstTrackFallbackPath`.
 
 ## 12. Menú ☰ del reproductor (2.8.0)
@@ -342,3 +346,25 @@ Las páginas `demo-*.html` (animaciones de la carátula, transiciones de Automix
 - Cuando lo toma, manda un `ACTION_CANCEL` a la vista que estaba debajo del dedo (`super.dispatchTouchEvent`). Si no, esa vista quedaba presionada (la carátula se ponía naranja).
 - El indicador (`layout_blind_volume_hud.xml`, 140 dp, centrado sobre `android.R.id.content`) muestra el ícono (rojo en silencio), la barra y el porcentaje, y se oculta 1,1 s después de soltar.
 - No empieza sobre el explorador (`isTouchInExplorer`): ahí deslizar arriba / abajo es el scroll de la lista, también en el espacio vacío debajo.
+
+## 15. Enlace con JH Launcher
+
+[JH Launcher](https://github.com/josehmaza/jh-launcher) muestra la canción y la controla sin abrir JH MUSIC.
+
+**JH MUSIC → launcher** (`publishTrackState`):
+- Aviso `com.jh.music.action.TRACK_CHANGED` con `extra_title`, `extra_artist`, `extra_path`, `extra_is_playing`, `extra_duration` (texto «m:ss»), `extra_total_sec` y `extra_position_sec` (2.10.0).
+- Archivo `.jh_music_state.json` en la raíz del almacenamiento con lo mismo (`title`, `artist`, `path`, `duration`, `totalSec`, `isPlaying`, `positionSec`, `timestamp`). Solo se escribe al cambiar de canción, pausar o reanudar; así el launcher tiene la canción aunque JH MUSIC esté cerrada.
+- Tras adelantar o retroceder (barra propia, doble toque ±10 s o pedido del launcher) se avisa la posición nueva sin escribir el archivo (`publishPositionToLauncher`). Recién hecho un `seekTo` el reproductor puede devolver la posición vieja, por eso se pasa `positionMs`; con −1 se lee del reproductor.
+
+**Launcher → JH MUSIC** (`MusicRemoteReceiver`, exportado):
+
+| Orden | Qué hace |
+|---|---|
+| `com.jh.music.action.PLAY_PAUSE` | `togglePlayPause()` |
+| `com.jh.music.action.NEXT` / `PREV` | `playNextTrack()` / `playPreviousTrack()` |
+| `com.jh.music.action.REQUEST_STATE` | Vuelve a avisar el estado (sin reescribir el archivo) |
+| `com.jh.music.action.SEEK` + `extra_position_sec` | `seekFromLauncher()`: salta a ese segundo (cancela una mezcla en curso, como la barra propia) y avisa dónde quedó (2.10.0) |
+
+Si JH MUSIC está cerrada, `PLAY_PAUSE`, `NEXT` y `PREV` la abren en segundo plano (`extra_from_launcher_bg`, `extra_pending_action`) y ejecutan la orden al cargar. `SEEK` y `REQUEST_STATE` sin la app abierta no hacen nada: no hay canción cargada.
+
+**Abrir en una pestaña:** el launcher puede abrir JH MUSIC con `EXTRA_OPEN_TAB` (`"folders"`, `"tracks"` o `"mix"`).

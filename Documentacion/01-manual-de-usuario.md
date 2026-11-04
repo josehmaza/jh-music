@@ -154,7 +154,7 @@ La canción que suena aparece resaltada, solo en la lista donde realmente está.
 
 - Debajo de la carátula, el **título** (grande) y el **artista**.
 - Si el título no entra, se desplaza como una marquesina: se queda quieto mostrando el inicio, se desliza hasta el final, espera y vuelve.
-- Las tarjetas **Anterior** y **Siguiente** muestran el nombre de esas canciones, con los íconos ⏮ y ⏭ en los extremos. Los nombres largos también se desplazan.
+- Las tarjetas **Anterior** y **Siguiente** muestran el nombre de esas canciones, con los íconos ⏮ y ⏭ en los extremos. Los nombres largos también se desplazan. Sin canción elegida muestran «—».
 
 ### Controles del reproductor
 
@@ -183,7 +183,7 @@ Arriba a la derecha del reproductor, encima de Automix. Se abre sobre el reprodu
 | **Ocultar / Mostrar explorador** | Oculta o muestra el explorador y cierra el menú |
 | **Re-escanear USB** | Vuelve a buscar canciones en los pendrives y cierra el menú |
 
-Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.9.7`).
+Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.10.1`).
 
 El menú se cierra solo a los 5 s sin tocarlo (cada toque en Aleatorio o Repetir vuelve a contar), tocando fuera del panel o en **✕**.
 
@@ -236,9 +236,9 @@ Abrir otra carpeta mientras suena música **no** cambia lo que viene después, h
 - **`+` / `−`:** sube o baja de 10 en 10 %.
 - **Barra vertical:** arrastrar para fijar el volumen.
 - **Gesto sin mirar:** arrastrar el dedo hacia arriba o hacia abajo sobre el reproductor sube o baja el volumen. Aparece un indicador grande al centro con el porcentaje. No funciona sobre el explorador (ahí se recorre la lista) ni sobre las barras.
-- **MUTE:** silencia o restaura. En silencio se muestra `MUTE`; al quitarlo vuelve el porcentaje real.
+- **MUTE:** baja el volumen a 0 y, al quitarlo, lo devuelve al que tenías (aunque hayas cerrado la app en silencio). En silencio se muestra `MUTE`. Desde 2.10.1 ya no usa el silencio de Android, que en este radio dejaba sin sonido la música Bluetooth del teléfono.
 - Si ajustas el volumen estando en silencio, primero se quita el silencio.
-- Si el silencio lo puso el sistema o quedó activo al salir con HOME, la app lo detecta al volver.
+- Si el volumen quedó en 0 (por ejemplo, con el MUTE del launcher) o quedó pegado un silencio del sistema, la app muestra `MUTE` al volver; tocarlo lo quita.
 
 ## 6. Mandos del volante o multimedia (opcional)
 
@@ -269,6 +269,7 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 ## 9. Pendrives
 
 - La app escanea al abrirse y **vuelve a escanear sola** cuando conectas o quitas un pendrive (espera ~1,5 s a que el sistema termine de montarlo).
+- Mientras lee los pendrives, la lista queda tapada con el aviso **«Cargando librería…»** y no se puede tocar, para que no parezca vacía ni elijas algo de una lista a medias. Se quita sola al terminar.
 - Si tu radio no avisa de esos cambios, usa **Menú ☰ → Re-escanear USB**.
 - Si quitas el pendrive de la canción que suena, la reproducción se detiene y la carpeta activa se limpia.
 - Se recorren hasta 6 niveles de subcarpetas. Se ignoran carpetas ocultas, `Android`, `LOST.DIR` y `System Volume Information`.
@@ -292,7 +293,16 @@ Tras escanear, la lista muestra la duración real de cada canción:
 - Si no, la app la lee del archivo en segundo plano, empezando por las canciones de la lista que estás viendo. Mientras tanto se muestra `--:--`.
 - Con muchas canciones, completar todas puede tardar un poco. Puedes usar la app con normalidad mientras tanto.
 
-## 11. Limitaciones conocidas
+## 11. Control desde JH Launcher
+
+Con [JH Launcher](https://github.com/josehmaza/jh-launcher) como pantalla de inicio, la música se maneja sin abrir JH MUSIC:
+
+- La tarjeta de música del launcher muestra la canción, el artista y el tiempo.
+- **⏮ ▶ ⏭** del launcher (y los gestos sobre el auto) controlan JH MUSIC. Si JH MUSIC está cerrada, ▶ la abre en segundo plano y empieza a sonar tras unos segundos.
+- **Barra de tiempo:** tocarla o arrastrarla en el launcher lleva la canción a ese minuto (necesita JH MUSIC 2.10.0 o más nueva).
+- El botón de la tarjeta abre JH MUSIC.
+
+## 12. Limitaciones conocidas
 
 - **Escaneo automático:** depende de que el radio envíe los avisos de conexión del sistema. Si no lo hace, usa **Menú ☰ → Re-escanear USB**.
 - **Misma ruta en dos pendrives:** dos pendrives con un archivo en la misma ruta interna (por ejemplo `Musica/tema.mp3` en ambos) cuentan como la misma canción en Mi Mix.

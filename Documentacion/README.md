@@ -2,22 +2,24 @@
 
 Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias (anterior / play / siguiente responden en toda la franja de abajo), gestos simples (doble toque en la carátula, volumen deslizando el dedo), lectura directa de uno o dos pendrives USB, **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen. Al encender el auto abre en la última canción.
 
-- **Versión actual:** 2.9.7 (`versionCode 38`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
+- **Versión actual:** 2.10.1 (`versionCode 42`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
 - **Paquete Android:** `com.jh.caraudio`
-- **APK:** `JH-MUSIC-v<versión>.apk` en la carpeta `jh-music/`
+- **APK:** `JH-MUSIC-v<versión>.apk`; lo genera `build.sh` en `jh-music/` y se publica en las [Releases](https://github.com/josehmaza/jh-music/releases)
+- **Apps hermanas:** [JH Launcher](https://github.com/josehmaza/jh-launcher) (pantalla de inicio que controla JH MUSIC), [JH VIDEO](https://github.com/josehmaza/jh-video) y [JH RADIO](https://github.com/josehmaza/jh-radio)
 
 ## Documentos
 
 | Documento | Para quién | Contenido |
 |---|---|---|
-| [01 · Manual de usuario](01-manual-de-usuario.md) | Quien usa la app en el auto | Pantalla, pestañas, búsqueda, reproducción, menú ☰, Automix, volumen y gesto, pendrives, última canción |
-| [02 · Arquitectura técnica](02-arquitectura-tecnica.md) | Quien modifica el código | Clases, flujo de datos, escaneo, buscador, cola de reproducción, gestos, menú ☰, zonas de toque, gesto de volumen, maqueta web |
-| [03 · Compilación y versiones](03-compilacion-y-versiones.md) | Quien genera el APK | Requisitos, comandos, cómo subir la versión, instalación |
+| [01 · Manual de usuario](01-manual-de-usuario.md) | Quien usa la app en el auto | Pantalla, pestañas, búsqueda, reproducción, menú ☰, Automix, volumen y gesto, pendrives, última canción, control desde JH Launcher |
+| [02 · Arquitectura técnica](02-arquitectura-tecnica.md) | Quien modifica el código | Clases, flujo de datos, escaneo, buscador, cola de reproducción, gestos, menú ☰, zonas de toque, gesto de volumen, maqueta web, enlace con JH Launcher |
+| [03 · Compilación y versiones](03-compilacion-y-versiones.md) | Quien genera el APK | Requisitos, comandos, cómo subir la versión, instalación, releases de GitHub |
 | [04 · Historial de cambios](04-historial-de-cambios.md) | Todos | Qué cambió en cada versión |
 | [05 · Propuestas de mejora](05-propuestas-de-mejora.md) | Quien planifica | Mejoras y funciones pendientes, priorizadas para uso en el auto y radios de gama baja |
 | [06 · Investigación del mezclador](06-investigacion-mezclador.md) | Quien modifique Automix | Cómo mezclar entre canciones según género, formato y bitrate, cómo igualar el volumen, y qué está implementado |
 | [07 · Biblioteca y carátulas](07-biblioteca-y-caratulas.md) | Quien prepara la música del pendrive | Carpetas y nombres de `D:\musica`, carátulas oficiales y JH MUSIC (con las zonas que la app tapa), VirtualDJ y copias de seguridad |
 | [08 · El radio destino](08-radio-destino.md) | Quien diseña o programa | Ficha del radio del Tucson ix35 (pantalla 1024 × 600 a 160 dpi, AC8227L, Android 8.1 que dice ser 10) y qué implica al desarrollar |
+| [09 · Análisis de rendimiento](09-analisis-rendimiento.md) | Quien optimice la app | Análisis de carga de CPU y repintados de la 2.9.7, con lo que ya se aplicó en la 2.9.8 |
 | [10 · Emulador y ADB](10-emulador-y-adb.md) | Quien prueba o mide | La única forma de abrir el emulador `radio-tucson`, enlazar los pendrives, instalar el APK, controlarlo por ADB y medir el rendimiento |
 
 ## Requisitos del radio
