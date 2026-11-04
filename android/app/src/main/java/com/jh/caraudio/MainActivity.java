@@ -175,6 +175,8 @@ public class MainActivity extends Activity {
     private TextView tvFastScrollBubbleLetter;
     private TextView tvFastScrollBubbleTrackNumber;
     private LinearLayout layoutSearchLoading;
+    private View layoutLibraryLoading;
+    private int scansPending; // escaneos de pendrives en cola (solo en el hilo principal)
     private final Handler fastScrollHandler = new Handler(Looper.getMainLooper());
     private Runnable hideBubbleRunnable;
 
@@ -430,6 +432,7 @@ public class MainActivity extends Activity {
         btnSearchClear = findViewById(R.id.btnSearchClear);
         pbSearchLoading = findViewById(R.id.pbSearchLoading);
         layoutSearchLoading = findViewById(R.id.layoutSearchLoading);
+        layoutLibraryLoading = findViewById(R.id.layoutLibraryLoading);
         tvCurrentPath = findViewById(R.id.tvCurrentPath);
         if (tvCurrentPath != null) {
             tvCurrentPath.setVisibility(View.GONE);
@@ -1230,6 +1233,7 @@ public class MainActivity extends Activity {
                     if (duration > 0) {
                         int targetMs = (int) ((seekBar.getProgress() / 100f) * duration);
                         mediaPlayer.seekTo(targetMs);
+                        publishPositionToLauncher(targetMs);
                     }
                 }
             }
@@ -3216,44 +3220,132 @@ public class MainActivity extends Activity {
             } else if ("com.jh.music.action.PREV".equals(action)) {
                 playPreviousTrack();
             } else if ("com.jh.music.action.REQUEST_STATE".equals(action)) {
-                Track current = getCurrentTrack();
-                if (current != null) {
-                    broadcastTrackState(current, isPlaying);
-                }
+                replyTrackState();
             }
         }
     };
 
+    /**
+     * True mientras la app está abierta sin canción cargada porque la última era de un pendrive que no está.
+     * Sirve para que el launcher no siga mostrando la canción vieja.
+     */
+    private boolean noTrackState;
+
+    /** Canción nueva, pausa o reanudación: actualiza el archivo de estado y avisa al launcher. */
     private void broadcastTrackState(Track track, boolean isPlaying) {
         if (track == null) return;
+        publishTrackState(track, isPlaying, true);
+    }
+
+    /**
+     * Respuesta a REQUEST_STATE (el launcher lo pide cada vez que vuelve a pantalla): solo el aviso.
+     * No cambió nada, así que no se reescribe el archivo (la memoria del radio es lenta).
+     */
+    private void replyTrackState() {
+        Track current = getCurrentTrack();
+        if (current != null) {
+            publishTrackState(current, isPlaying, false);
+        } else if (noTrackState) {
+            publishTrackState(null, false, false);
+        }
+    }
+
+    /** Estado "sin canción": una sola escritura, para limpiar la canción vieja que quedó en el archivo. */
+    private void publishNoTrackState() {
+        publishTrackState(null, false, true);
+    }
+
+    private void publishTrackState(Track track, boolean isPlaying, boolean writeFile) {
+        publishTrackState(track, isPlaying, writeFile, -1);
+    }
+
+    /**
+     * «Ir a» pedido desde JH Launcher (tocó o arrastró su barra de tiempo): salta a ese segundo y le avisa dónde
+     * quedó, para que su barra siga desde ahí.
+     */
+    public void seekFromLauncher(int positionSec) {
+        if (mediaPlayer == null) return;
+        int target = Math.max(0, positionSec * 1000);
         try {
-            File stateFile = new File(Environment.getExternalStorageDirectory(), ".jh_music_state.json");
-            JSONObject json = new JSONObject();
-            json.put("title", track.getTitle());
-            json.put("artist", track.getArtist() != null ? track.getArtist() : "");
-            json.put("path", track.getFilePath());
-            int durationSec = track.getDurationSec();
-            if (durationSec <= 0 && mediaPlayer != null) {
+            autoMixer.finishMixNow(); // adelantar en medio de una mezcla la cancela
+            int duration = mediaPlayer.getDuration();
+            if (duration > 0 && target > duration) target = Math.max(0, duration - 1000);
+            mediaPlayer.seekTo(target);
+            if (duration > 0) {
+                seekTrackProgress.setProgress((int) (((float) target / duration) * 100));
+                tvTimeCurrent.setText(formatMs(target));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        Track current = getCurrentTrack();
+        if (current != null) publishTrackState(current, isPlaying, false, target);
+    }
+
+    /** Tras adelantar o retroceder aquí mismo: avisa al launcher de la posición nueva (sin escribir el archivo). */
+    private void publishPositionToLauncher(int positionMs) {
+        Track current = getCurrentTrack();
+        if (current != null) publishTrackState(current, isPlaying, false, positionMs);
+    }
+
+    /**
+     * @param track      canción actual, o null para el estado "sin canción" (título vacío).
+     * @param positionMs posición a informar, o -1 para leerla del reproductor (recién hecho un seekTo, el
+     *                   reproductor todavía puede devolver la posición vieja).
+     */
+    private void publishTrackState(Track track, boolean isPlaying, boolean writeFile, int positionMs) {
+        noTrackState = track == null;
+        int positionSec = 0;
+        if (track != null) {
+            if (positionMs >= 0) {
+                positionSec = positionMs / 1000;
+            } else if (mediaPlayer != null) {
                 try {
-                    durationSec = mediaPlayer.getDuration() / 1000;
+                    positionSec = mediaPlayer.getCurrentPosition() / 1000;
                 } catch (Exception ignored) {}
             }
-            json.put("duration", formatMs(durationSec * 1000));
-            json.put("totalSec", durationSec);
-            json.put("isPlaying", isPlaying);
-            json.put("timestamp", System.currentTimeMillis());
+        }
+        String title = track != null ? track.getTitle() : "";
+        String artist = track != null && track.getArtist() != null ? track.getArtist() : "";
+        String path = track != null && track.getFilePath() != null ? track.getFilePath() : "";
+        int durationSec = track != null ? track.getDurationSec() : 0;
+        if (track != null && durationSec <= 0 && mediaPlayer != null) {
+            try {
+                durationSec = mediaPlayer.getDuration() / 1000;
+            } catch (Exception ignored) {}
+        }
+        String duration = formatMs(durationSec * 1000);
 
-            try (FileOutputStream fos = new FileOutputStream(stateFile)) {
-                fos.write(json.toString().getBytes(StandardCharsets.UTF_8));
+        if (writeFile) {
+            try {
+                JSONObject json = new JSONObject();
+                json.put("title", title);
+                json.put("artist", artist);
+                json.put("path", path);
+                json.put("duration", duration);
+                json.put("totalSec", durationSec);
+                json.put("isPlaying", isPlaying);
+                json.put("positionSec", positionSec);
+                json.put("timestamp", System.currentTimeMillis());
+                File stateFile = new File(Environment.getExternalStorageDirectory(), ".jh_music_state.json");
+                try (FileOutputStream fos = new FileOutputStream(stateFile)) {
+                    fos.write(json.toString().getBytes(StandardCharsets.UTF_8));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }
 
+        try {
             Intent intent = new Intent("com.jh.music.action.TRACK_CHANGED");
-            intent.putExtra("extra_title", track.getTitle());
-            intent.putExtra("extra_artist", track.getArtist() != null ? track.getArtist() : "");
-            intent.putExtra("extra_path", track.getFilePath());
+            intent.putExtra("extra_title", title);
+            intent.putExtra("extra_artist", artist);
+            intent.putExtra("extra_path", path);
             intent.putExtra("extra_is_playing", isPlaying);
-            intent.putExtra("extra_duration", formatMs(durationSec * 1000));
+            intent.putExtra("extra_duration", duration);
             intent.putExtra("extra_total_sec", durationSec);
+            intent.putExtra("extra_position_sec", positionSec);
             sendBroadcast(intent);
         } catch (Exception e) {
             e.printStackTrace();
@@ -4524,6 +4616,7 @@ public class MainActivity extends Activity {
             if (target < 0) target = 0;
             if (duration > 0 && target > duration) target = Math.max(0, duration - 1000);
             mediaPlayer.seekTo(target);
+            publishPositionToLauncher(target);
 
             // Reflejar cambio inmediato en barra de progreso y reloj
             if (duration > 0) {
@@ -4542,7 +4635,12 @@ public class MainActivity extends Activity {
 
     private void updatePreviews() {
         List<Track> queue = getQueue();
-        if (queue.isEmpty()) return;
+        if (queue.isEmpty() || currentTrackIndex < 0) {
+            // Sin canción elegida no hay anterior ni siguiente (antes quedaba «Cargando...» aunque ya cargó)
+            tvPrevTrackPreview.setText("—");
+            tvNextTrackPreview.setText("—");
+            return;
+        }
         int prevIdx = (currentTrackIndex - 1 + queue.size()) % queue.size();
         int nextIdx = (currentTrackIndex + 1) % queue.size();
 
@@ -4703,209 +4801,246 @@ public class MainActivity extends Activity {
 
     private void startUsbScan() {
         tvStorageStatus.setText("Escaneando USB 1 y USB 2...");
+        scansPending++;
+        setLibraryLoading(true);
 
         scanExecutor.execute(() -> {
-            List<Track> foundTracks = new ArrayList<>();
-            Set<String> seenPaths = new HashSet<>();
+            try {
+                scanUsbNow();
+            } catch (Throwable t) {
+                // Sin esto el aviso «Cargando librería» quedaría puesto para siempre
+                handler.post(() -> {
+                    scanFinished();
+                    tvStorageStatus.setText("No se pudieron leer los pendrives");
+                });
+            }
+        });
+    }
 
-            // Montajes de Pendrives USB en plataformas de auto (AC8227L, Allwinner, Rockchip, MTK, etc.)
-            String[] targetUsbRoots = {
-                    "/storage/udisk1",
-                    "/storage/udisk2",
-                    "/storage/udisk3",
-                    "/storage/usb0",
-                    "/storage/usb1",
-                    "/mnt/media_rw/udisk1",
-                    "/mnt/media_rw/udisk2",
-                    "/mnt/udisk1",
-                    "/mnt/udisk2"
+    /** Tapa la lista con «Cargando librería…» mientras se escanean los pendrives. */
+    private void setLibraryLoading(boolean loading) {
+        if (layoutLibraryLoading != null) layoutLibraryLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+    }
+
+    /** Un escaneo terminó (hilo principal): el aviso se quita cuando no queda ninguno en cola. */
+    private void scanFinished() {
+        if (scansPending > 0) scansPending--;
+        if (scansPending == 0) setLibraryLoading(false);
+    }
+
+    /** Escaneo de los pendrives (corre en el hilo de escaneo); al terminar entrega todo al hilo principal. */
+    private void scanUsbNow() {
+        List<Track> foundTracks = new ArrayList<>();
+        Set<String> seenPaths = new HashSet<>();
+
+        // Montajes de Pendrives USB en plataformas de auto (AC8227L, Allwinner, Rockchip, MTK, etc.)
+        String[] targetUsbRoots = {
+                "/storage/udisk1",
+                "/storage/udisk2",
+                "/storage/udisk3",
+                "/storage/usb0",
+                "/storage/usb1",
+                "/mnt/media_rw/udisk1",
+                "/mnt/media_rw/udisk2",
+                "/mnt/udisk1",
+                "/mnt/udisk2"
+        };
+
+        for (String rootPath : targetUsbRoots) {
+            File dir = new File(rootPath);
+            if (dir.exists() && dir.isDirectory()) {
+                String usbTag = (rootPath.contains("udisk2") || rootPath.contains("usb1")) ? "USB 2" : "USB 1";
+                scanDirectory(dir, foundTracks, seenPaths, usbTag, 0);
+            }
+        }
+
+        // Escaneo complementario mediante MediaStore (SOLO pistas ubicadas en USB 1 o USB 2)
+        Map<String, Integer> mediaStoreDurations = new HashMap<>();
+        try {
+            Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            String[] projection = {
+                    MediaStore.Audio.Media.TITLE,
+                    MediaStore.Audio.Media.ARTIST,
+                    MediaStore.Audio.Media.ALBUM,
+                    MediaStore.Audio.Media.DURATION,
+                    MediaStore.Audio.Media.DATA
             };
 
-            for (String rootPath : targetUsbRoots) {
-                File dir = new File(rootPath);
-                if (dir.exists() && dir.isDirectory()) {
-                    String usbTag = (rootPath.contains("udisk2") || rootPath.contains("usb1")) ? "USB 2" : "USB 1";
-                    scanDirectory(dir, foundTracks, seenPaths, usbTag, 0);
-                }
-            }
+            Cursor cursor = getContentResolver().query(musicUri, projection,
+                    MediaStore.Audio.Media.IS_MUSIC + " != 0", null, null);
 
-            // Escaneo complementario mediante MediaStore (SOLO pistas ubicadas en USB 1 o USB 2)
-            Map<String, Integer> mediaStoreDurations = new HashMap<>();
-            try {
-                Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-                String[] projection = {
-                        MediaStore.Audio.Media.TITLE,
-                        MediaStore.Audio.Media.ARTIST,
-                        MediaStore.Audio.Media.ALBUM,
-                        MediaStore.Audio.Media.DURATION,
-                        MediaStore.Audio.Media.DATA
-                };
+            if (cursor != null) {
+                int titleCol = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
+                int artistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
+                int albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
+                int durCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+                int dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
 
-                Cursor cursor = getContentResolver().query(musicUri, projection,
-                        MediaStore.Audio.Media.IS_MUSIC + " != 0", null, null);
+                while (cursor.moveToNext()) {
+                    String path = cursor.getString(dataCol);
+                    // Pista ya encontrada recorriendo carpetas: solo aprovechar su duración real
+                    if (path != null && seenPaths.contains(path)) {
+                        long durMs = cursor.getLong(durCol);
+                        if (durMs > 0) mediaStoreDurations.put(path, (int) (durMs / 1000));
+                        continue;
+                    }
+                    // Filtro estricto: solo incluir canciones que provengan de pendrives USB
+                    if (path != null && (path.contains("udisk") || path.contains("usb")) && !seenPaths.contains(path)) {
+                        File f = new File(path);
+                        if (f.exists()) {
+                            seenPaths.add(path);
+                            String title = cursor.getString(titleCol);
+                            String artist = cursor.getString(artistCol);
+                            String album = cursor.getString(albumCol);
+                            int durSec = (int) (cursor.getLong(durCol) / 1000);
 
-                if (cursor != null) {
-                    int titleCol = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
-                    int artistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
-                    int albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
-                    int durCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
-                    int dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
-
-                    while (cursor.moveToNext()) {
-                        String path = cursor.getString(dataCol);
-                        // Pista ya encontrada recorriendo carpetas: solo aprovechar su duración real
-                        if (path != null && seenPaths.contains(path)) {
-                            long durMs = cursor.getLong(durCol);
-                            if (durMs > 0) mediaStoreDurations.put(path, (int) (durMs / 1000));
-                            continue;
-                        }
-                        // Filtro estricto: solo incluir canciones que provengan de pendrives USB
-                        if (path != null && (path.contains("udisk") || path.contains("usb")) && !seenPaths.contains(path)) {
-                            File f = new File(path);
-                            if (f.exists()) {
-                                seenPaths.add(path);
-                                String title = cursor.getString(titleCol);
-                                String artist = cursor.getString(artistCol);
-                                String album = cursor.getString(albumCol);
-                                int durSec = (int) (cursor.getLong(durCol) / 1000);
-
-                                if (title == null || title.isEmpty() || title.equalsIgnoreCase("<unknown>")) {
-                                    title = f.getName().replaceFirst("[.][^.]+$", "");
-                                }
-                                if (artist == null || artist.equalsIgnoreCase("<unknown>")) {
-                                    artist = "Artista";
-                                }
-                                String folder = f.getParentFile() != null ? f.getParentFile().getName() : "USB";
-                                String usbTag = (path.contains("udisk2") || path.contains("usb1")) ? "USB 2" : "USB 1";
-
-                                String format = buildFormatBadge(f.getName(), f.length(), durSec);
-                                foundTracks.add(new Track(path, title, artist, album, folder, f.getParent(), format, durSec, usbTag));
+                            if (title == null || title.isEmpty() || title.equalsIgnoreCase("<unknown>")) {
+                                title = f.getName().replaceFirst("[.][^.]+$", "");
                             }
+                            if (artist == null || artist.equalsIgnoreCase("<unknown>")) {
+                                artist = "Artista";
+                            }
+                            String folder = f.getParentFile() != null ? f.getParentFile().getName() : "USB";
+                            String usbTag = (path.contains("udisk2") || path.contains("usb1")) ? "USB 2" : "USB 1";
+
+                            String format = buildFormatBadge(f.getName(), f.length(), durSec);
+                            foundTracks.add(new Track(path, title, artist, album, folder, f.getParent(), format, durSec, usbTag));
                         }
                     }
-                    cursor.close();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+                cursor.close();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-            // Duración real (y bitrate estimado con ella) para las pistas que MediaStore ya conoce
-            for (Track t : foundTracks) {
-                Integer durSec = t.hasDuration() ? null : mediaStoreDurations.get(t.getFilePath());
-                if (durSec != null) {
-                    t.setDurationSec(durSec);
-                    File f = new File(t.getFilePath());
-                    t.setFormat(buildFormatBadge(f.getName(), f.length(), durSec));
-                }
+        // Duración real (y bitrate estimado con ella) para las pistas que MediaStore ya conoce
+        for (Track t : foundTracks) {
+            Integer durSec = t.hasDuration() ? null : mediaStoreDurations.get(t.getFilePath());
+            if (durSec != null) {
+                t.setDurationSec(durSec);
+                File f = new File(t.getFilePath());
+                t.setFormat(buildFormatBadge(f.getName(), f.length(), durSec));
             }
+        }
 
-            // Agrupar carpetas
-            Map<String, FolderItem> folderMap = new HashMap<>();
-            for (Track t : foundTracks) {
-                String fName = t.getFolder();
-                if (!folderMap.containsKey(fName)) {
-                    folderMap.put(fName, new FolderItem(fName, t.getPath(), 1, t.getUsbSource()));
-                } else {
-                    folderMap.get(fName).incrementCount();
-                }
+        // Agrupar carpetas
+        Map<String, FolderItem> folderMap = new HashMap<>();
+        for (Track t : foundTracks) {
+            String fName = t.getFolder();
+            if (!folderMap.containsKey(fName)) {
+                folderMap.put(fName, new FolderItem(fName, t.getPath(), 1, t.getUsbSource()));
+            } else {
+                folderMap.get(fName).incrementCount();
             }
+        }
 
-            List<FolderItem> generatedFolders = new ArrayList<>(folderMap.values());
+        List<FolderItem> generatedFolders = new ArrayList<>(folderMap.values());
 
-            // Precalcular aquí (hilo de escaneo) el texto normalizado del buscador, para que cada búsqueda solo compare
-            for (Track t : foundTracks) t.getSearchKey();
-            for (FolderItem f : generatedFolders) f.getSearchKey();
+        // Precalcular aquí (hilo de escaneo) el texto normalizado del buscador, para que cada búsqueda solo compare
+        for (Track t : foundTracks) t.getSearchKey();
+        for (FolderItem f : generatedFolders) f.getSearchKey();
 
-            boolean fUsb1 = false;
-            boolean fUsb2 = false;
-            for (Track t : foundTracks) {
-                if ("USB 1".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk1") || t.getFilePath().contains("usb0")))) {
-                    fUsb1 = true;
-                }
-                if ("USB 2".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk2") || t.getFilePath().contains("usb1")))) {
-                    fUsb2 = true;
-                }
-                if (fUsb1 && fUsb2) break;
+        boolean fUsb1 = false;
+        boolean fUsb2 = false;
+        for (Track t : foundTracks) {
+            if ("USB 1".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk1") || t.getFilePath().contains("usb0")))) {
+                fUsb1 = true;
             }
-            if (!fUsb1) fUsb1 = isUsbMounted(USB1_MOUNT_PATHS);
-            if (!fUsb2) fUsb2 = isUsbMounted(USB2_MOUNT_PATHS);
-            final boolean u1 = fUsb1;
-            final boolean u2 = fUsb2;
+            if ("USB 2".equalsIgnoreCase(t.getUsbSource()) || (t.getFilePath() != null && (t.getFilePath().contains("udisk2") || t.getFilePath().contains("usb1")))) {
+                fUsb2 = true;
+            }
+            if (fUsb1 && fUsb2) break;
+        }
+        if (!fUsb1) fUsb1 = isUsbMounted(USB1_MOUNT_PATHS);
+        if (!fUsb2) fUsb2 = isUsbMounted(USB2_MOUNT_PATHS);
+        final boolean u1 = fUsb1;
+        final boolean u2 = fUsb2;
 
-            handler.post(() -> {
-                hasUsb1 = u1;
-                hasUsb2 = u2;
-                updateFilterChipsVisibility();
+        handler.post(() -> {
+            scanFinished();
+            hasUsb1 = u1;
+            hasUsb2 = u2;
+            updateFilterChipsVisibility();
 
-                // Ordenar pistas alfabéticamente por título (A-Z)
-                Collections.sort(foundTracks, (t1, t2) -> {
-                    String s1 = t1.getTitle() != null ? t1.getTitle().trim() : "";
-                    String s2 = t2.getTitle() != null ? t2.getTitle().trim() : "";
-                    return s1.compareToIgnoreCase(s2);
-                });
-
-                // Ordenar carpetas alfabéticamente por nombre (A-Z)
-                Collections.sort(generatedFolders, (f1, f2) -> {
-                    String n1 = f1.getName() != null ? f1.getName().trim() : "";
-                    String n2 = f2.getName() != null ? f2.getName().trim() : "";
-                    return n1.compareToIgnoreCase(n2);
-                });
-
-                // Mi Mix guardado en el radio (la primera vez, con las estrellas de Favoritos)
-                loadMyMix(foundTracks);
-                Map<String, Track> tracksByPath = new HashMap<>();
-                for (Track t : foundTracks) {
-                    tracksByPath.put(t.getFilePath(), t);
-                }
-
-                allTracks.clear();
-                allTracks.addAll(foundTracks);
-
-                folderList.clear();
-                folderList.addAll(generatedFolders);
-
-                reconcileListsAfterRescan(tracksByPath);
-                updateMixTabCount();
-                startDurationFill(allTracks);
-
-                buildTreeFromTracks(allTracks);
-                updateVisibleTreeNodes();
-
-                tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
-                // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una)
-                updateTracksTabCount();
-
-                // La última canción que sonaba queda cargada en pausa (con su carpeta como la activa)
-                boolean restored = restoreLastPlayback(tracksByPath);
-                if (!restored) {
-                    // Sin última canción (instalación nueva, o su pendrive no está): queda cargada en pausa la
-                    // primera del pendrive. Antes solo se mostraba su nombre y ▶ no hacía nada
-                    loadFirstTrackPaused();
-                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                    int savedTab = prefs.getInt(PREF_LAST_TAB, 0);
-                    selectTab(savedTab);
-                }
-                if (pendingOpenTab >= 0) {
-                    selectTab(pendingOpenTab);
-                    pendingOpenTab = -1;
-                }
-
-                // Si fue iniciada en segundo plano por el Launcher, ejecutar la acción solicitada
-                if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
-                    String pendingAction = getIntent().getStringExtra("extra_pending_action");
-                    if ("com.jh.music.action.NEXT".equals(pendingAction)) {
-                        playNextTrack();
-                    } else if ("com.jh.music.action.PREV".equals(pendingAction)) {
-                        playPreviousTrack();
-                    } else {
-                        if (!isPlaying) {
-                            togglePlayPause();
-                        }
-                    }
-                    getIntent().removeExtra("extra_from_launcher_bg");
-                    getIntent().removeExtra("extra_pending_action");
-                }
+            // Ordenar pistas alfabéticamente por título (A-Z)
+            Collections.sort(foundTracks, (t1, t2) -> {
+                String s1 = t1.getTitle() != null ? t1.getTitle().trim() : "";
+                String s2 = t2.getTitle() != null ? t2.getTitle().trim() : "";
+                return s1.compareToIgnoreCase(s2);
             });
+
+            // Ordenar carpetas alfabéticamente por nombre (A-Z)
+            Collections.sort(generatedFolders, (f1, f2) -> {
+                String n1 = f1.getName() != null ? f1.getName().trim() : "";
+                String n2 = f2.getName() != null ? f2.getName().trim() : "";
+                return n1.compareToIgnoreCase(n2);
+            });
+
+            // Mi Mix guardado en el radio (la primera vez, con las estrellas de Favoritos)
+            loadMyMix(foundTracks);
+            Map<String, Track> tracksByPath = new HashMap<>();
+            for (Track t : foundTracks) {
+                tracksByPath.put(t.getFilePath(), t);
+            }
+
+            allTracks.clear();
+            allTracks.addAll(foundTracks);
+
+            folderList.clear();
+            folderList.addAll(generatedFolders);
+
+            reconcileListsAfterRescan(tracksByPath);
+            updateMixTabCount();
+            startDurationFill(allTracks);
+
+            buildTreeFromTracks(allTracks);
+            updateVisibleTreeNodes();
+
+            tvStorageStatus.setText(allTracks.isEmpty() ? "No se encontraron canciones" : "Pendrives listos (" + folderList.size() + " carpetas, " + allTracks.size() + " canciones)");
+            // Pistas solo cuenta la carpeta elegida (0 hasta que se elija una)
+            updateTracksTabCount();
+
+            // La última canción que sonaba queda cargada en pausa (con su carpeta como la activa)
+            boolean restored = restoreLastPlayback(tracksByPath);
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            boolean lastSongMissing = !restored && !lastPlaybackRestored && !allTracks.isEmpty()
+                    && !prefs.getString(PREF_LAST_PATH, "").isEmpty()
+                    && mediaPlayer == null && currentTrackIndex == -1;
+            if (lastSongMissing) {
+                // Había una última canción pero su pendrive no está (hay otro puesto): en vez de cargar una
+                // canción cualquiera, se abre Librería con los pendrives cerrados para que elijas
+                selectTab(0);
+                collapseAllTreeNodes();
+                // El launcher no debe seguir mostrando la canción del otro pendrive (una sola escritura)
+                if (!noTrackState) publishNoTrackState();
+            } else if (!restored) {
+                // Instalación nueva (sin última canción): queda cargada en pausa la primera del pendrive.
+                // Antes solo se mostraba su nombre y ▶ no hacía nada
+                loadFirstTrackPaused();
+                int savedTab = prefs.getInt(PREF_LAST_TAB, 0);
+                selectTab(savedTab);
+            }
+            if (pendingOpenTab >= 0) {
+                selectTab(pendingOpenTab);
+                pendingOpenTab = -1;
+            }
+
+            // Si fue iniciada en segundo plano por el Launcher, ejecutar la acción solicitada
+            if (getIntent() != null && getIntent().getBooleanExtra("extra_from_launcher_bg", false)) {
+                String pendingAction = getIntent().getStringExtra("extra_pending_action");
+                if ("com.jh.music.action.NEXT".equals(pendingAction)) {
+                    playNextTrack();
+                } else if ("com.jh.music.action.PREV".equals(pendingAction)) {
+                    playPreviousTrack();
+                } else {
+                    if (!isPlaying) {
+                        togglePlayPause();
+                    }
+                }
+                getIntent().removeExtra("extra_from_launcher_bg");
+                getIntent().removeExtra("extra_pending_action");
+            }
         });
     }
 
@@ -5119,9 +5254,6 @@ public class MainActivity extends Activity {
     }
 
     public void requestCurrentStateBroadcast() {
-        Track current = getCurrentTrack();
-        if (current != null) {
-            broadcastTrackState(current, isPlaying);
-        }
+        replyTrackState();
     }
 }

@@ -39,6 +39,7 @@
                 <action android:name="com.jh.music.action.NEXT" />
                 <action android:name="com.jh.music.action.PREV" />
                 <action android:name="com.jh.music.action.REQUEST_STATE" />
+                <action android:name="com.jh.music.action.SEEK" />
             </intent-filter>
         </receiver>
     </application>

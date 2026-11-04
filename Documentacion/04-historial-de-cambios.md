@@ -2,6 +2,22 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.10.0 — 2026-11-03, pendiente de probar en el auto
+
+- **Barra de tiempo del launcher (JH Launcher 1.6.0):** el aviso `TRACK_CHANGED` y el archivo de estado llevan la posición real (`extra_position_sec` / `positionSec`), también al adelantar o retroceder desde JH Music. Orden nueva `com.jh.music.action.SEEK` (`extra_position_sec`): salta a ese segundo (como la barra propia: cancela una mezcla en curso) y avisa dónde quedó. Probado en el emulador: tocar la mitad de la barra del launcher llevó la canción a 2:40.
+
+## 2.9.9 — 2026-11-03, pendiente de probar en el auto
+
+- **Aviso «Cargando librería…»** mientras se leen los pendrives (al abrir y al re-escanear): tapa la lista con un indicador y no deja tocarla, para que no parezca vacía ni se toque una lista a medias (`layoutLibraryLoading`). Se quita al terminar el escaneo, también si el escaneo falla. El escaneo pasó a `scanUsbNow()`, llamado desde `startUsbScan()`.
+- **Arreglo:** sin canción elegida, las tarjetas anterior / siguiente decían «Cargando...» aunque ya había cargado; ahora muestran «—».
+
+## 2.9.8 — 2026-10-31, pendiente de probar en el auto
+
+- **Rendimiento:** la pantalla se redibuja ~21 veces por segundo en pausa y ~23 sonando (antes ~54 y ~53, medido en el emulador). El árbol de carpetas usaba la marquesina nativa de Android, que repinta en cada cuadro; ahora usa la propia. Marquesinas, cápsula, ondas y ecualizador comparten una rejilla de 50 ms (`FrameGrid`). Detalle y método en [10 · Emulador y ADB](10-emulador-y-adb.md).
+- **APK release** firmado con la clave de debug (antes debug): la pantalla se arma más rápido y usa menos memoria.
+- **Abrir la pestaña que pide el launcher** (`EXTRA_OPEN_TAB`).
+- **Al abrir con otro pendrive:** si la última canción era de un pendrive que no está puesto, ya no se carga una canción cualquiera: se abre **Librería** con los pendrives cerrados para elegir. Al launcher se le avisa "sin canción" (una escritura), y responder a su `REQUEST_STATE` ya no reescribe el archivo de estado.
+
 ## 2.9.7 — 2026-10-24, pendiente de probar en el auto
 
 - **Arreglo: al abrir sin última canción** (la primera vez, o si su pendrive no está) el reproductor mostraba el nombre de la primera canción del pendrive, pero no la cargaba: ▶ no hacía nada, la pestaña decía "Canciones 0" y su carpeta no tenía el ecualizador. Ahora esa primera canción queda cargada en pausa con su carpeta abierta en Canciones. Si el pendrive de la última canción monta un momento después y no se tocó nada, la última la reemplaza. Probado en el emulador `radio-tucson` (Android 8.1, 1024 × 600).

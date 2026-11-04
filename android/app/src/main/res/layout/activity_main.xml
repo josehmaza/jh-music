@@ -715,6 +715,41 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- Librería cargando (al abrir o al re-escanear): tapa la lista para que no parezca vacía
+                         y no se toque una lista a medias. Es clicable para que los toques no pasen a la lista -->
+                    <LinearLayout
+                        android:id="@+id/layoutLibraryLoading"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/bg_panel"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <com.jh.caraudio.SearchSpinnerView
+                            android:layout_width="56dp"
+                            android:layout_height="56dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="Cargando librería..."
+                            android:textColor="@color/accent_cyan"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Leyendo los pendrives USB 1 y USB 2"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
                     <!-- Burbuja Flotante de Previsualización Prominente (Letra A-Z y Número de Pista) -->
                     <LinearLayout
                         android:id="@+id/layoutFastScrollBubble"
@@ -1119,7 +1154,7 @@
                             android:layout_marginStart="6dp"
                             android:gravity="start|center_vertical"
                             android:singleLine="true"
-                            android:text="Cargando..."
+                            android:text="—"
                             android:textColor="#cbd5e1"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -1153,7 +1188,7 @@
                             android:layout_marginEnd="6dp"
                             android:gravity="end|center_vertical"
                             android:singleLine="true"
-                            android:text="Cargando..."
+                            android:text="—"
                             android:textColor="#cbd5e1"
                             android:textSize="17sp"
                             android:textStyle="bold" />

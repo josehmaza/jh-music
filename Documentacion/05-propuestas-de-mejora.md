@@ -1,6 +1,6 @@
 # Propuestas de mejora — JH MUSIC
 
-Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.7**. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
+Análisis hecho sobre la versión 2.0.1, con el estado actualizado a la **2.9.8**. Las propuestas **16 a 21** salen de la revisión del 31-oct-2026 (código + medición en el emulador, ver [10 · Emulador y ADB](10-emulador-y-adb.md)) y todavía no tienen issue. Piensa en dos condiciones: uso **mientras se maneja** y un radio de **gama baja** (CPU lenta, poca RAM, pantalla de 1024×600 con poco brillo y contraste).
 
 Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. Están ordenadas por impacto. Cada una pendiente tiene su **issue** en GitHub (etiqueta [`propuesta`](https://github.com/josehmaza/jh-music/issues?q=label%3Apropuesta)) para decidir si se hace; si se descarta, el issue se cierra como *not planned*.
 
@@ -12,7 +12,7 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 4 | Una canción dañada no traba la reproducción | 🔴 Alta | Bajo | Pendiente · [issue 3](https://github.com/josehmaza/jh-music/issues/3) |
 | 5 | Carátulas reducidas al tamaño del cuadro | 🟠 Media | Muy bajo | Pendiente · [issue 4](https://github.com/josehmaza/jh-music/issues/4) |
 | 6 | Biblioteca guardada para arrancar al instante | 🟠 Media | Medio | Pendiente · [issue 5](https://github.com/josehmaza/jh-music/issues/5) |
-| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | **En parte** (las animaciones de la carátula van a ~30 fps; falta el spinner de búsqueda) · [issue 6](https://github.com/josehmaza/jh-music/issues/6) |
+| 7 | Animación del ecualizador a menor velocidad | 🟠 Media | Muy bajo | **En parte (2.9.8)**: todas las animaciones propias a ~20 fps en una rejilla común; faltan el spinner de búsqueda (60 fps) y detener reloj, progreso y punto de Mi Mix con la app en segundo plano · [issue 6](https://github.com/josehmaza/jh-music/issues/6) |
 | 8 | Carpeta siguiente / anterior con pulsación larga en pantalla | 🟡 Usabilidad | Bajo | Pendiente · [issue 7](https://github.com/josehmaza/jh-music/issues/7) |
 | 9 | Modo de alto contraste para sol y pantalla de bajo brillo | 🟡 Usabilidad | Medio | Pendiente · [issue 8](https://github.com/josehmaza/jh-music/issues/8) |
 | 10 | Modo "Ahora suena" a pantalla completa | 🟡 Usabilidad | Bajo | Pendiente · [issue 9](https://github.com/josehmaza/jh-music/issues/9) |
@@ -21,6 +21,12 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 | 13 | Ecualizador | 🎵 Audio | Medio | Pendiente · [issue 12](https://github.com/josehmaza/jh-music/issues/12) |
 | 14 | Extras opcionales | 🟢 Opcional | Variable | Pendiente |
 | 15 | Recortar las franjas negras de las carátulas | 🟡 Usabilidad | Bajo | Pendiente (para más adelante) · [issue 13](https://github.com/josehmaza/jh-music/issues/13) |
+| 16 | Marquesinas que se quedan quietas | 🟠 Media | Bajo | Pendiente · **el mayor ahorro que queda** (en pausa ~21 → ~1–2 repintados/s, estimado) |
+| 17 | Análisis de Automix guardado en disco | 🟠 Media | Medio | Pendiente |
+| 18 | Resplandor de la carátula sin desenfoque por software | 🟠 Media | Medio | Pendiente |
+| 19 | Filas de la lista y barra de volumen más livianas | 🟠 Media | Bajo | Pendiente |
+| 20 | Textos de estado en español en la cápsula | 🟡 Usabilidad | Muy bajo | Pendiente |
+| 21 | Carátula compartida con el launcher | 🟡 Usabilidad | Medio | Pendiente (toca también JH Launcher) |
 
 ---
 
@@ -113,11 +119,17 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 
 **Resultado:** la app quedaría lista en menos de 1 segundo, y las duraciones ya leídas no se vuelven a leer.
 
+**Revisión 31-oct-2026.** Sigue igual: las canciones que MediaStore no conoce se abren una por una con `MediaMetadataRetriever` para leer su duración cada vez que la app arranca de cero. El mismo archivo puede guardar también el análisis de Automix (#17).
+
 **Esfuerzo:** medio.
 
 ---
 
 ### 7. Animación del ecualizador a menor velocidad
+
+**Estado (2.9.8).** La cápsula, las ondas, el ecualizador de carpetas y las marquesinas van a ~20 cuadros por segundo y alineados a una misma rejilla de 50 ms (`FrameGrid`), así coinciden en el mismo repintado. El árbol de carpetas ya no usa la marquesina nativa de Android, que se animaba en cada VSYNC incluso en pausa. Pendiente:
+- El spinner de búsqueda sigue a 60 por segundo (`postInvalidateDelayed(16)`) mientras busca.
+- `onPause` no detiene el reloj (cada 1 s, y crea 3 `SimpleDateFormat` en cada vuelta), el progreso (cada 0,5 s) ni el punto de Mi Mix: siguen corriendo todo el viaje con el launcher al frente. Detenerlos en `onPause`, reanudarlos en `onResume`, y llevar el reloj al aviso por minuto del sistema (`ACTION_TIME_TICK`), como el launcher.
 
 **Estado (2.4.0).** `SoundWaveBarsView` ya no se usa. El haz láser, la cápsula y la marquesina se redibujan a unos 30 cuadros por segundo (`postInvalidateDelayed(33)`) y solo mientras hace falta. Queda el spinner de búsqueda, que sigue a 60 por segundo (`postInvalidateDelayed(16)`) mientras busca, y falta detener las animaciones cuando la app no está visible.
 
@@ -126,6 +138,56 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 **Propuesta.** Limitar la animación a 15–20 cuadros por segundo, donde se ve igual, o agregar una opción para apagarla. Detenerla cuando la app no está visible.
 
 **Esfuerzo:** muy bajo.
+
+---
+
+### 16. Marquesinas que se quedan quietas
+
+**Problema (medido en 2.9.8).** En pausa la pantalla todavía se redibuja unas **21 veces por segundo**, y todo viene de las marquesinas (`CarMarqueeTextView`). El título y las tarjetas anterior y siguiente se desplazan sin parar mientras el texto no cabe, también en pausa. En este radio cada repintado dibuja la pantalla entera.
+
+Además, tres textos moviéndose a la vez distraen al manejar, y las tarjetas anterior y siguiente muestran palabras cortadas a mitad del desplazamiento ("URON PROYECTO UN").
+
+**Propuesta.**
+- El título se desplaza 1 o 2 veces al empezar cada canción y luego queda quieto, mostrando el inicio con "…". Tocarlo lo desplaza otra vez.
+- En pausa, ninguna marquesina se mueve.
+- Anterior y siguiente: siempre quietos, con "…".
+- En la lista y en el árbol, lo mismo que el título: una o dos pasadas y quieto.
+
+**Resultado esperado:** en pausa, de ~21 a ~1–2 repintados por segundo (estimado; queda el reloj). Sonando, solo quedan la cápsula y las ondas.
+
+**Esfuerzo:** bajo: un contador de pasadas en `CarMarqueeTextView`, y `setCarMarqueeEnabled(false)` en anterior y siguiente.
+
+---
+
+### 17. Análisis de Automix guardado en disco
+
+**Problema.** `AudioAnalyzer` guarda sus resultados solo en memoria (hasta 300 canciones). Cuando la app arranca de cero (reinicio del radio, o Android la cierra por falta de memoria), vuelve a decodificar por software **45 s de audio**: 10 s del inicio, 10 del medio y 25 del final. Lo hace con la canción que suena y con la siguiente, justo al arrancar, cuando el radio está más cargado.
+
+**Propuesta.** Guardar cada resultado en un archivo del almacenamiento interno de la app. La clave es la ruta + el tamaño + la fecha de modificación, así una canción que cambió se vuelve a analizar. Puede compartir archivo con la biblioteca guardada (#6).
+
+**Esfuerzo:** medio.
+
+---
+
+### 18. Resplandor de la carátula sin desenfoque por software
+
+**Problema.** `AlbumGlowView` se dibuja por software (`LAYER_TYPE_SOFTWARE`) con tres desenfoques gaussianos (`BlurMaskFilter` de 24, 26 y 34 dp). `AmbientTheme` lo vuelve a dibujar dos veces en cada cambio de canción, a mitad del fundido y al final. Cada vez, la CPU recalcula los tres desenfoques y vuelve a subir la imagen a la GPU.
+
+**Propuesta.** Dibujar el resplandor una sola vez, en blanco, al medir la vista, y teñirlo con el color de la canción con un `ColorFilter`: lo aplica la GPU sin recalcular nada. La sombra negra de abajo no cambia de color, así que va en una capa aparte, también dibujada una sola vez.
+
+**Esfuerzo:** medio.
+
+---
+
+### 19. Filas de la lista y barra de volumen más livianas
+
+**Problema.**
+- `TrackAdapter.getView` llama a `Color.parseColor` varias veces por fila. Además, cada vez que una fila aparece al desplazar, vuelve a poner y teñir el ícono USB (`setCompoundDrawablesWithIntrinsicBounds` + `mutate()`). Con más de 200 canciones, el desplazamiento puede ir a tirones en la Mali-400.
+- `VerticalVolumeBar` crea un `LinearGradient` nuevo, y convierte dos colores desde texto, en cada cuadro mientras se arrastra el volumen.
+
+**Propuesta.** Colores como constantes, íconos USB teñidos una sola vez y reutilizados, y el gradiente del volumen creado solo cuando cambian el tamaño o el nivel.
+
+**Esfuerzo:** bajo.
 
 ---
 
@@ -190,6 +252,28 @@ Cada propuesta indica el problema actual, la solución y el esfuerzo estimado. E
 **Costo en gama baja:** muy bajo: una vez por canción, en segundo plano.
 
 **Esfuerzo:** bajo. El código se llegó a escribir y compilar en la 2.6.1 (sin probarlo en el auto) y se quitó a pedido, para dejarlo para más adelante.
+
+---
+
+### 20. Textos de estado en español
+
+**Problema.** La cápsula bajo la carátula dice **PLAYING / PAUSED / MIXING ⇄** en una interfaz que está en español. Para lo mismo, el launcher dice "EN PAUSA".
+
+**Propuesta.** **SONANDO / EN PAUSA / MEZCLANDO ⇄**. El ancho de la cápsula se calcula con el texto más largo (`onMeasure` mide hoy "MIXING ⇄"), así que hay que medirlo con "MEZCLANDO ⇄".
+
+**Esfuerzo:** muy bajo.
+
+---
+
+### 21. Carátula compartida con el launcher
+
+**Problema.** La tarjeta de música del launcher muestra un ícono de disco aunque la canción tenga carátula. JH Music solo le pasa título, artista, ruta y duración (en `.jh_music_state.json` y en el aviso `TRACK_CHANGED`).
+
+**Propuesta.** Al cargar la carátula (`loadAlbumArt`, que ya corre en segundo plano), guardar además una miniatura JPEG de ~200 px junto al archivo de estado y avisar su ruta. El launcher la muestra en su tarjeta. Es una sola escritura pequeña por canción, al empezarla; mientras suena no se escribe nada.
+
+La parte del launcher está en `jh-launcher/MEJORAS.md` (§6).
+
+**Esfuerzo:** medio (toca las dos apps).
 
 ---
 
@@ -269,9 +353,9 @@ Faltan el modo **sin pausas** (fase 4) y la pantalla de **ajustes** (duración, 
 
 | Paso | Propuestas | Motivo |
 |---|---|---|
-| 1 | #2 Foco de audio, #4 errores y `prepareAsync`, #5 carátulas | Corrigen fallos que hoy pueden pasar manejando; poco código |
+| 1 | #2 Foco de audio, #4 errores y `prepareAsync`, #5 carátulas, #16 marquesinas quietas, #20 textos en español | Corrigen fallos que hoy pueden pasar manejando, y #16 es el mayor ahorro de rendimiento que queda; poco código |
 | 2 | #1 Retomar sesión | Mejora inmediata en el uso diario |
 | 3 | #3 Servicio + MediaSession | Cambio estructural; conviene hacerlo antes de seguir agregando funciones |
 | 4 | #13 Ecualizador (#12 Mezcla ya está hecha) | Se apoya en el servicio de reproducción del paso 3 |
-| 5 | #6 Biblioteca en caché, #8 carpeta con pulsación larga | Rendimiento y comodidad |
-| 6 | #7, #9, #10, #11 y extras | Pulido visual y opciones |
+| 5 | #6 Biblioteca en caché + #17 análisis de Automix en disco, #8 carpeta con pulsación larga | Rendimiento al arrancar y comodidad |
+| 6 | #7, #18, #19, #21, #9, #10, #11 y extras | Pulido visual, fluidez y opciones |

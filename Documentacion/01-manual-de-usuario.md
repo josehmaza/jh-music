@@ -277,7 +277,8 @@ El Tucson ix35 de este proyecto **no tiene botones en el volante**. Aun así, la
 ### Al volver a encender el auto
 
 - La app abre en la **última canción que sonaba, en pausa** y desde el inicio. Toca ▶ para escucharla.
-- Si no hay última canción (la primera vez, o si su pendrive no está), queda en pausa la **primera canción del pendrive**, con su carpeta abierta en Canciones. Si el pendrive de la última canción aparece un momento después y no tocaste nada, la app cambia a la última.
+- **Si la última canción era de otro pendrive** (el suyo no está puesto, hay otro), la app **no carga ninguna canción**: abre **Librería** con USB 1 y USB 2 cerrados para que elijas. Hasta que elijas, el reproductor dice "Selecciona una canción" y ▶ no hace nada. Si el pendrive de la última canción aparece un momento después y no tocaste nada, la app cambia a la última.
+- La primera vez (sin última canción) queda en pausa la **primera canción del pendrive**, con su carpeta abierta en Canciones.
 - Anterior y Siguiente siguen con **la misma lista**: su carpeta (que queda como la activa en Canciones) o Mi Mix, si sonaba Mi Mix.
 - Si el pendrive se monta un poco después de abrir la app, la canción se carga apenas aparece.
 - Si esa canción ya no está (otro pendrive, o se borró), la app abre como siempre.

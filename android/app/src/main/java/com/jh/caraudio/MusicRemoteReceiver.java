@@ -21,6 +21,10 @@ public class MusicRemoteReceiver extends BroadcastReceiver {
                 act.playPreviousTrack();
             } else if ("com.jh.music.action.REQUEST_STATE".equals(action)) {
                 act.requestCurrentStateBroadcast();
+            } else if ("com.jh.music.action.SEEK".equals(action)) {
+                // Arrastre de la barra de tiempo del launcher: segundo al que ir (sin la app abierta no hay canción)
+                int sec = intent.getIntExtra("extra_position_sec", -1);
+                if (sec >= 0) act.seekFromLauncher(sec);
             }
         } else {
             // Si la app de música estaba cerrada y el usuario presiona Play, Next o Prev en el Launcher,
