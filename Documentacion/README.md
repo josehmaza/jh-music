@@ -1,8 +1,8 @@
 # JH MUSIC — Documentación
 
-Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias (anterior / play / siguiente responden en toda la franja de abajo), gestos simples (doble toque en la carátula, volumen deslizando el dedo), lectura directa de uno o dos pendrives USB, **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen. Al encender el auto abre en la última canción.
+Reproductor de música para el radio Android del **Hyundai Tucson ix35** (sin botones en el volante), pensado para usarse mientras se conduce: botones y textos grandes, zonas de toque amplias (anterior / play / siguiente responden en toda la franja de abajo), gestos simples (deslizar a los lados = anterior / siguiente, volumen deslizando arriba o abajo, medio círculo = biblioteca, doble toque = play / pausa), lectura directa de uno o dos pendrives USB, **Mi Mix** (una lista que armas y suena seguida) y **Automix**, que mezcla las canciones e iguala su volumen. Al encender el auto abre en la última canción.
 
-- **Versión actual:** 2.10.1 (`versionCode 42`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
+- **Versión actual:** 2.11.0 (`versionCode 43`), pendiente de probar en el auto (ver [historial](04-historial-de-cambios.md)).
 - **Paquete Android:** `com.jh.caraudio`
 - **APK:** `JH-MUSIC-v<versión>.apk`; lo genera `build.sh` en `jh-music/` y se publica en las [Releases](https://github.com/josehmaza/jh-music/releases)
 - **Apps hermanas:** [JH Launcher](https://github.com/josehmaza/jh-launcher) (pantalla de inicio que controla JH MUSIC), [JH VIDEO](https://github.com/josehmaza/jh-video) y [JH RADIO](https://github.com/josehmaza/jh-radio)

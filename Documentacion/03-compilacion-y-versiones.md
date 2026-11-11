@@ -51,16 +51,16 @@ Hay que cambiar tres lugares:
 1. `android/app/build.gradle`:
    ```groovy
    versionCode 42         // entero: +1 en cada versión
-   versionName "2.10.1"   // lo que se ve y el nombre del APK
+   versionName "2.11.0"   // lo que se ve y el nombre del APK
    ```
-2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.10.1"` de la barra superior (oculta; la versión que se ve sale del APK, al pie del menú ☰).
-3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.10.1</span>`.
+2. `android/app/src/main/res/layout/activity_main.xml`: la etiqueta `android:text="v2.11.0"` de la barra superior (oculta; la versión que se ve sale del APK, al pie del menú ☰).
+3. `index.html` y `android/app/src/main/assets/index.html`: `<span id="appVersionBadge">v2.11.0</span>`.
 
 El `versionCode` debe subir siempre. Si no sube, Android no reconoce la instalación como actualización.
 
 Luego se compila con `bash build.sh` (o `clean assembleRelease`), se anota la versión en el [historial](04-historial-de-cambios.md) y se hace commit del código. El APK **no** va en git: se publica en una **Release** de GitHub (ver §5).
 
-Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo: se ve al pie del menú ☰ (`JH MUSIC v2.10.1`).
+Cada APK que se prueba en el radio lleva una versión nueva, para distinguirlo: se ve al pie del menú ☰ (`JH MUSIC v2.11.0`).
 
 ## 4. Instalar en el radio
 

@@ -905,11 +905,20 @@ public class MainActivity extends Activity {
                     blindVolStartY = ev.getRawY();
                     blindVolStartVal = currentVolPercent;
                     blindVolDragging = true;
+                    gestureTracker.start(ev.getRawX(), ev.getRawY(), SystemClock.uptimeMillis());
+                    // Doble toque = play / pausa: solo si el toque cae en una zona libre (la carátula o el fondo),
+                    // no sobre un botón: ▶▮▮ ⏮ ⏭ ya tienen sus propios toques dobles (+10 s / -10 s)
+                    tapDownTime = SystemClock.uptimeMillis();
+                    tapEligible = isBlankTouch(ev.getRawX(), ev.getRawY());
+                } else {
+                    gestureTracker.cancel();
+                    tapEligible = false;
                 }
                 break;
             }
 
             case MotionEvent.ACTION_MOVE: {
+                gestureTracker.add(ev.getRawX(), ev.getRawY(), SystemClock.uptimeMillis());
                 // Gesto ciego vertical de volumen (en toda la pantalla con bloqueo direccional)
                 if (blindVolDragging && !globalTouchOnSeekbar) {
                     float dx = ev.getRawX() - blindVolStartX;
@@ -942,6 +951,42 @@ public class MainActivity extends Activity {
             }
 
             case MotionEvent.ACTION_UP: {
+                // Gestos de un dedo (iguales en JH LAUNCHER y JH VIDEO): círculo = abrir/cerrar la biblioteca,
+                // deslizar a los lados = anterior / siguiente
+                if (gestureTracker.isActive()) {
+                    gestureTracker.add(ev.getRawX(), ev.getRawY(), SystemClock.uptimeMillis());
+                    boolean wasVolume = blindVolPassedDeadzone;
+                    if (gestureTracker.finishIsCircle()) {
+                        if (wasVolume) {
+                            // El círculo pudo empezar vertical y mover el volumen: se devuelve al que tenía
+                            setVolumePercent(blindVolStartVal, false);
+                            handler.removeCallbacks(hideBlindVolHudRunnable);
+                            hideBlindVolHudRunnable.run();
+                        } else {
+                            cancelChildTouch(ev);
+                        }
+                        blindVolDragging = false;
+                        blindVolPassedDeadzone = false;
+                        toggleExplorerVisibility();
+                        return true;
+                    }
+                    if (!wasVolume) {
+                        int swipe = gestureTracker.finishSwipe();
+                        if (swipe != BlindGestureTracker.NONE) {
+                            cancelChildTouch(ev);
+                            blindVolDragging = false;
+                            if (swipe == BlindGestureTracker.SWIPE_NEXT) {
+                                showBlindActionHud(R.drawable.ic_ctrl_next, "SIGUIENTE");
+                                playNextTrack();
+                            } else {
+                                showBlindActionHud(R.drawable.ic_ctrl_prev, "ANTERIOR");
+                                playPreviousTrack();
+                            }
+                            return true;
+                        }
+                    }
+                    gestureTracker.cancel();
+                }
                 if (blindVolPassedDeadzone) {
                     blindVolDragging = false;
                     blindVolPassedDeadzone = false;
@@ -951,6 +996,26 @@ public class MainActivity extends Activity {
                 }
                 blindVolDragging = false;
 
+                if (tapEligible) {
+                    tapEligible = false;
+                    long now = SystemClock.uptimeMillis();
+                    boolean isTap = now - tapDownTime <= BLANK_TAP_MAX_MS
+                            && Math.abs(ev.getRawX() - globalTouchStartX) < dp(20)
+                            && Math.abs(ev.getRawY() - globalTouchStartY) < dp(20);
+                    if (isTap) {
+                        if (lastBlankTapAt > 0 && now - lastBlankTapAt <= BLANK_DOUBLE_TAP_MS) {
+                            lastBlankTapAt = 0;
+                            togglePlayPause();
+                            showBlindActionHud(isPlaying ? R.drawable.ic_ctrl_play : R.drawable.ic_ctrl_pause,
+                                    isPlaying ? "PLAY" : "PAUSA");
+                        } else {
+                            lastBlankTapAt = now;
+                        }
+                    } else {
+                        lastBlankTapAt = 0;
+                    }
+                }
+
                 if (globalGestureHandled) {
                     return true;
                 }
@@ -958,12 +1023,53 @@ public class MainActivity extends Activity {
             }
 
             case MotionEvent.ACTION_CANCEL: {
+                tapEligible = false;
+                gestureTracker.cancel();
                 blindVolDragging = false;
                 blindVolPassedDeadzone = false;
                 break;
             }
         }
         return super.dispatchTouchEvent(ev);
+    }
+
+    // Doble toque en una zona libre = play / pausa (igual que en JH LAUNCHER)
+    private static final int BLANK_TAP_MAX_MS = 300;
+    private static final int BLANK_DOUBLE_TAP_MS = 400;
+    private boolean tapEligible = false;
+    private long tapDownTime = 0;
+    private long lastBlankTapAt = 0;
+
+    /** true si el toque no cae sobre un botón, lista ni barra: la carátula cuenta como zona libre. */
+    private boolean isBlankTouch(float rawX, float rawY) {
+        return !hitsInteractive(getWindow().getDecorView(), (int) rawX, (int) rawY);
+    }
+
+    private boolean hitsInteractive(View v, int x, int y) {
+        if (v.getVisibility() != View.VISIBLE) return false;
+        Rect r = new Rect();
+        if (!v.getGlobalVisibleRect(r) || !r.contains(x, y)) return false;
+        if (v == layoutAlbumArtCard) return false;
+        if (v.isClickable() || v instanceof android.widget.AbsListView || v instanceof android.widget.SeekBar
+                || v instanceof android.widget.EditText) return true;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = g.getChildCount() - 1; i >= 0; i--) {
+                if (hitsInteractive(g.getChildAt(i), x, y)) return true;
+            }
+        }
+        return false;
+    }
+
+    private final BlindGestureTracker gestureTracker =
+            new BlindGestureTracker(android.content.res.Resources.getSystem().getDisplayMetrics().density);
+
+    /** Lo que estaba debajo del dedo recibe un CANCEL: el gesto ya lo atendimos nosotros (no debe quedar presionado). */
+    private void cancelChildTouch(MotionEvent ev) {
+        MotionEvent cancel = MotionEvent.obtain(ev);
+        cancel.setAction(MotionEvent.ACTION_CANCEL);
+        super.dispatchTouchEvent(cancel);
+        cancel.recycle();
     }
 
     @Override
@@ -1089,7 +1195,7 @@ public class MainActivity extends Activity {
         if (content == null) return;
         layoutBlindVolHud = getLayoutInflater().inflate(R.layout.layout_blind_volume_hud, content, false);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                dp(140), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+                dp(220), dp(220), Gravity.CENTER);
         content.addView(layoutBlindVolHud, lp);
         ivBlindHudIcon = layoutBlindVolHud.findViewById(R.id.ivBlindHudIcon);
         viewBlindHudFill = layoutBlindVolHud.findViewById(R.id.viewBlindHudFill);
@@ -1106,20 +1212,60 @@ public class MainActivity extends Activity {
         return layoutExplorerPanel.getGlobalVisibleRect(rect) && rect.contains((int) rawX, (int) rawY);
     }
 
+    /**
+     * Aviso de un gesto (SIGUIENTE / ANTERIOR) en el mismo círculo del volumen, igual que en JH LAUNCHER:
+     * así se ve que el gesto se reconoció aunque la canción no cambie (por ejemplo, con una sola en la cola).
+     */
+    private void showBlindActionHud(int iconRes, String label) {
+        if (layoutBlindVolHud == null) return;
+        handler.removeCallbacks(hideBlindVolHudRunnable);
+        if (layoutBlindVolHud.getVisibility() != View.VISIBLE) {
+            layoutBlindVolHud.setAlpha(0f);
+            layoutBlindVolHud.setScaleX(0.82f);
+            layoutBlindVolHud.setScaleY(0.82f);
+            layoutBlindVolHud.setVisibility(View.VISIBLE);
+            layoutBlindVolHud.bringToFront();
+            layoutBlindVolHud.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f));
+        }
+        if (tvBlindHudPercent != null) {
+            tvBlindHudPercent.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+            tvBlindHudPercent.setText(label);
+        }
+        if (viewBlindHudFill != null) ((View) viewBlindHudFill.getParent()).setVisibility(View.GONE);
+        if (ivBlindHudIcon != null) {
+            ivBlindHudIcon.setImageResource(iconRes);
+            ivBlindHudIcon.setColorFilter(Color.parseColor("#38bdf8"));
+        }
+        handler.postDelayed(hideBlindVolHudRunnable, 700);
+    }
+
     private void showBlindVolumeHud(int percent) {
         if (layoutBlindVolHud == null) return;
         handler.removeCallbacks(hideBlindVolHudRunnable);
-        layoutBlindVolHud.setVisibility(View.VISIBLE);
-        layoutBlindVolHud.bringToFront();
+        if (layoutBlindVolHud.getVisibility() != View.VISIBLE) {
+            layoutBlindVolHud.setAlpha(0f);
+            layoutBlindVolHud.setScaleX(0.82f);
+            layoutBlindVolHud.setScaleY(0.82f);
+            layoutBlindVolHud.setVisibility(View.VISIBLE);
+            layoutBlindVolHud.bringToFront();
+            // La animación de entrada solo corre al aparecer: reiniciarla en cada movimiento del dedo la dejaba a medias
+            layoutBlindVolHud.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f));
+        }
 
-        if (tvBlindHudPercent != null) tvBlindHudPercent.setText(percent + "%");
+        if (tvBlindHudPercent != null) {
+            tvBlindHudPercent.setTextSize(TypedValue.COMPLEX_UNIT_SP, 56);
+            tvBlindHudPercent.setText(percent + "%");
+        }
+        if (viewBlindHudFill != null) ((View) viewBlindHudFill.getParent()).setVisibility(View.VISIBLE);
 
         if (viewBlindHudFill != null) {
-            int trackH = dp(130);
-            int fillH = Math.round((percent / 100f) * trackH);
+            int trackW = dp(130);
+            int fillW = Math.round((percent / 100f) * trackW);
             ViewGroup.LayoutParams lp = viewBlindHudFill.getLayoutParams();
             if (lp != null) {
-                lp.height = fillH;
+                lp.width = fillW;
                 viewBlindHudFill.setLayoutParams(lp);
             }
         }
@@ -1195,7 +1341,7 @@ public class MainActivity extends Activity {
     // ==========================================
     private void setupPlayerControls() {
         btnPlayPause.setOnClickListener(v -> togglePlayPause());
-        // Carátula (igual que el video de JH VIDEO): 1 toque no hace nada; 2 toques ocultan o muestran el explorador.
+        // Carátula: tocarla no hace nada (el explorador se oculta o muestra con un círculo, ver BlindGestureTracker).
         // Así la franja junto a la carátula queda libre para el gesto de volumen. Para pausar están ▶ / ⏸ y su franja
         if (layoutAlbumArtCard != null) {
             // Al tocarla se achica apenas (97 %) y el borde se ilumina en cian (fg_album_card_pressed), como la web.
@@ -1208,9 +1354,6 @@ public class MainActivity extends Activity {
                     v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
                 } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                     v.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
-                    boolean tap = action == MotionEvent.ACTION_UP
-                            && Math.abs(event.getX() - coverDownX) < dp(20) && Math.abs(event.getY() - coverDownY) < dp(20);
-                    if (tap) handleCoverTap();
                 }
                 return false; // el presionado lo sigue dibujando la carátula
             });
@@ -1493,7 +1636,7 @@ public class MainActivity extends Activity {
     }
 
     // ==========================================
-    // EXPLORADOR: se oculta o muestra con doble toque en la carátula o desde el menú ☰
+    // EXPLORADOR: se oculta o muestra dibujando un círculo con el dedo o desde el menú ☰
     // (ya no se jala de costado: esa franja queda para el gesto de volumen)
     // ==========================================
     private void setupExplorerToggleGestures() {
@@ -1505,21 +1648,7 @@ public class MainActivity extends Activity {
         applyPlayerControlSizes(false);
     }
 
-    // Doble toque en la carátula: dos toques en menos de 350 ms (como las carpetas). Se mide en el propio toque
-    // (como el video de JH VIDEO) y un toque solo no hace nada, así no hay nada que esperar ni que confundir
-    private static final int COVER_DOUBLE_TAP_MS = 350;
-    private long lastCoverTapAt = 0;
     private float coverDownX, coverDownY;
-
-    private void handleCoverTap() {
-        long now = SystemClock.uptimeMillis();
-        if (lastCoverTapAt > 0 && now - lastCoverTapAt <= COVER_DOUBLE_TAP_MS) {
-            lastCoverTapAt = 0;
-            toggleExplorerVisibility();
-        } else {
-            lastCoverTapAt = now;
-        }
-    }
 
     /**
      * Agranda el cuadro de la carátula para ocupar el espacio libre que queda sobre los botones
@@ -3347,6 +3476,7 @@ public class MainActivity extends Activity {
                 json.put("duration", duration);
                 json.put("totalSec", durationSec);
                 json.put("isPlaying", isPlaying);
+                json.put("fromMix", playingFromMix);
                 json.put("positionSec", positionSec);
                 json.put("timestamp", System.currentTimeMillis());
                 File stateFile = new File(Environment.getExternalStorageDirectory(), ".jh_music_state.json");
@@ -3364,6 +3494,8 @@ public class MainActivity extends Activity {
             intent.putExtra("extra_artist", artist);
             intent.putExtra("extra_path", path);
             intent.putExtra("extra_is_playing", isPlaying);
+            // Para que el launcher abra JH Music en Mi Mix cuando la canción viene de ahí
+            intent.putExtra("extra_from_mix", playingFromMix);
             intent.putExtra("extra_duration", duration);
             intent.putExtra("extra_total_sec", durationSec);
             intent.putExtra("extra_position_sec", positionSec);
@@ -3718,7 +3850,7 @@ public class MainActivity extends Activity {
             if (queue.size() < 2 || currentTrackIndex < 0 || currentTrackIndex >= queue.size()) return null;
             int index;
             if (playingFromMix) {
-                // Mi Mix: después de la última no hay mezcla (se detiene)
+                // Mi Mix: después de la última da la vuelta (la mezcla entra con la primera)
                 index = nextMixIndex();
                 return index < 0 ? null : new AutoMixer.NextTrack(index, queue.get(index));
             }
@@ -4031,34 +4163,36 @@ public class MainActivity extends Activity {
         playTrackFromQueue(playQueue, index, true);
     }
 
-    /** Siguiente dentro de Mi Mix, o -1 si ya no queda ninguna (la lista se detiene). */
+    /**
+     * Siguiente dentro de Mi Mix. Al terminar todas la lista vuelve a empezar (no se detiene), y las marcas de
+     * "ya sonó" se quedan como estaban. Se salta la que ya no está en Mi Mix (la que suena y se quitó) y devuelve
+     * -1 solo si no queda ninguna en Mi Mix.
+     */
     private int nextMixIndex() {
         List<Track> queue = getQueue();
-        if (isShuffle) {
-            // En aleatorio: una que todavía no haya sonado
-            List<Integer> pending = new ArrayList<>();
-            for (int i = 0; i < queue.size(); i++) {
-                if (i != currentTrackIndex && !mixPlayedKeys.contains(favoriteKey(queue.get(i)))) pending.add(i);
+        int size = queue.size();
+        if (size == 0) return -1;
+        if (!isShuffle) {
+            // Orden de la lista; la última da la vuelta a la primera (la misma si es la única)
+            for (int step = 1; step <= size; step++) {
+                int i = (Math.max(currentTrackIndex, -1) + step) % size;
+                if (isInMix(queue.get(i))) return i;
             }
-            return pending.isEmpty() ? -1 : pending.get(new Random().nextInt(pending.size()));
+            return -1;
         }
-        return currentTrackIndex + 1 < queue.size() ? currentTrackIndex + 1 : -1;
-    }
-
-    /** Terminó la última canción de Mi Mix: se detiene y queda en pausa al inicio de esa canción. */
-    private void finishMix() {
-        autoMixer.onManualPlayback();
-        if (mediaPlayer != null) {
-            try {
-                mediaPlayer.pause();
-                mediaPlayer.seekTo(0);
-            } catch (Exception ignored) {}
+        // En aleatorio: una que todavía no haya sonado; si ya sonaron todas, nueva vuelta con cualquiera
+        List<Integer> pending = new ArrayList<>();
+        List<Integer> others = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            if (i == currentTrackIndex || !isInMix(queue.get(i))) continue;
+            others.add(i);
+            if (!mixPlayedKeys.contains(favoriteKey(queue.get(i)))) pending.add(i);
         }
-        isPlaying = false;
-        if (seekTrackProgress != null) seekTrackProgress.setProgress(0);
-        if (tvTimeCurrent != null) tvTimeCurrent.setText(formatMs(0));
-        updatePlaybackStateUI();
-        showMixToast("Fin de Mi Mix");
+        if (!pending.isEmpty()) return pending.get(new Random().nextInt(pending.size()));
+        if (!others.isEmpty()) return others.get(new Random().nextInt(others.size()));
+        // Una sola en Mi Mix: se repite esa
+        return currentTrackIndex >= 0 && currentTrackIndex < size && isInMix(queue.get(currentTrackIndex))
+                ? currentTrackIndex : -1;
     }
 
     /** Agrega una carpeta entera a Mi Mix y avisa cuántas entraron. */
@@ -4472,13 +4606,9 @@ public class MainActivity extends Activity {
         List<Track> queue = getQueue();
         if (queue.isEmpty()) return;
         if (playingFromMix) {
-            // Mi Mix no vuelve a empezar: después de la última se detiene
+            // Mi Mix da la vuelta: después de la última vuelve a sonar desde el principio
             int mixNext = nextMixIndex();
-            if (mixNext < 0) {
-                finishMix();
-            } else {
-                playTrackFromQueue(queue, mixNext, true);
-            }
+            if (mixNext >= 0) playTrackFromQueue(queue, mixNext, true);
             return;
         }
         int nextIndex;
@@ -4666,11 +4796,8 @@ public class MainActivity extends Activity {
         int nextIdx = (currentTrackIndex + 1) % queue.size();
 
         tvPrevTrackPreview.setText(queue.get(prevIdx).getTitle());
-        if (playingFromMix && !isShuffle && currentTrackIndex >= queue.size() - 1) {
-            tvNextTrackPreview.setText("■ Fin de Mi Mix");
-        } else {
-            tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
-        }
+        // Mi Mix da la vuelta: después de la última sigue la primera
+        tvNextTrackPreview.setText(queue.get(nextIdx).getTitle());
     }
 
     private void loadAlbumArt(Track track) {

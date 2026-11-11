@@ -104,10 +104,9 @@ Mi Mix es una lista **ordenada** de claves (ruta relativa al pendrive, `favorite
 | `playingFromMix` | La cola que suena (`playQueue`) es Mi Mix |
 | `addToMix` / `removeFromMix` / `clearMix` / `reAddToMixInPlace` | Cambian la lista y llaman a `onMixChanged()`: guardar, contador de la pestaña, `syncMixQueue()` y refrescar la pestaña |
 | `syncMixQueue()` | Con Mi Mix sonando, rearma `playQueue` con la lista actual (agregar en vivo). Si se quitó la que suena, la deja en su posición (`mixCurPos`) para que siga y después venga la siguiente. Llama a `autoMixer.invalidateNext()` para que Automix vuelva a elegir la siguiente |
-| `nextMixIndex()` | Siguiente en Mi Mix, o −1 al final. En aleatorio, una que no haya sonado |
-| `finishMix()` | Al final: pausa, vuelve al inicio de la canción y avisa "Fin de Mi Mix" |
+| `nextMixIndex()` | Siguiente en Mi Mix; después de la última da la vuelta a la primera. Se salta la que ya no está en Mi Mix y devuelve −1 solo si no queda ninguna. En aleatorio, una que no haya sonado (si ya sonaron todas, cualquiera menos la actual) |
 
-Con Mi Mix sonando, `playNextTrack()`, `playPreviousTrack()` (Anterior en la primera la reinicia), `pickNextTrack()` (Automix no mezcla después de la última) y `updatePreviews()` (`■ Fin de Mi Mix`) usan `nextMixIndex()`. `playTrack()` desde cualquier otra pestaña pone `playingFromMix = false`.
+Con Mi Mix sonando, `playNextTrack()`, `playPreviousTrack()` (Anterior en la primera la reinicia), `pickNextTrack()` (Automix mezcla la última con la primera) y `updatePreviews()` usan `nextMixIndex()`. `playTrack()` desde cualquier otra pestaña pone `playingFromMix = false`.
 
 La pestaña (`showMixTab()`) tiene una cabecera propia (`layoutMixHeader`: resumen, Reproducir, Vaciar con confirmación) y `tvMixEmpty` cuando está vacía. `TrackAdapter.setMixMode(true)` numera por la lista, muestra ✕ y apaga las que ya sonaron; la que suena fuera de la lista va primero con un + (`MixState.isOrphan`). Los botones + de carpetas están en `FolderTreeAdapter` (`onNodeAddMixClick`) y `FolderAdapter` (`OnFolderAddMixListener`). Los avisos cortos son un `TextView` sobre `android.R.id.content` (`showMixToast`).
 
@@ -247,7 +246,7 @@ Trabaja sobre `AudioManager.STREAM_MUSIC` en pasos de 10 %.
 ### Carátula
 
 - **Tamaño:** el cuadro mide 150 dp en el layout. `setupAlbumArtAutoSize()` espera al primer layout y lo agranda con el espacio que sobra en la fila de controles (`layoutTransportControls`, dejando 8 dp arriba y abajo de los botones), con un máximo de **300 dp** y dejando 66 dp a cada lado (a la derecha están el menú ☰ y Automix). Sin la barra de arriba, en el radio queda en unos 298 dp.
-- **Toques:** el `OnTouchListener` de `layoutAlbumArtCard` llama a `handleCoverTap()` en cada toque (si el dedo no se movió más de 20 dp): dos toques en menos de 350 ms (`COVER_DOUBLE_TAP_MS`) ocultan o muestran el explorador (`toggleExplorerVisibility()`); un toque solo no hace nada. Ya no pausa: con la espera para distinguir el doble toque, un doble toque algo lento pausaba.
+- **Toques en la carátula:** su `OnTouchListener` solo hace el efecto de presionado (97 %). El doble toque de la carátula se quitó en 2.11.0: ahora el explorador se oculta o muestra con medio círculo (§14b) y el doble toque en una zona libre es play / pausa.
 - **Presionado:** `foreground="@drawable/fg_album_card_pressed"` (borde cian de 3 dp) y el mismo listener achica el cuadro al 97 %. Antes usaba `selectableItemBackground`, que lo tapaba entero con el color de acento del sistema (naranja).
 - **Cápsula y etiqueta (para no tapar su contenido):**
   - `NowPlayingPillView` (38 dp de alto) **no** está dentro del cuadro: es hija del `RelativeLayout` de arriba, alineada al borde de abajo de `layoutAlbumArtCard` con `marginBottom="-19dp"`, así queda mitad dentro y mitad fuera. Va después de `LaserRingView` para dibujarse encima. Está fuera del cuadro porque `layoutAlbumArtInner` recorta su contenido con `setClipToOutline(true)`.
@@ -262,7 +261,7 @@ En este orden:
 2. **Gesto de volumen** (§14): empieza si el toque no cae sobre las barras de progreso o de volumen, el buscador con foco ni el explorador (`isTouchInExplorer`).
 3. Protege las barras de progreso y de volumen de los demás gestos, y oculta el teclado al tocar fuera del buscador.
 
-El explorador ya no se jala de costado: se quitaron `layoutExplorerToggleZone` y su lógica (la franja junto a la carátula quedó para el gesto de volumen). Se oculta o muestra con doble toque en la carátula o desde el menú ☰.
+El explorador ya no se jala de costado: se quitaron `layoutExplorerToggleZone` y su lógica (la franja junto a la carátula quedó para el gesto de volumen). Se oculta o muestra dibujando medio círculo o desde el menú ☰.
 
 ### Otros
 
@@ -346,6 +345,19 @@ Las páginas `demo-*.html` (animaciones de la carátula, transiciones de Automix
 - Cuando lo toma, manda un `ACTION_CANCEL` a la vista que estaba debajo del dedo (`super.dispatchTouchEvent`). Si no, esa vista quedaba presionada (la carátula se ponía naranja).
 - El indicador (`layout_blind_volume_hud.xml`, 140 dp, centrado sobre `android.R.id.content`) muestra el ícono (rojo en silencio), la barra y el porcentaje, y se oculta 1,1 s después de soltar.
 - No empieza sobre el explorador (`isTouchInExplorer`): ahí deslizar arriba / abajo es el scroll de la lista, también en el espacio vacío debajo.
+
+## 14b. Gestos estándar con un dedo (2.11.0)
+
+Los mismos gestos que JH Launcher y JH VIDEO, en toda la pantalla salvo el explorador, las barras de tiempo y de volumen y el buscador:
+
+| Gesto | Qué hace |
+|---|---|
+| Deslizar a la derecha / izquierda | `playNextTrack()` / `playPreviousTrack()`, con aviso SIGUIENTE / ANTERIOR |
+| Arrastrar arriba / abajo | Volumen (240 dp = 0 a 100 %) con el círculo del centro |
+| Dibujar medio círculo (≥ 170°, en cualquier sentido, no hace falta cerrarlo) | `toggleExplorerVisibility()` |
+| Doble toque en una zona libre (carátula o fondo, no un botón) | `togglePlayPause()`, con aviso PLAY / PAUSA |
+
+`BlindGestureTracker` guarda los puntos del trazo y, al levantar el dedo, decide si fue círculo (ajuste de círculo por mínimos cuadrados, radio entre 40 y 210 dp, giro acumulado ≥ 170° en un solo sentido, hasta 3,5 s) o deslizamiento (≥ 90 dp, casi recto y horizontal, hasta 3 s). Es una copia idéntica en JH Music y JH VIDEO. El círculo gana al deslizamiento; si el círculo empezó vertical y movió el volumen, al terminar el volumen vuelve al que tenía. El aviso comparte la vista del volumen (`showBlindActionHud()`), y la animación de entrada solo corre al aparecer.
 
 ## 15. Enlace con JH Launcher
 

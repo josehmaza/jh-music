@@ -2,6 +2,13 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.11.0 — 2026-11-11, pendiente de probar en el auto
+
+- **Gestos estándar con un dedo** (iguales en JH Launcher y JH VIDEO): deslizar a los lados = anterior / siguiente, **medio círculo = abrir o cerrar la biblioteca** (reemplaza al doble toque en la carátula) y **doble toque en una zona libre = play / pausa**. Cada gesto muestra su aviso en el círculo del centro. Nuevo `BlindGestureTracker`.
+- **Indicador de volumen circular** en el centro de toda la pantalla (220 dp, porcentaje de 56 sp y barra debajo), igual que JH Launcher, en lugar de la tarjeta vertical.
+- **Mi Mix da la vuelta:** al terminar la última canción vuelve a la primera y sigue sonando, sin quitar las marcas «ya sonó». Se salta la canción quitada de Mi Mix y solo se detiene si ya no queda ninguna. Se quitó el aviso «Fin de Mi Mix».
+- **Avisa a JH Launcher si la canción viene de Mi Mix** (`fromMix` en el archivo de estado y `extra_from_mix` en `TRACK_CHANGED`) para que el botón del widget abra esa pestaña y no Canciones.
+
 ## 2.10.1 — 2026-11-04, pendiente de probar en el auto
 
 - **MUTE sin el silencio de Android:** ahora baja el volumen a 0 y al quitarlo lo devuelve al de antes (guardado en disco, por si la app se cierra en silencio). Antes usaba `ADJUST_MUTE`, que en el Tucson dejó mudo el audio Bluetooth del teléfono (hallazgo con el MUTE de JH Launcher, 3/11/2026). Al quitarlo también se limpia un silencio de Android que haya quedado pegado. `MUTE` se muestra también si el volumen quedó en 0 desde el launcher. Probado en el emulador: MUTE → volumen 0; quitarlo → vuelve a 9 de 15, también tras cerrar y abrir la app.

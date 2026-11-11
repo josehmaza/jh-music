@@ -18,7 +18,7 @@ La pantalla tiene tres zonas:
 
 - **Sin barra arriba:** la hora va en grande arriba de la tira de volumen (horas arriba, minutos abajo) con un punto verde si hay pendrive (gris si no). **Re-escanear USB** y la versión de la app están en el menú ☰.
 - **Tira de volumen (izquierda):** HOME, MUTE, `+`, porcentaje, `−` y barra vertical, con botones grandes para tocarlos manejando.
-- **Explorador (centro):** pestañas, buscador y listas. Se oculta o se muestra con dos toques en la carátula (o desde el menú ☰) para dejar solo el reproductor.
+- **Explorador (centro):** pestañas, buscador y listas. Se oculta o se muestra dibujando medio círculo con el dedo sobre el reproductor (o desde el menú ☰) para dejar solo el reproductor.
 - **Reproductor (derecha):** la canción que suena y sus controles. Arriba a la derecha de la carátula, el **menú ☰** (aleatorio, repetir y mostrar u ocultar el explorador) y, debajo, el botón **Automix** ⇄ (mezcla entre canciones e iguala su volumen).
 
 ### Colores de la pantalla
@@ -78,13 +78,13 @@ Una lista que armas cuando quieras y que después suena entera, seguida, con Aut
 
 **Cómo suena:**
 - En orden, mezclando con Automix si está encendido.
-- **Al terminar la última, se detiene.** La tarjeta Siguiente avisa `■ Fin de Mi Mix` y al final aparece el aviso "Fin de Mi Mix".
+- **Al terminar la última, vuelve a empezar desde la primera** (Mi Mix se repite sin parar). Las marcas de "ya sonó" se quedan como estaban. La tarjeta Siguiente de la última muestra la primera.
 - **Lo que agregas mientras suena entra al final de la cola en vivo**, sin cortar nada. Puedes ir a Librería o Canciones, buscar y agregar: lo que suena sigue siendo Mi Mix.
 - Si tocas una canción de **Canciones** o de una **búsqueda**, sales de Mi Mix y suena esa carpeta.
-- En **aleatorio** elige solo entre las que todavía no sonaron y se detiene cuando ya sonaron todas.
+- En **aleatorio** elige primero entre las que todavía no sonaron; cuando ya sonaron todas empieza otra vuelta con cualquiera (menos la que acaba de sonar).
 - **Anterior** en la primera canción la vuelve a empezar.
 
-**Quitar o vaciar con música sonando:** la canción que suena **sigue hasta el final**. Aparece arriba de la lista como "Sonando · ya no está en Mi Mix", con un **+** para devolverla a su lugar. Lo que agregues sonará después de ella; si no agregas nada, la música se detiene al terminar.
+**Quitar o vaciar con música sonando:** la canción que suena **sigue hasta el final**. Aparece arriba de la lista como "Sonando · ya no está en Mi Mix", con un **+** para devolverla a su lugar. Lo que agregues sonará después de ella; si no queda nada en Mi Mix, la música se detiene al terminar; si quedan otras, sigue con ellas.
 
 Mi Mix **se guarda en el radio**: se conserva al cerrar la app, al re-escanear y aunque el pendrive se conecte en otro puerto USB (se reconoce por la ruta dentro del pendrive). Si quitas un pendrive, sus canciones no aparecen, pero vuelven al conectarlo. La primera vez, las estrellas que tenías en Favoritos pasan a Mi Mix.
 
@@ -183,7 +183,7 @@ Arriba a la derecha del reproductor, encima de Automix. Se abre sobre el reprodu
 | **Ocultar / Mostrar explorador** | Oculta o muestra el explorador y cierra el menú |
 | **Re-escanear USB** | Vuelve a buscar canciones en los pendrives y cierra el menú |
 
-Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.10.1`).
+Al pie del menú se ve la versión instalada (por ejemplo, `JH MUSIC v2.11.0`).
 
 El menú se cierra solo a los 5 s sin tocarlo (cada toque en Aleatorio o Repetir vuelve a contar), tocando fuera del panel o en **✕**.
 
@@ -227,7 +227,7 @@ La cola (lo que usan Anterior y Siguiente) se fija **en el momento en que reprod
 |---|---|
 | Canciones, carpeta activa | Esa carpeta |
 | Canciones, resultado de búsqueda | La carpeta de esa canción |
-| Mi Mix | Mi Mix, en su orden; lo que agregues entra al final en vivo, y al terminar la última se detiene |
+| Mi Mix | Mi Mix, en su orden; lo que agregues entra al final en vivo, y al terminar la última vuelve a la primera |
 
 Abrir otra carpeta mientras suena música **no** cambia lo que viene después, hasta que reproduzcas algo de la carpeta nueva.
 
