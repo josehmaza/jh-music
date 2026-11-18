@@ -9,6 +9,7 @@
     android:clickable="true">
 
     <LinearLayout
+        android:id="@+id/menuCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -26,6 +27,7 @@
             android:gravity="center_vertical">
 
             <TextView
+                android:id="@+id/menuHeaderTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -44,6 +46,71 @@
                 android:scaleType="fitCenter"
                 android:padding="13dp"
                 android:contentDescription="Cerrar" />
+        </LinearLayout>
+
+        <!-- Tema de pantalla: Día (Light) / Noche (Dark) — 100 % manual y sincronizado con JH Launcher -->
+        <LinearLayout
+            android:id="@+id/menuTheme"
+            android:layout_width="match_parent"
+            android:layout_height="68dp"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:background="@drawable/bg_player_menu_row"
+            android:clickable="true">
+
+            <TextView
+                android:id="@+id/menuThemeEmoji"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="☀️"
+                android:textSize="22sp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/menuThemeTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tema de pantalla"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/menuThemeSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:text="Sincronizado con JH Launcher"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/menuThemeState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="74dp"
+                android:gravity="center"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:background="@drawable/bg_player_menu_state"
+                android:fontFamily="monospace"
+                android:text="DÍA"
+                android:textColor="@color/text_secondary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Aleatorio -->
@@ -186,6 +253,7 @@
             android:clickable="true">
 
             <ImageView
+                android:id="@+id/menuExplorerIcon"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:src="@drawable/ic_explorer_panel"
@@ -233,6 +301,7 @@
             android:clickable="true">
 
             <ImageView
+                android:id="@+id/menuRescanIcon"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:src="@drawable/ic_rescan"
@@ -246,6 +315,7 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/menuRescanTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Re-escanear USB"

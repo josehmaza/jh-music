@@ -262,6 +262,7 @@
             android:padding="8dp">
 
             <LinearLayout
+                android:id="@+id/layoutExplorerCard"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
@@ -438,6 +439,7 @@
                     android:paddingEnd="10dp">
 
                     <ImageView
+                        android:id="@+id/ivSearchIcon"
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:src="@drawable/ic_search"
@@ -997,19 +999,19 @@
                                 android:scaleType="centerCrop"
                                 android:visibility="gone" />
 
-                            <!-- Placeholder: disco de vinilo (se oculta cuando hay carátula) -->
+                            <!-- Placeholder: disco de vinilo protagonista (se oculta cuando hay carátula) -->
                             <LinearLayout
                                 android:id="@+id/layoutAlbumPlaceholder"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
                                 android:orientation="vertical"
                                 android:gravity="center"
-                                android:paddingBottom="14dp">
+                                android:paddingBottom="10dp">
 
                                 <ImageView
                                     android:id="@+id/ivVinylDisc"
-                                    android:layout_width="68dp"
-                                    android:layout_height="68dp"
+                                    android:layout_width="118dp"
+                                    android:layout_height="118dp"
                                     android:src="@drawable/ic_vinyl_disc" />
                             </LinearLayout>
 
@@ -1116,17 +1118,14 @@
                         android:textSize="15sp" />
                 </LinearLayout>
 
-                <!-- Tarjetas Anterior / Siguiente: íconos grandes en los extremos y nombre grande para leer manejando -->
+                <!-- Tarjetas Anterior / Siguiente: dos píldoras independientes con respiro y buena lectura -->
                 <LinearLayout
                     android:id="@+id/layoutAdjacentPreviews"
                     android:layout_width="match_parent"
-                    android:layout_height="46dp"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="6dp"
                     android:orientation="horizontal"
-                    android:background="@drawable/bg_adjacent_cards"
-                    android:gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp">
+                    android:gravity="center_vertical">
 
                     <!-- Tarjeta Anterior: ⏮ al inicio -->
                     <LinearLayout
@@ -1134,15 +1133,19 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
                         android:clickable="true"
                         android:focusable="true"
-                        android:background="@drawable/bg_pressed_cyan">
+                        android:background="@drawable/bg_adjacent_cards">
 
                         <ImageView
-                            android:layout_width="26dp"
-                            android:layout_height="26dp"
+                            android:id="@+id/ivAdjPrev"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_adj_prev"
                             android:contentDescription="Anterior" />
 
@@ -1151,22 +1154,14 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="8dp"
                             android:gravity="start|center_vertical"
                             android:singleLine="true"
                             android:text="—"
                             android:textColor="#cbd5e1"
-                            android:textSize="17sp"
+                            android:textSize="15sp"
                             android:textStyle="bold" />
                     </LinearLayout>
-
-                    <!-- Divisor -->
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="26dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="@color/border_panel" />
 
                     <!-- Tarjeta Siguiente: ⏭ al final -->
                     <LinearLayout
@@ -1174,28 +1169,32 @@
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
+                        android:layout_marginStart="6dp"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
                         android:clickable="true"
                         android:focusable="true"
-                        android:background="@drawable/bg_pressed_cyan">
+                        android:background="@drawable/bg_adjacent_cards">
 
                         <com.jh.caraudio.CarMarqueeTextView
                             android:id="@+id/tvNextTrackPreview"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
+                            android:layout_marginEnd="8dp"
                             android:gravity="end|center_vertical"
                             android:singleLine="true"
                             android:text="—"
                             android:textColor="#cbd5e1"
-                            android:textSize="17sp"
+                            android:textSize="15sp"
                             android:textStyle="bold" />
 
                         <ImageView
-                            android:layout_width="26dp"
-                            android:layout_height="26dp"
+                            android:id="@+id/ivAdjNext"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_adj_next"
                             android:contentDescription="Siguiente" />
                     </LinearLayout>

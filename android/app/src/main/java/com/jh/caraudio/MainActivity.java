@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -125,6 +126,20 @@ public class MainActivity extends Activity {
     private TextView tvAutoMixState;
     private AmbientTheme ambientTheme;    // fondo de toda la app con el color de la carátula
     private AlbumGlowView albumGlow;      // resplandor de la carátula con el color de la canción
+    private MusicThemePalette themePalette;
+    private boolean isLightTheme = false;
+    private Bitmap vinylBitmapDark, vinylBitmapLight;
+    private static final String PREF_THEME_LIGHT = "theme_light";
+    private final BroadcastReceiver themeSyncReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || !MusicThemePalette.ACTION_THEME_CHANGED.equals(intent.getAction())) return;
+            boolean light = intent.getBooleanExtra(MusicThemePalette.EXTRA_LIGHT_THEME, isLightTheme);
+            if (light != isLightTheme) {
+                applyTheme(light, false);
+            }
+        }
+    };
     private AutoMixer autoMixer;
     private AudioAnalyzer audioAnalyzer;
     private View layoutAlbumArtCard;
@@ -354,7 +369,17 @@ public class MainActivity extends Activity {
         launcherFilter.addAction("com.jh.music.action.NEXT");
         launcherFilter.addAction("com.jh.music.action.PREV");
         launcherFilter.addAction("com.jh.music.action.REQUEST_STATE");
+        launcherFilter.addAction("com.jh.music.action.TOGGLE_SHUFFLE");
         registerReceiver(launcherCommandReceiver, launcherFilter);
+
+        // Sincronización de tema (Día / Noche) con JH Launcher
+        int vinylPx = dp(118);
+        vinylBitmapDark = MusicThemePalette.createVinylBitmap(vinylPx, false);
+        vinylBitmapLight = MusicThemePalette.createVinylBitmap(vinylPx, true);
+        Boolean sharedLight = MusicThemePalette.readSharedTheme();
+        isLightTheme = sharedLight != null ? sharedLight : prefs.getBoolean(PREF_THEME_LIGHT, false);
+        applyTheme(isLightTheme, false);
+        registerReceiver(themeSyncReceiver, new IntentFilter(MusicThemePalette.ACTION_THEME_CHANGED));
 
         // Ocultar teclado por defecto y remover foco del buscador al abrir la app
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
@@ -1422,9 +1447,8 @@ public class MainActivity extends Activity {
         ((ViewGroup.MarginLayoutParams) btnNext.getLayoutParams()).setMarginStart(gap);
         btnPrev.requestLayout();
 
-        // Con el explorador oculto, tarjetas y barra no pasan de 540dp (centrados), como la web. Los controles
-        // quedan centrados en todo el ancho (anterior / siguiente responden hasta los bordes: handleNavZoneTouch)
-        int maxWidth = expanded ? dp(540) : ViewGroup.LayoutParams.MATCH_PARENT;
+        // Con el explorador oculto, tarjetas y barra aprovechan bien el ancho (hasta 740dp centrados)
+        int maxWidth = expanded ? dp(740) : ViewGroup.LayoutParams.MATCH_PARENT;
         for (int id : new int[]{R.id.layoutAdjacentPreviews, R.id.layoutProgressBlock}) {
             View v = findViewById(id);
             if (v == null) continue;
@@ -1545,12 +1569,18 @@ public class MainActivity extends Activity {
                 String verName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 ((TextView) content.findViewById(R.id.menuVersion)).setText("JH MUSIC v" + verName);
             } catch (Exception ignored) {}
+            content.findViewById(R.id.menuTheme).setOnClickListener(v -> {
+                applyTheme(!isLightTheme, true);
+                refreshPlayerMenu();
+                restartPlayerMenuTimer();
+            });
             content.findViewById(R.id.menuShuffle).setOnClickListener(v -> {
                 isShuffle = !isShuffle;
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_SHUFFLE, isShuffle).apply();
                 autoMixer.invalidateNext();
                 refreshPlayerMenu();
                 updateModeIndicators();
+                publishTrackState(getCurrentTrack(), isPlaying, true);
                 restartPlayerMenuTimer();
             });
             content.findViewById(R.id.menuRepeat).setOnClickListener(v -> {
@@ -1588,10 +1618,57 @@ public class MainActivity extends Activity {
         navTapHandler.postDelayed(closePlayerMenu, PLAYER_MENU_AUTO_CLOSE_MS);
     }
 
-    /** ON / OFF escrito y en cian lo que está encendido; el texto del explorador según esté a la vista. */
     private void refreshPlayerMenu() {
         if (playerMenuPopup == null) return;
         View content = playerMenuPopup.getContentView();
+        MusicThemePalette p = themePalette;
+        if (p != null) {
+            content.setBackgroundColor(p.menuBackdrop);
+            View card = content.findViewById(R.id.menuCard);
+            if (card != null) card.setBackground(p.box(p.panelBg, p.border, 18f));
+            TextView headerTitle = content.findViewById(R.id.menuHeaderTitle);
+            if (headerTitle != null) headerTitle.setTextColor(p.text1);
+            ImageButton closeBtn = content.findViewById(R.id.menuClose);
+            if (closeBtn != null) {
+                closeBtn.setBackground(p.box(p.surface2, p.borderSoft, 12f));
+                closeBtn.setColorFilter(p.text1, PorterDuff.Mode.SRC_IN);
+            }
+
+            // Fila Tema de pantalla (☀️ DÍA / 🌙 NOCHE)
+            View themeRow = content.findViewById(R.id.menuTheme);
+            if (themeRow != null) themeRow.setBackground(p.box(p.accentSoft, p.accentBorder, 13f));
+            TextView themeEmoji = content.findViewById(R.id.menuThemeEmoji);
+            if (themeEmoji != null) themeEmoji.setText(isLightTheme ? "☀️" : "🌙");
+            TextView themeTitle = content.findViewById(R.id.menuThemeTitle);
+            if (themeTitle != null) themeTitle.setTextColor(p.accent);
+            TextView themeSub = content.findViewById(R.id.menuThemeSub);
+            if (themeSub != null) themeSub.setTextColor(p.text2);
+            TextView themeState = content.findViewById(R.id.menuThemeState);
+            if (themeState != null) {
+                themeState.setText(isLightTheme ? "DÍA" : "NOCHE");
+                themeState.setBackground(p.box(p.accent, p.accent, 8f));
+                themeState.setTextColor(isLightTheme ? Color.WHITE : Color.parseColor("#04121c"));
+            }
+
+            // Filas de acciones (Explorador y Re-escanear)
+            View expRow = content.findViewById(R.id.menuExplorer);
+            if (expRow != null) expRow.setBackground(p.box(p.surface2, p.borderSoft, 13f));
+            ImageView expIcon = content.findViewById(R.id.menuExplorerIcon);
+            if (expIcon != null) expIcon.setColorFilter(p.text1, PorterDuff.Mode.SRC_IN);
+            TextView expTitle = content.findViewById(R.id.menuExplorerTitle);
+            if (expTitle != null) expTitle.setTextColor(p.text1);
+
+            View rescanRow = content.findViewById(R.id.menuRescan);
+            if (rescanRow != null) rescanRow.setBackground(p.box(p.surface2, p.borderSoft, 13f));
+            ImageView rescanIcon = content.findViewById(R.id.menuRescanIcon);
+            if (rescanIcon != null) rescanIcon.setColorFilter(p.text1, PorterDuff.Mode.SRC_IN);
+            TextView rescanTitle = content.findViewById(R.id.menuRescanTitle);
+            if (rescanTitle != null) rescanTitle.setTextColor(p.text1);
+
+            TextView ver = content.findViewById(R.id.menuVersion);
+            if (ver != null) ver.setTextColor(p.textMuted);
+        }
+
         refreshPlayerMenuRow(content, R.id.menuShuffle, R.id.menuShuffleIcon, R.id.menuShuffleTitle, R.id.menuShuffleState, isShuffle);
         refreshPlayerMenuRow(content, R.id.menuRepeat, R.id.menuRepeatIcon, R.id.menuRepeatTitle, R.id.menuRepeatState, isRepeat);
         boolean explorerVisible = layoutExplorerPanel != null && layoutExplorerPanel.getVisibility() == View.VISIBLE;
@@ -1600,6 +1677,19 @@ public class MainActivity extends Activity {
     }
 
     private void refreshPlayerMenuRow(View content, int rowId, int iconId, int titleId, int stateId, boolean on) {
+        MusicThemePalette p = themePalette;
+        if (p != null) {
+            content.findViewById(rowId).setBackground(on
+                    ? p.box(p.accentSoft, p.accentBorder, 13f)
+                    : p.box(p.surface2, p.borderSoft, 13f));
+            ((ImageView) content.findViewById(iconId)).setColorFilter(on ? p.accent : p.text1, PorterDuff.Mode.SRC_IN);
+            ((TextView) content.findViewById(titleId)).setTextColor(on ? p.accent : p.text1);
+            TextView state = content.findViewById(stateId);
+            state.setText(on ? "ON" : "OFF");
+            state.setBackground(on ? p.box(p.accent, p.accent, 8f) : p.box(p.panelBg, p.border, 8f));
+            state.setTextColor(on ? (p.light ? Color.WHITE : Color.parseColor("#04121c")) : p.text2);
+            return;
+        }
         int cyan = Color.parseColor("#38bdf8");
         content.findViewById(rowId).setBackgroundResource(on ? R.drawable.bg_player_menu_row_on : R.drawable.bg_player_menu_row);
         ((ImageView) content.findViewById(iconId)).setColorFilter(on ? cyan : Color.WHITE, PorterDuff.Mode.SRC_IN);
@@ -1608,6 +1698,178 @@ public class MainActivity extends Activity {
         state.setText(on ? "ON" : "OFF");
         state.setBackgroundResource(on ? R.drawable.bg_player_menu_state_on : R.drawable.bg_player_menu_state);
         state.setTextColor(on ? Color.parseColor("#04121c") : getResources().getColor(R.color.text_secondary));
+    }
+
+    /** Aplica el tema Claro (Light) u Oscuro (Dark) en vivo sin cortar la reproducción. */
+    private void applyTheme(boolean light, boolean broadcastToLauncher) {
+        isLightTheme = light;
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_THEME_LIGHT, light).apply();
+        if (broadcastToLauncher) {
+            MusicThemePalette.broadcastAndSaveTheme(this, light);
+        }
+        float density = getResources().getDisplayMetrics().density;
+        MusicThemePalette p = new MusicThemePalette(light, density);
+        themePalette = p;
+
+        // 1. Fondo dinámico y vistas personalizadas
+        if (ambientTheme != null) ambientTheme.setLightMode(light);
+        if (laserRing != null) laserRing.setLightMode(light);
+        if (nowPlayingPill != null) nowPlayingPill.setLightMode(light);
+        if (seekVolume != null) seekVolume.setLightMode(light);
+
+        // 2. Columna 1: Franja de volumen del conductor
+        View volStrip = findViewById(R.id.layoutVolumeStrip);
+        if (volStrip != null) volStrip.setBackgroundColor(p.stripBg);
+        if (tvStripClockHour != null) tvStripClockHour.setTextColor(p.text1);
+        if (tvStripClockMin != null) tvStripClockMin.setTextColor(p.text1);
+        if (btnNavHome != null) {
+            btnNavHome.setBackground(p.actionBtnBg());
+            btnNavHome.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnVolMute != null) {
+            btnVolMute.setBackground(p.actionBtnBg());
+            btnVolMute.setColorFilter(isMuted ? p.crimson : p.text1, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnVolUp != null) {
+            btnVolUp.setBackground(p.actionBtnBg());
+            btnVolUp.setTextColor(p.text1);
+        }
+        if (btnVolDown != null) {
+            btnVolDown.setBackground(p.actionBtnBg());
+            btnVolDown.setTextColor(p.text1);
+        }
+        if (tvVolPercent != null) tvVolPercent.setTextColor(p.accent);
+
+        // 3. Columna 2: Explorador
+        View expCard = findViewById(R.id.layoutExplorerCard);
+        if (expCard != null) expCard.setBackground(p.box(p.panelBg, p.border, 16f));
+        if (btnCollapseAllTree != null) {
+            btnCollapseAllTree.setBackground(p.actionBtnBg());
+            btnCollapseAllTree.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        }
+        if (etSearch != null) {
+            etSearch.setTextColor(p.text1);
+            etSearch.setHintTextColor(p.textMuted);
+            if (etSearch.getParent() instanceof View) {
+                ((View) etSearch.getParent()).setBackground(p.box(p.surface2, p.borderSoft, 11f));
+            }
+        }
+        ImageView ivSearchIcon = findViewById(R.id.ivSearchIcon);
+        if (ivSearchIcon != null) {
+            ivSearchIcon.setColorFilter(p.light ? p.text2 : p.accent, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnSearchClear != null) {
+            if (p.light) {
+                btnSearchClear.setBackground(p.circle(p.surface3, p.border, 1f));
+                btnSearchClear.setColorFilter(p.text2, PorterDuff.Mode.SRC_IN);
+            } else {
+                btnSearchClear.setBackgroundResource(R.drawable.bg_search_clear);
+                btnSearchClear.clearColorFilter();
+            }
+        }
+        if (tvPlaybackStatus != null) tvPlaybackStatus.setTextColor(p.text2);
+        // Cabecera de Mi Mix
+        View mixHeader = findViewById(R.id.layoutMixHeader);
+        if (mixHeader != null) mixHeader.setBackground(p.box(p.cardBg, p.accentBorder, 12f));
+        TextView mixTitle = findViewById(R.id.tvMixHeaderTitle);
+        if (mixTitle != null) mixTitle.setTextColor(p.text1);
+        if (btnMixReorder != null) {
+            btnMixReorder.setBackground(p.actionBtnBg());
+            btnMixReorder.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnMixClear != null) {
+            btnMixClear.setBackground(p.actionBtnBg());
+            btnMixClear.setColorFilter(p.crimson, PorterDuff.Mode.SRC_IN);
+        }
+        if (folderTreeAdapter != null) folderTreeAdapter.setThemePalette(p);
+        if (folderAdapter != null) folderAdapter.setThemePalette(p);
+        if (trackAdapter != null) trackAdapter.setThemePalette(p);
+        if (mixRecyclerAdapter != null) mixRecyclerAdapter.setThemePalette(p);
+        if (listViewContent != null) {
+            listViewContent.setDivider(new ColorDrawable(Color.TRANSPARENT));
+            listViewContent.setDividerHeight(dp(4));
+        }
+        setTabLabel(tabFolders, R.drawable.ic_tab_folder, "Librería", currentTab == 0);
+        setTabLabel(tabTracks, R.drawable.ic_tab_music, "Canciones", currentPlaylist.size(), currentTab == 1);
+        setTabLabel(tabMyMix, R.drawable.ic_tab_mymix, "Mi Mix", myMixLoaded ? mixTracks().size() : 0, currentTab == 2);
+
+        // 4. Columna 3: Reproductor
+        if (btnPlayerMenu != null) {
+            btnPlayerMenu.setBackground(p.box(p.panelBg, p.border, 13f));
+            btnPlayerMenu.setColorFilter(p.text1, PorterDuff.Mode.SRC_IN);
+        }
+        updateAutoMixButton();
+
+        if (layoutAlbumArtCard != null) {
+            layoutAlbumArtCard.setBackground(p.box(p.panelBg, p.border, 20f));
+        }
+        View albumInner = findViewById(R.id.layoutAlbumArtInner);
+        if (albumInner != null) {
+            albumInner.setBackground(p.box(p.light ? 0xFFFFFFFF : 0xFF101318, 0, 17.5f));
+        }
+        ImageView ivVinyl = findViewById(R.id.ivVinylDisc);
+        if (ivVinyl != null) {
+            ivVinyl.setImageBitmap(light ? vinylBitmapLight : vinylBitmapDark);
+        }
+        if (tvFormatBadge != null) {
+            if (p.light) {
+                tvFormatBadge.setBackgroundResource(R.drawable.bg_audio_badge_corner_light);
+                tvFormatBadge.setTextColor(0xFF334155);
+            } else {
+                tvFormatBadge.setBackgroundResource(R.drawable.bg_audio_badge_corner);
+                tvFormatBadge.setTextColor(0xFFE2E8F0);
+            }
+        }
+        if (tvTrackTitle != null) tvTrackTitle.setTextColor(p.text1);
+        if (tvTrackArtist != null) tvTrackArtist.setTextColor(p.accent);
+        if (tvTrackArtistDot != null) tvTrackArtistDot.setTextColor(p.textMuted);
+        if (tvTrackAlbum != null) tvTrackAlbum.setTextColor(p.text2);
+
+        View adjBar = findViewById(R.id.layoutAdjacentPreviews);
+        if (adjBar != null) adjBar.setBackground(null);
+        if (layoutPrevCard != null) layoutPrevCard.setBackground(p.adjCardBg());
+        if (layoutNextCard != null) layoutNextCard.setBackground(p.adjCardBg());
+        if (tvPrevTrackPreview != null) tvPrevTrackPreview.setTextColor(p.light ? p.text1 : p.text2);
+        if (tvNextTrackPreview != null) tvNextTrackPreview.setTextColor(p.light ? p.text1 : p.text2);
+        ImageView ivAdjPrev = findViewById(R.id.ivAdjPrev);
+        if (ivAdjPrev != null) ivAdjPrev.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        ImageView ivAdjNext = findViewById(R.id.ivAdjNext);
+        if (ivAdjNext != null) ivAdjNext.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        if (ivModeRepeat != null) ivModeRepeat.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        if (ivModeShuffle != null) ivModeShuffle.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+
+        if (tvTimeCurrent != null) tvTimeCurrent.setTextColor(p.text2);
+        if (tvTimeTotal != null) tvTimeTotal.setTextColor(p.text2);
+        if (seekTrackProgress != null) {
+            seekTrackProgress.setProgressTintList(ColorStateList.valueOf(p.accent));
+            seekTrackProgress.setProgressBackgroundTintList(ColorStateList.valueOf(p.trackBg));
+            seekTrackProgress.setThumbTintList(ColorStateList.valueOf(p.light ? p.accent : Color.WHITE));
+        }
+
+        // Controles de transporte
+        if (btnPrev != null) {
+            btnPrev.setBackground(p.skipBtnBg());
+            btnPrev.setColorFilter(p.skipColor, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnNext != null) {
+            btnNext.setBackground(p.skipBtnBg());
+            btnNext.setColorFilter(p.skipColor, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnPlayPause != null) {
+            btnPlayPause.setBackground(p.playBtnBg());
+            btnPlayPause.setColorFilter(p.playIcon, PorterDuff.Mode.SRC_IN);
+        }
+        if (btnPlayAll != null) {
+            if (p.light) {
+                btnPlayAll.setBackground(p.box(p.accentSoft, p.accentBorder, 10f));
+                btnPlayAll.setTextColor(p.accent);
+            } else {
+                btnPlayAll.setBackgroundResource(R.drawable.bg_btn_action);
+                btnPlayAll.setTextColor(p.accent);
+            }
+        }
+        updateFilterChipsUI();
+        refreshTabLabels();
     }
 
     private int dp(int value) {
@@ -1619,7 +1881,7 @@ public class MainActivity extends Activity {
         if (isPlaying) {
             btnPlayPause.setImageResource(R.drawable.ic_ctrl_pause);
             tvPlaybackStatus.setText(autoMixer.isEnabled() ? "● REPRODUCIENDO · AUTOMIX" : "● REPRODUCIENDO");
-            tvPlaybackStatus.setTextColor(Color.parseColor("#38bdf8"));
+            tvPlaybackStatus.setTextColor(themePalette != null ? themePalette.accent : Color.parseColor("#38bdf8"));
             if (nowPlayingPill != null) nowPlayingPill.setPlaying(true);
             if (laserRing != null) laserRing.setPlaying(true);
         } else {
@@ -1902,13 +2164,31 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void styleFilterChip(TextView chip, boolean sel) {
+        if (themePalette != null && themePalette.light) {
+            chip.setBackground(sel
+                    ? themePalette.box(themePalette.accentSoft, themePalette.accentBorder, 16f)
+                    : themePalette.box(themePalette.surface2, themePalette.borderSoft, 16f));
+            chip.setTextColor(sel ? themePalette.accent : themePalette.text2);
+        } else {
+            chip.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+            chip.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
+        }
+        chip.setTypeface(null, Typeface.BOLD);
+    }
+
+    private int filterChipTextColor(boolean sel) {
+        if (themePalette != null && themePalette.light) {
+            return sel ? themePalette.accent : themePalette.text2;
+        }
+        return sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
+    }
+
     private void updateFilterChipsUI() {
         if (btnFilterFolder != null) {
             boolean sel = (currentSearchFilter == FILTER_FOLDER);
-            btnFilterFolder.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
-            btnFilterFolder.setTextColor(color);
-            btnFilterFolder.setTypeface(null, Typeface.BOLD);
+            styleFilterChip(btnFilterFolder, sel);
+            int color = filterChipTextColor(sel);
             if (currentSelectedFolder != null) {
                 String usbNum = (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("2")) ? "2" : (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("1") ? "1" : "");
                 String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
@@ -1919,18 +2199,13 @@ public class MainActivity extends Activity {
         }
 
         if (btnFilterAll != null) {
-            boolean sel = (currentSearchFilter == FILTER_ALL);
-            btnFilterAll.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnFilterAll.setTextColor(sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9"));
-            btnFilterAll.setTypeface(null, Typeface.BOLD);
+            styleFilterChip(btnFilterAll, currentSearchFilter == FILTER_ALL);
         }
 
         if (btnFilterUsb1 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB1);
-            btnFilterUsb1.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
-            btnFilterUsb1.setTextColor(color);
-            btnFilterUsb1.setTypeface(null, Typeface.BOLD);
+            styleFilterChip(btnFilterUsb1, sel);
+            int color = filterChipTextColor(sel);
             Drawable[] drawables = btnFilterUsb1.getCompoundDrawables();
             if (drawables.length > 0 && drawables[0] != null) {
                 drawables[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
@@ -1939,10 +2214,8 @@ public class MainActivity extends Activity {
 
         if (btnFilterUsb2 != null) {
             boolean sel = (currentSearchFilter == FILTER_USB2);
-            btnFilterUsb2.setBackgroundResource(sel ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
-            btnFilterUsb2.setTextColor(color);
-            btnFilterUsb2.setTypeface(null, Typeface.BOLD);
+            styleFilterChip(btnFilterUsb2, sel);
+            int color = filterChipTextColor(sel);
             Drawable[] drawables = btnFilterUsb2.getCompoundDrawables();
             if (drawables.length > 0 && drawables[0] != null) {
                 drawables[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
@@ -2008,7 +2281,10 @@ public class MainActivity extends Activity {
         if (tabMyMix == null || !playingFromMix) return;
         mixLiveDot = new GradientDrawable();
         mixLiveDot.setShape(GradientDrawable.OVAL);
-        mixLiveDot.setColor(Color.parseColor(currentTab == 2 ? "#0c0e12" : "#38bdf8"));
+        int dotColor = (themePalette != null && themePalette.light)
+                ? themePalette.accent
+                : (currentTab == 2 ? Color.parseColor("#0c0e12") : Color.parseColor("#38bdf8"));
+        mixLiveDot.setColor(dotColor);
         mixLiveDot.setBounds(0, 0, dp(11), dp(11));
         SpannableStringBuilder ssb = new SpannableStringBuilder(tabMyMix.getText());
         ssb.append("  ");
@@ -2056,7 +2332,8 @@ public class MainActivity extends Activity {
 
     private void setTabLabel(Button tab, int iconRes, String text, boolean selected) {
         if (tab == null) return;
-        int color = selected ? Color.parseColor("#0c0e12") : Color.parseColor("#cbd5e1");
+        int color = themePalette != null ? themePalette.tabTextColor(selected)
+                : (selected ? Color.parseColor("#0c0e12") : Color.parseColor("#cbd5e1"));
         SpannableStringBuilder ssb = new SpannableStringBuilder(" ");
         try {
             Drawable icon = getDrawable(iconRes);
@@ -2071,7 +2348,11 @@ public class MainActivity extends Activity {
         tab.setText(ssb);
         tab.setTextColor(color);
         tab.setTypeface(null, Typeface.BOLD);
-        tab.setBackgroundResource(selected ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
+        if (themePalette != null) {
+            tab.setBackground(themePalette.tabBg(selected));
+        } else {
+            tab.setBackgroundResource(selected ? R.drawable.bg_tab_selected : R.drawable.bg_tab_unselected);
+        }
     }
 
     /**
@@ -2085,10 +2366,16 @@ public class MainActivity extends Activity {
         ssb.append(" ");
         int start = ssb.length();
         ssb.append(String.valueOf(count));
-        ssb.setSpan(new CountBadgeSpan(
-                        selected ? Color.parseColor("#330c0e12") : Color.parseColor("#26ffffff"),
-                        selected ? Color.parseColor("#0c0e12") : Color.parseColor("#e2e8f0"),
-                        sp(13), dp(7), dp(21)),
+        int badgeBg;
+        int badgeText;
+        if (themePalette != null && themePalette.light) {
+            badgeBg = selected ? 0x221D4ED8 : 0x160F172A;
+            badgeText = selected ? themePalette.accent : themePalette.text2;
+        } else {
+            badgeBg = selected ? Color.parseColor("#330c0e12") : Color.parseColor("#26ffffff");
+            badgeText = selected ? Color.parseColor("#0c0e12") : Color.parseColor("#e2e8f0");
+        }
+        ssb.setSpan(new CountBadgeSpan(badgeBg, badgeText, sp(13), dp(7), dp(21)),
                 start, ssb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         tab.setText(ssb);
         tab.setSingleLine(true);
@@ -3371,9 +3658,23 @@ public class MainActivity extends Activity {
                 playPreviousTrack();
             } else if ("com.jh.music.action.REQUEST_STATE".equals(action)) {
                 replyTrackState();
+            } else if ("com.jh.music.action.TOGGLE_SHUFFLE".equals(action)) {
+                toggleShuffleFromLauncher();
             }
         }
     };
+
+    /** Alterna el modo aleatorio cuando el usuario toca el botón Aleatorio desde JH Launcher. */
+    public void toggleShuffleFromLauncher() {
+        isShuffle = !isShuffle;
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_SHUFFLE, isShuffle).apply();
+        autoMixer.invalidateNext();
+        updateModeIndicators();
+        if (playerMenuPopup != null && playerMenuPopup.isShowing()) {
+            refreshPlayerMenu();
+        }
+        publishTrackState(getCurrentTrack(), isPlaying, true);
+    }
 
     /**
      * True mientras la app está abierta sin canción cargada porque la última era de un pendrive que no está.
@@ -3477,6 +3778,7 @@ public class MainActivity extends Activity {
                 json.put("totalSec", durationSec);
                 json.put("isPlaying", isPlaying);
                 json.put("fromMix", playingFromMix);
+                json.put("shuffle", isShuffle);
                 json.put("positionSec", positionSec);
                 json.put("timestamp", System.currentTimeMillis());
                 File stateFile = new File(Environment.getExternalStorageDirectory(), ".jh_music_state.json");
@@ -3496,6 +3798,7 @@ public class MainActivity extends Activity {
             intent.putExtra("extra_is_playing", isPlaying);
             // Para que el launcher abra JH Music en Mi Mix cuando la canción viene de ahí
             intent.putExtra("extra_from_mix", playingFromMix);
+            intent.putExtra("extra_shuffle", isShuffle);
             intent.putExtra("extra_duration", duration);
             intent.putExtra("extra_total_sec", durationSec);
             intent.putExtra("extra_position_sec", positionSec);
@@ -3886,9 +4189,9 @@ public class MainActivity extends Activity {
 
         @Override
         public void onMixVisualChanged(boolean mixing) {
-            // Igual que la web: segundo haz láser magenta + cápsula MIXING ⇄ mientras dura la mezcla
             if (laserRing != null) laserRing.setMixing(mixing);
             if (nowPlayingPill != null) nowPlayingPill.setMixing(mixing);
+            if (ambientTheme != null) ambientTheme.setMixing(mixing);
         }
     };
 
@@ -3903,11 +4206,35 @@ public class MainActivity extends Activity {
                 : "Automix desactivado", Toast.LENGTH_SHORT).show();
     }
 
-    /** Igual que la web (opción A): ON = cuadro cian lleno con brillo y el ícono oscuro; OFF = oscuro y gris. */
+    /** Igual que la web (opción A): ON = cuadro lleno de acento; OFF = superficie neutra. */
     private void updateAutoMixButton() {
         if (btnAutoMix == null) return;
         boolean on = autoMixer.isEnabled();
         btnAutoMix.setSelected(on);
+        if (themePalette != null) {
+            if (themePalette.light) {
+                btnAutoMix.setBackground(on
+                        ? themePalette.box(themePalette.accentSoft, themePalette.accentBorder, 13f)
+                        : themePalette.box(themePalette.panelBg, themePalette.border, 13f));
+                int color = on ? themePalette.accent : themePalette.text2;
+                if (ivAutoMixIcon != null) ivAutoMixIcon.setColorFilter(color, PorterDuff.Mode.SRC_IN);
+                if (tvAutoMixState != null) {
+                    tvAutoMixState.setText(on ? "ON" : "OFF");
+                    tvAutoMixState.setTextColor(color);
+                }
+                return;
+            }
+            btnAutoMix.setBackground(on
+                    ? themePalette.box(themePalette.accent, themePalette.accent, 13f)
+                    : themePalette.box(themePalette.panelBg, themePalette.border, 13f));
+            int color = on ? Color.parseColor("#0c0e12") : themePalette.text2;
+            if (ivAutoMixIcon != null) ivAutoMixIcon.setColorFilter(color, PorterDuff.Mode.SRC_IN);
+            if (tvAutoMixState != null) {
+                tvAutoMixState.setText(on ? "ON" : "OFF");
+                tvAutoMixState.setTextColor(color);
+            }
+            return;
+        }
         btnAutoMix.setBackgroundResource(on ? R.drawable.bg_automix_on : R.drawable.bg_automix_off);
         int color = Color.parseColor(on ? "#0c0e12" : "#64748b");
         if (ivAutoMixIcon != null) ivAutoMixIcon.setColorFilter(color, PorterDuff.Mode.SRC_IN);
@@ -5343,6 +5670,10 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         setImmersiveMode();
+        Boolean sharedLight = MusicThemePalette.readSharedTheme();
+        if (sharedLight != null && sharedLight != isLightTheme) {
+            applyTheme(sharedLight, false);
+        }
         if (etSearch != null) {
             etSearch.clearFocus();
         }
@@ -5379,6 +5710,9 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
         try {
             unregisterReceiver(launcherCommandReceiver);
+        } catch (Exception ignored) {}
+        try {
+            unregisterReceiver(themeSyncReceiver);
         } catch (Exception ignored) {}
         durationGeneration++;
         durationExecutor.shutdownNow();

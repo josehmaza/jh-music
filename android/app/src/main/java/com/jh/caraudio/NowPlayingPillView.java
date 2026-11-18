@@ -13,35 +13,30 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * Cápsula de estado al pie de la carátula (.now-playing-pill) - Optimizada para bajo consumo:
- * texto PAUSED / PLAYING / MIXING ⇄ y 5 barras de ecualizador.
- *
- * - En pausa: barras bajas y grises, texto apagado, borde tenue.
- * - Reproduciendo: barras cian que suben y bajan, texto y borde cian nítido.
- * - Mezclando (Automix): todo pasa a magenta.
- *
- * Optimizaciones aplicadas:
- * 1. Aceleración por hardware habilitada (GPU nativa, sin LAYER_TYPE_SOFTWARE).
- * 2. Cero asignaciones en onDraw: LinearGradient pre-calculado en onSizeChanged.
- * 3. Tasa de refresco a 20 FPS (FRAME_MS = 50ms): movimiento fluido con 35% menos de CPU.
+ * Cápsula de estado al pie de la carátula: PAUSED / PLAYING / MIXING ⇄ + 5 barras de ecualizador.
+ * - Dark Mode: fondo oscuro translúcido, Cian en Playing y Magenta en Automix.
+ * - Light Mode: fondo blanco (#FFFFFF / #F0FDFA en mix), Azul Cobalto (#2563EB) en Playing y Turquesa (#0D9488) en Automix.
  */
 public class NowPlayingPillView extends View {
 
-    private static final long FRAME_MS = 50; // ~20 fps: perfectamente fluido a distancia del auto y liviano
-    private static final int CYAN = Color.rgb(0, 210, 255);
-    private static final int CYAN_LIGHT = Color.rgb(103, 232, 249);
-    private static final int MAGENTA = Color.rgb(244, 63, 94);
-    private static final int MAGENTA_LIGHT = Color.rgb(251, 113, 133);
+    private static final int DARK_PLAY = Color.rgb(0, 210, 255);
+    private static final int DARK_PLAY_HI = Color.rgb(103, 232, 249);
+    private static final int DARK_MIX = Color.rgb(244, 63, 94);
+    private static final int DARK_MIX_HI = Color.rgb(251, 113, 133);
+
+    private static final int LIGHT_PLAY = Color.rgb(29, 78, 216);
+    private static final int LIGHT_PLAY_HI = Color.rgb(96, 165, 250);
+    private static final int LIGHT_MIX = Color.rgb(124, 58, 237);
+    private static final int LIGHT_MIX_HI = Color.rgb(167, 139, 250);
     private static final int MUTED = Color.rgb(100, 116, 139);
 
-    // Duración y retraso de cada barra
     private static final float[] BAR_PERIOD_S = {0.7f, 0.5f, 0.8f, 0.6f, 0.75f};
     private static final float[] BAR_DELAY_S = {0f, 0.15f, 0.3f, 0.2f, 0.05f};
 
-    private static final float PAD_X = 18f;     // dp
-    private static final float BAR_W = 5.5f;    // dp
-    private static final float BAR_GAP = 4f;    // dp
-    private static final float BAR_MAX_H = 22f; // dp
+    private static final float PAD_X = 18f;
+    private static final float BAR_W = 5.5f;
+    private static final float BAR_GAP = 4f;
+    private static final float BAR_MAX_H = 22f;
 
     private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -50,9 +45,10 @@ public class NowPlayingPillView extends View {
     private final RectF rect = new RectF();
     private final float density;
 
-    private LinearGradient cyanGradient;
-    private LinearGradient magentaGradient;
+    private LinearGradient playGradient;
+    private LinearGradient mixGradient;
 
+    private boolean lightMode = false;
     private boolean playing = false;
     private boolean mixing = false;
     private final long startMs = SystemClock.uptimeMillis();
@@ -64,13 +60,18 @@ public class NowPlayingPillView extends View {
     public NowPlayingPillView(Context context, AttributeSet attrs) {
         super(context, attrs);
         density = getResources().getDisplayMetrics().density;
-        bgPaint.setColor(Color.argb(224, 10, 14, 22));
         borderPaint.setStyle(Paint.Style.STROKE);
         borderPaint.setStrokeWidth(1.5f * density);
         textPaint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         textPaint.setTextSize(15 * getResources().getDisplayMetrics().scaledDensity);
         textPaint.setLetterSpacing(0.05f);
-        // Habilitado con aceleración por hardware completa (GPU)
+    }
+
+    public void setLightMode(boolean light) {
+        if (this.lightMode == light) return;
+        this.lightMode = light;
+        rebuildGradients(getHeight());
+        invalidate();
     }
 
     public void setPlaying(boolean playing) {
@@ -105,48 +106,53 @@ public class NowPlayingPillView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
+        rebuildGradients(h);
+    }
+
+    private void rebuildGradients(int h) {
+        if (h <= 0) return;
         float maxH = BAR_MAX_H * density;
         int barsBottom = Math.round(h / 2f + maxH / 2f);
-
-        // Pre-calcular gradientes una sola vez al cambiar de tamaño (cero allocations en onDraw)
-        cyanGradient = new LinearGradient(0, barsBottom, 0, barsBottom - maxH, CYAN, CYAN_LIGHT, Shader.TileMode.CLAMP);
-        magentaGradient = new LinearGradient(0, barsBottom, 0, barsBottom - maxH, MAGENTA, MAGENTA_LIGHT, Shader.TileMode.CLAMP);
+        int p1 = lightMode ? LIGHT_PLAY : DARK_PLAY;
+        int p2 = lightMode ? LIGHT_PLAY_HI : DARK_PLAY_HI;
+        int m1 = lightMode ? LIGHT_MIX : DARK_MIX;
+        int m2 = lightMode ? LIGHT_MIX_HI : DARK_MIX_HI;
+        playGradient = new LinearGradient(0, barsBottom, 0, barsBottom - maxH, p1, p2, Shader.TileMode.CLAMP);
+        mixGradient = new LinearGradient(0, barsBottom, 0, barsBottom - maxH, m1, m2, Shader.TileMode.CLAMP);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         boolean active = playing || mixing;
-        int accent = mixing ? MAGENTA : CYAN;
+        int accent = mixing ? (lightMode ? LIGHT_MIX : DARK_MIX) : (lightMode ? LIGHT_PLAY : DARK_PLAY);
 
         float w = getWidth();
         float h = getHeight();
         float radius = h / 2f;
 
-        // Fondo cápsula
+        if (lightMode) {
+            bgPaint.setColor(mixing ? 0xFFF5F3FF : 0xFFFFFFFF);
+        } else {
+            bgPaint.setColor(Color.argb(228, 10, 14, 22));
+        }
+
         rect.set(0.5f * density, 0.5f * density, w - 0.5f * density, h - 0.5f * density);
         canvas.drawRoundRect(rect, radius, radius, bgPaint);
 
-        // Borde nítido acelerado por GPU
         if (active) {
-            borderPaint.setColor(withAlpha(accent, mixing ? 0.70f : 0.55f));
+            borderPaint.setColor(withAlpha(accent, mixing ? 0.72f : 0.58f));
         } else {
-            borderPaint.setColor(Color.argb(31, 255, 255, 255));
+            borderPaint.setColor(lightMode ? 0xFFD8E1EC : Color.argb(31, 255, 255, 255));
         }
         canvas.drawRoundRect(rect, radius, radius, borderPaint);
 
-        // Texto de estado
         String text = label();
         float textX = PAD_X * density;
         float textY = h / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
-        if (active) {
-            textPaint.setColor(accent);
-        } else {
-            textPaint.setColor(MUTED);
-        }
+        textPaint.setColor(active ? accent : MUTED);
         canvas.drawText(text, textX, textY, textPaint);
 
-        // Barras de ecualizador
         int barW = Math.round(BAR_W * density);
         int gap = Math.round(BAR_GAP * density);
         float maxH = BAR_MAX_H * density;
@@ -156,10 +162,10 @@ public class NowPlayingPillView extends View {
         float tSec = (SystemClock.uptimeMillis() - startMs) / 1000f;
 
         if (active) {
-            barPaint.setShader(mixing ? magentaGradient : cyanGradient);
+            barPaint.setShader(mixing ? mixGradient : playGradient);
         } else {
             barPaint.setShader(null);
-            barPaint.setColor(Color.argb(64, 255, 255, 255));
+            barPaint.setColor(lightMode ? 0xFFCBD5E1 : Color.argb(64, 255, 255, 255));
         }
 
         float corner = 1.5f * density;

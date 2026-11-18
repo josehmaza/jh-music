@@ -12,9 +12,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 /**
- * Control vertical de volumen ergonómico para auto.
- * Evita solapamiento táctil con los botones + y -, permitiendo deslizamiento
- * suave y visualmente idéntico a la barra web (.vol-meter-track).
+ * Control vertical de volumen ergonómico para auto (adaptado a Tema Claro y Oscuro).
  */
 public class VerticalVolumeBar extends View {
 
@@ -22,7 +20,8 @@ public class VerticalVolumeBar extends View {
         void onVolumeChanged(int percent, boolean fromUser);
     }
 
-    private int progress = 75; // 0..100
+    private int progress = 75;
+    private boolean lightMode = false;
     private OnVolumeChangeListener listener;
 
     private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -51,24 +50,38 @@ public class VerticalVolumeBar extends View {
     }
 
     private void init() {
-        trackPaint.setColor(Color.parseColor("#11141a"));
         trackPaint.setStyle(Paint.Style.FILL);
-
-        trackBorderPaint.setColor(Color.parseColor("#283244"));
         trackBorderPaint.setStyle(Paint.Style.STROKE);
         trackBorderPaint.setStrokeWidth(dpToPx(1.2f));
-
         fillPaint.setStyle(Paint.Style.FILL);
-
-        thumbPaint.setColor(Color.parseColor("#f1f5f9"));
         thumbPaint.setStyle(Paint.Style.FILL);
-
-        thumbBorderPaint.setColor(Color.parseColor("#0d1117"));
         thumbBorderPaint.setStyle(Paint.Style.STROKE);
         thumbBorderPaint.setStrokeWidth(dpToPx(2.5f));
-
-        thumbGlowPaint.setColor(Color.parseColor("#5538bdf8"));
         thumbGlowPaint.setStyle(Paint.Style.FILL);
+        applyColors();
+    }
+
+    public void setLightMode(boolean light) {
+        if (this.lightMode == light) return;
+        this.lightMode = light;
+        applyColors();
+        invalidate();
+    }
+
+    private void applyColors() {
+        if (lightMode) {
+            trackPaint.setColor(0xFFCBD5E1);
+            trackBorderPaint.setColor(0xFFB6C3D4);
+            thumbPaint.setColor(0xFFFFFFFF);
+            thumbBorderPaint.setColor(0xFF2563EB);
+            thumbGlowPaint.setColor(0x332563EB);
+        } else {
+            trackPaint.setColor(Color.parseColor("#11141a"));
+            trackBorderPaint.setColor(Color.parseColor("#283244"));
+            thumbPaint.setColor(Color.parseColor("#f1f5f9"));
+            thumbBorderPaint.setColor(Color.parseColor("#0d1117"));
+            thumbGlowPaint.setColor(Color.parseColor("#5538bdf8"));
+        }
     }
 
     public void setProgress(int percent) {
@@ -104,33 +117,24 @@ public class VerticalVolumeBar extends View {
         float trackTop = padY;
         float trackBottom = h - padY;
 
-        // Pista de fondo
         trackRect.set(trackLeft, trackTop, trackRight, trackBottom);
         canvas.drawRoundRect(trackRect, trackW / 2f, trackW / 2f, trackPaint);
         canvas.drawRoundRect(trackRect, trackW / 2f, trackW / 2f, trackBorderPaint);
 
-        // Nivel de llenado (de abajo hacia arriba)
         float fillTop = trackBottom - (usableH * (progress / 100f));
         if (progress > 0) {
             fillRect.set(trackLeft, fillTop, trackRight, trackBottom);
-            LinearGradient gradient = new LinearGradient(
-                    trackLeft, fillTop, trackLeft, trackBottom,
-                    Color.parseColor("#60a5fa"), Color.parseColor("#38bdf8"),
-                    Shader.TileMode.CLAMP
-            );
-            fillPaint.setShader(gradient);
+            int topC = lightMode ? 0xFF3B82F6 : 0xFF60A5FA;
+            int botC = lightMode ? 0xFF2563EB : 0xFF38BDF8;
+            fillPaint.setShader(new LinearGradient(trackLeft, fillTop, trackLeft, trackBottom,
+                    topC, botC, Shader.TileMode.CLAMP));
             canvas.drawRoundRect(fillRect, trackW / 2f, trackW / 2f, fillPaint);
         }
 
-        // Pomo / Thumb indicador
         float thumbY = fillTop;
         float thumbX = w / 2f;
-
-        // Resplandor cian sutil
         canvas.drawCircle(thumbX, thumbY, thumbRadius + dpToPx(2f), thumbGlowPaint);
-        // Centro de titanio
         canvas.drawCircle(thumbX, thumbY, thumbRadius, thumbPaint);
-        // Borde oscuro del pomo
         canvas.drawCircle(thumbX, thumbY, thumbRadius, thumbBorderPaint);
     }
 
