@@ -10,21 +10,13 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * Sombra y resplandor detrás del cuadro de la carátula, igual que el box-shadow de la web:
- *
- *   0 12px 32px rgba(0,0,0,0.7)            sombra oscura hacia abajo
- *   0 0 30px 2px  color de la canción 0.55  resplandor cercano
- *   0 0 70px 14px color de la canción 0.30  resplandor amplio
- *
- * La vista es 48dp más grande que el cuadro por cada lado (márgenes negativos en el layout) y
- * el cuadro tapa el centro. El color lo pone MainActivity con el de la carátula (cian sin carátula).
- * Se dibuja en software porque BlurMaskFilter no funciona con aceleración por hardware; solo se
- * redibuja cuando cambia el color o el tamaño.
+ * Sombra y resplandor detrás del cuadro de la carátula.
+ * En Light Mode suaviza la sombra oscura para que la tarjeta blanca flote limpia.
  */
 public class AlbumGlowView extends View {
 
-    private static final float OUTSET_DP = 48f;     // cuánto sobresale la vista del cuadro
-    private static final float CORNER_DP = 20f;     // esquinas del cuadro (bg_album_card)
+    private static final float OUTSET_DP = 48f;
+    private static final float CORNER_DP = 20f;
 
     private final Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint nearPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -32,6 +24,7 @@ public class AlbumGlowView extends View {
     private final RectF rect = new RectF();
     private final float density;
     private int glowColor = Color.rgb(56, 189, 248);
+    private boolean lightMode = false;
 
     public AlbumGlowView(Context context) {
         this(context, null);
@@ -41,14 +34,19 @@ public class AlbumGlowView extends View {
         super(context, attrs);
         density = getResources().getDisplayMetrics().density;
         setLayerType(LAYER_TYPE_SOFTWARE, null);
-        shadowPaint.setColor(Color.argb(179, 0, 0, 0));
-        shadowPaint.setMaskFilter(new BlurMaskFilter(26 * density, BlurMaskFilter.Blur.NORMAL));
-        nearPaint.setMaskFilter(new BlurMaskFilter(24 * density, BlurMaskFilter.Blur.NORMAL));
-        widePaint.setMaskFilter(new BlurMaskFilter(34 * density, BlurMaskFilter.Blur.NORMAL));
+        shadowPaint.setMaskFilter(new BlurMaskFilter(24 * density, BlurMaskFilter.Blur.NORMAL));
+        nearPaint.setMaskFilter(new BlurMaskFilter(22 * density, BlurMaskFilter.Blur.NORMAL));
+        widePaint.setMaskFilter(new BlurMaskFilter(32 * density, BlurMaskFilter.Blur.NORMAL));
         updatePaints();
     }
 
-    /** Color de la canción (ya aclarado para el resplandor). */
+    public void setLightMode(boolean light) {
+        if (this.lightMode == light) return;
+        this.lightMode = light;
+        updatePaints();
+        invalidate();
+    }
+
     public void setGlowColor(int color) {
         if (glowColor == color) return;
         glowColor = color;
@@ -58,8 +56,9 @@ public class AlbumGlowView extends View {
 
     private void updatePaints() {
         int r = Color.red(glowColor), g = Color.green(glowColor), b = Color.blue(glowColor);
-        nearPaint.setColor(Color.argb(140, r, g, b));   // 0.55
-        widePaint.setColor(Color.argb(77, r, g, b));    // 0.30
+        shadowPaint.setColor(lightMode ? Color.argb(42, 15, 23, 42) : Color.argb(179, 0, 0, 0));
+        nearPaint.setColor(Color.argb(lightMode ? 68 : 140, r, g, b));
+        widePaint.setColor(Color.argb(lightMode ? 36 : 77, r, g, b));
     }
 
     @Override
@@ -70,17 +69,14 @@ public class AlbumGlowView extends View {
         if (right <= left || bottom <= top) return;
         float corner = CORNER_DP * density;
 
-        // Resplandor amplio (sobresale 10dp antes del difuminado)
         float wide = 10 * density;
         rect.set(left - wide, top - wide, right + wide, bottom + wide);
         canvas.drawRoundRect(rect, corner + wide, corner + wide, widePaint);
 
-        // Sombra oscura hacia abajo
         float drop = 12 * density;
         rect.set(left, top + drop, right, bottom + drop);
         canvas.drawRoundRect(rect, corner, corner, shadowPaint);
 
-        // Resplandor cercano
         float near = 2 * density;
         rect.set(left - near, top - near, right + near, bottom + near);
         canvas.drawRoundRect(rect, corner + near, corner + near, nearPaint);

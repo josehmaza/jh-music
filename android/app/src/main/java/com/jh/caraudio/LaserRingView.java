@@ -10,34 +10,31 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * Borde cian tenue de precisión para el cuadro de la carátula (Optimizado para bajo consumo):
- *
- * - En pausa: borde tenue casi imperceptible (alpha 0.12).
- * - Reproduciendo: borde cian nítido y elegante (alpha 0.75).
- * - Mezclando (Automix): transición suave a magenta neón (alpha 0.85).
- *
- * Transición suave de 300 ms al cambiar de estado y DETENCIÓN TOTAL:
- * Durante la reproducción estable no ejecuta bucles de redibujado (0 FPS continuos),
- * eliminando por completo la carga gráfica en la GPU Mali-400 y el procesador.
+ * Borde de precisión para el cuadro de la carátula (0 FPS en estado estable):
+ * - Dark Mode: Cian (#00D2FF) en Playing → Magenta (#F43F5E) en Automix.
+ * - Light Mode: Azul Cobalto (#2563EB) en Playing → Turquesa (#0D9488) en Automix.
  */
 public class LaserRingView extends View {
 
     private static final long FADE_MS = 300;
-    private static final long FRAME_MS = 33; // Solo durante la transición activa (300 ms)
+    private static final long FRAME_MS = 33;
 
-    private static final int CYAN = Color.rgb(0, 210, 255);
-    private static final int MAGENTA = Color.rgb(244, 63, 94);
+    private static final int DARK_PLAY = Color.rgb(0, 210, 255);
+    private static final int DARK_MIX = Color.rgb(244, 63, 94);
+    private static final int LIGHT_PLAY = Color.rgb(29, 78, 216);
+    private static final int LIGHT_MIX = Color.rgb(124, 58, 237); // Violeta Índigo
 
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF strokeRect = new RectF();
 
+    private boolean lightMode = false;
     private boolean playing = false;
     private boolean mixing = false;
 
     private float currentAlpha = 0.12f;
     private float targetAlpha = 0.12f;
 
-    private float mixProgress = 0f; // 0 = cian, 1 = magenta
+    private float mixProgress = 0f;
     private float targetMixProgress = 0f;
 
     private long lastFrameMs = 0;
@@ -62,6 +59,12 @@ public class LaserRingView extends View {
         borderPaint.setStrokeWidth(strokeWidth);
     }
 
+    public void setLightMode(boolean light) {
+        if (this.lightMode == light) return;
+        this.lightMode = light;
+        invalidate();
+    }
+
     public void setPlaying(boolean playing) {
         if (this.playing == playing) return;
         this.playing = playing;
@@ -76,13 +79,13 @@ public class LaserRingView extends View {
 
     private void updateTargets() {
         if (mixing) {
-            targetAlpha = 0.85f;
+            targetAlpha = 0.90f;
             targetMixProgress = 1f;
         } else if (playing) {
-            targetAlpha = 0.75f;
+            targetAlpha = 0.80f;
             targetMixProgress = 0f;
         } else {
-            targetAlpha = 0.12f;
+            targetAlpha = lightMode ? 0.18f : 0.12f;
             targetMixProgress = 0f;
         }
         lastFrameMs = SystemClock.uptimeMillis();
@@ -108,14 +111,14 @@ public class LaserRingView extends View {
         currentAlpha = approach(currentAlpha, targetAlpha, dt);
         mixProgress = approach(mixProgress, targetMixProgress, dt);
 
-        // Interpolar color entre cian y magenta
-        int color = interpolateColor(CYAN, MAGENTA, mixProgress);
+        int playCol = lightMode ? LIGHT_PLAY : DARK_PLAY;
+        int mixCol = lightMode ? LIGHT_MIX : DARK_MIX;
+        int color = interpolateColor(playCol, mixCol, mixProgress);
         int alphaInt = Math.round(255 * currentAlpha);
         borderPaint.setColor((color & 0x00FFFFFF) | (alphaInt << 24));
 
         canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, borderPaint);
 
-        // Continuar animando ÚNICAMENTE si está en transición de opacidad o color
         boolean animating = (Math.abs(currentAlpha - targetAlpha) > 0.005f) ||
                             (Math.abs(mixProgress - targetMixProgress) > 0.005f);
 
@@ -125,7 +128,6 @@ public class LaserRingView extends View {
             currentAlpha = targetAlpha;
             mixProgress = targetMixProgress;
             lastFrameMs = 0;
-            // ¡Se detiene por completo! 0 FPS en reproducción estable.
         }
     }
 

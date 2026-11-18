@@ -58,6 +58,12 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
     private final MixState mixState;
     private boolean mixMode = false; // mostrando la pestaña Mi Mix
     private boolean reorderMode = false; // modo reordenar canciones en Mi Mix
+    private MusicThemePalette palette;
+
+    public void setThemePalette(MusicThemePalette p) {
+        this.palette = p;
+        notifyDataSetChanged();
+    }
 
     private String[] sections = new String[0];
     private int[] sectionPositions = new int[0];
@@ -216,24 +222,37 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
             boolean wasPlayed = mixMode && !isPlaying && mixState != null && mixState.isPlayed(track);
             convertView.setAlpha(wasPlayed ? 0.5f : 1f);
 
+            int accentC = palette != null ? palette.accent : Color.parseColor("#38bdf8");
+            int accentSoftC = palette != null ? palette.accentSoft : Color.parseColor("#2438bdf8");
+            int text1C = palette != null ? palette.text1 : Color.parseColor("#f1f5f9");
+            int text2C = palette != null ? palette.text2 : Color.parseColor("#94a3b8");
+            int textMutedC = palette != null ? palette.textMuted : Color.parseColor("#64748b");
+            int emC = palette != null ? palette.emerald : Color.parseColor("#22c55e");
+
+            if (palette != null) {
+                holder.tvIndex.setBackground(palette.box(palette.surface2, palette.borderSoft, 10f));
+                holder.tvArtist.setTextColor(text2C);
+                holder.tvDuration.setTextColor(textMutedC);
+            }
+
             if (isPlaying) {
                 holder.tvIndex.setText("▶");
-                holder.tvIndex.setTextColor(Color.parseColor("#38bdf8"));
-                holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
-                convertView.setBackgroundColor(Color.parseColor("#2438bdf8"));
+                holder.tvIndex.setTextColor(accentC);
+                holder.tvTitle.setTextColor(accentC);
+                convertView.setBackgroundColor(accentSoftC);
             } else if (wasPlayed) {
                 holder.tvIndex.setText("✓");
-                holder.tvIndex.setTextColor(Color.parseColor("#22c55e"));
-                holder.tvTitle.setTextColor(Color.parseColor("#94a3b8"));
+                holder.tvIndex.setTextColor(emC);
+                holder.tvTitle.setTextColor(text2C);
                 convertView.setBackgroundColor(Color.TRANSPARENT);
             } else {
                 // En Mi Mix el número es la posición en la lista (sin contar la que suena fuera de ella)
                 int number = position + 1;
                 if (mixMode && position > 0 && mixState != null && mixState.isOrphan(getItem(0))) number--;
                 holder.tvIndex.setText(String.format("%02d", number));
-                holder.tvIndex.setTextColor(Color.parseColor("#94a3b8"));
-                holder.tvTitle.setTextColor(isSelectedForMarquee ? Color.parseColor("#38bdf8") : Color.parseColor("#f1f5f9"));
-                convertView.setBackgroundColor(isSelectedForMarquee ? Color.parseColor("#0fffffff") : Color.TRANSPARENT);
+                holder.tvIndex.setTextColor(text2C);
+                holder.tvTitle.setTextColor(isSelectedForMarquee ? accentC : text1C);
+                convertView.setBackgroundColor(isSelectedForMarquee ? accentSoftC : Color.TRANSPARENT);
             }
 
             holder.tvTitle.setText(track.getTitle());
@@ -243,16 +262,16 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 holder.tvTitle.setMaxLines(4);
                 holder.tvTitle.setCarMarqueeEnabled(false);
                 holder.tvTitle.setEllipsize(null);
-                holder.tvTitle.setTextColor(Color.parseColor("#38bdf8"));
-                convertView.setBackgroundColor(Color.parseColor("#14ffffff"));
+                holder.tvTitle.setTextColor(accentC);
+                convertView.setBackgroundColor(accentSoftC);
             } else {
                 // Modo normal de 1 línea: la canción que suena se desplaza como en la web; el resto se corta con "…"
                 holder.tvTitle.setSingleLine(true);
                 holder.tvTitle.setMaxLines(1);
                 holder.tvTitle.setCarMarqueeEnabled(isPlaying);
-                holder.tvTitle.setTextColor(isPlaying ? Color.parseColor("#38bdf8")
-                        : (wasPlayed ? Color.parseColor("#94a3b8") : Color.parseColor("#f1f5f9")));
-                convertView.setBackgroundColor(isPlaying ? Color.parseColor("#2438bdf8") : Color.TRANSPARENT);
+                holder.tvTitle.setTextColor(isPlaying ? accentC
+                        : (wasPlayed ? text2C : text1C));
+                convertView.setBackgroundColor(isPlaying ? accentSoftC : Color.TRANSPARENT);
             }
 
             String artist = track.getArtist();
@@ -278,20 +297,22 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
                 else source = "USB 1";
             }
             if ("USB 2".equalsIgnoreCase(source) || (source != null && source.contains("2"))) {
-                int color = Color.parseColor("#c084fc");
+                int color = palette != null && palette.light ? 0xFF7C3AED : Color.parseColor("#c084fc");
                 holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
                 holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
                 holder.tvUsbBadge.setText("2");
-                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb2);
+                if (palette != null) holder.tvUsbBadge.setBackground(palette.box(palette.light ? 0x1A7C3AED : 0x24C084FC, 0, 6f));
+                else holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb2);
                 holder.tvUsbBadge.setTextColor(color);
                 Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
                 if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
             } else {
-                int color = Color.parseColor("#38bdf8");
+                int color = palette != null ? palette.accent : Color.parseColor("#38bdf8");
                 holder.tvUsbBadge.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_usb_trident, 0, 0, 0);
                 holder.tvUsbBadge.setCompoundDrawablePadding((int) (2 * context.getResources().getDisplayMetrics().density));
                 holder.tvUsbBadge.setText("1");
-                holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb1);
+                if (palette != null) holder.tvUsbBadge.setBackground(palette.box(palette.accentSoft, 0, 6f));
+                else holder.tvUsbBadge.setBackgroundResource(R.drawable.bg_pill_usb1);
                 holder.tvUsbBadge.setTextColor(color);
                 Drawable[] d = holder.tvUsbBadge.getCompoundDrawables();
                 if (d.length > 0 && d[0] != null) d[0].mutate().setColorFilter(color, PorterDuff.Mode.SRC_IN);
@@ -300,10 +321,17 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
             holder.tvDuration.setText(track.getFormattedDuration());
 
             // Botón de Mi Mix: en modo reordenar es ≡ (manija para arrastrar), en normal es ✕ (quitar), ✓ si ya está, + si no
+            final boolean isLight = palette != null && palette.light;
             final View rowView = convertView;
             if (mixMode && reorderMode && !isOrphan) {
                 holder.btnMix.setImageResource(R.drawable.ic_mix_reorder);
-                holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                if (isLight) {
+                    holder.btnMix.setBackground(palette.box(palette.surface2, palette.border, 10f));
+                    holder.btnMix.setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
+                } else {
+                    holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                    holder.btnMix.clearColorFilter();
+                }
                 holder.btnMix.setContentDescription("Arrastrar para reordenar");
                 holder.btnMix.setOnClickListener(null);
                 holder.btnMix.setOnTouchListener((v, event) -> {
@@ -329,15 +357,33 @@ public class TrackAdapter extends BaseAdapter implements SectionIndexer {
 
                 if (mixMode && !isOrphan) {
                     holder.btnMix.setImageResource(R.drawable.ic_mix_remove);
-                    holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                    if (isLight) {
+                        holder.btnMix.setBackground(palette.box(palette.surface2, palette.border, 10f));
+                        holder.btnMix.setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
+                    } else {
+                        holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                        holder.btnMix.clearColorFilter();
+                    }
                     holder.btnMix.setContentDescription("Quitar de Mi Mix");
                 } else if (mixState != null && mixState.isInMix(track)) {
                     holder.btnMix.setImageResource(R.drawable.ic_mix_check);
-                    holder.btnMix.setBackgroundResource(R.drawable.bg_mix_btn_active);
+                    if (isLight) {
+                        holder.btnMix.setBackground(palette.box(palette.accentSoft, palette.accentBorder, 10f));
+                        holder.btnMix.setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
+                    } else {
+                        holder.btnMix.setBackgroundResource(R.drawable.bg_mix_btn_active);
+                        holder.btnMix.clearColorFilter();
+                    }
                     holder.btnMix.setContentDescription("En Mi Mix (toca para quitar)");
                 } else {
                     holder.btnMix.setImageResource(R.drawable.ic_mix_add);
-                    holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                    if (isLight) {
+                        holder.btnMix.setBackground(palette.box(palette.surface2, palette.border, 10f));
+                        holder.btnMix.setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
+                    } else {
+                        holder.btnMix.setBackgroundResource(R.drawable.bg_btn_action);
+                        holder.btnMix.clearColorFilter();
+                    }
                     holder.btnMix.setContentDescription("Agregar a Mi Mix");
                 }
 

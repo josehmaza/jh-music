@@ -32,6 +32,7 @@ public class FolderTreeAdapter extends BaseAdapter {
     private List<TreeNode> visibleNodes;
     private OnTreeNodeClickListener listener;
     private Track currentPlayingTrack;
+    private MusicThemePalette palette;
     /** Si lo que suena está sonando (true) o en pausa: el ecualizador de su carpeta se mueve o queda quieto. */
     private boolean playbackRunning;
     private String selectedFolder;
@@ -51,6 +52,11 @@ public class FolderTreeAdapter extends BaseAdapter {
         this.context = context;
         this.visibleNodes = visibleNodes != null ? visibleNodes : new ArrayList<>();
         this.listener = listener;
+    }
+
+    public void setThemePalette(MusicThemePalette p) {
+        this.palette = p;
+        notifyDataSetChanged();
     }
 
     public void setVisibleNodes(List<TreeNode> nodes) {
@@ -176,13 +182,23 @@ public class FolderTreeAdapter extends BaseAdapter {
             iconLp.width = iconLp.height = (int) ((usbRoot ? 26 : 20) * density);
             holder.ivTreeIcon.setLayoutParams(iconLp);
             if (usbRoot) {
-                holder.frameTreeIcon.setBackgroundResource(R.drawable.bg_tree_icon_usb);
-                holder.ivTreeIcon.setImageResource(R.drawable.ic_usb_trident);
-                holder.ivTreeIcon.setColorFilter(Color.parseColor("#10b981"), PorterDuff.Mode.SRC_IN);
+                if (palette != null) {
+                    holder.frameTreeIcon.setBackground(palette.box(palette.emeraldSoft, palette.emeraldBorder, 10f));
+                    holder.ivTreeIcon.setImageResource(R.drawable.ic_usb_trident);
+                    holder.ivTreeIcon.setColorFilter(palette.emerald, PorterDuff.Mode.SRC_IN);
+                } else {
+                    holder.frameTreeIcon.setBackgroundResource(R.drawable.bg_tree_icon_usb);
+                    holder.ivTreeIcon.setImageResource(R.drawable.ic_usb_trident);
+                    holder.ivTreeIcon.setColorFilter(Color.parseColor("#10b981"), PorterDuff.Mode.SRC_IN);
+                }
             } else {
                 holder.frameTreeIcon.setBackground(null);
                 holder.ivTreeIcon.setImageResource(R.drawable.ic_tree_folder);
-                holder.ivTreeIcon.setColorFilter(Color.parseColor("#38bdf8"), PorterDuff.Mode.SRC_IN);
+                holder.ivTreeIcon.setColorFilter(palette != null ? palette.accent : Color.parseColor("#38bdf8"), PorterDuff.Mode.SRC_IN);
+            }
+            if (palette != null) {
+                holder.ivTreeArrow.setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
+                holder.tvTreeTitle.setTextColor(palette.text1);
             }
             holder.tvTreeTitle.setText(node.getName());
             // Nombre en 1 renglón que se desliza de derecha a izquierda si no entra; la carpeta
@@ -229,15 +245,37 @@ public class FolderTreeAdapter extends BaseAdapter {
             holder.eqFolderPlaying.setAnimating(isPlayingFolder && playbackRunning);
             boolean isSelected = (selectedFolder != null && selectedFolder.equalsIgnoreCase(node.getName()));
 
-            // Fondo: la que suena no se pinta (lo dice el ecualizador de su botón); la tocada
-            // solo destella un instante; la abierta en la pestaña de canciones, si no es la que suena,
-            // lleva un borde cian fino
-            if (node == flashNode) {
-                holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_flash);
-            } else if (isSelected && !isPlayingFolder) {
-                holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_open);
+            if (palette != null) {
+                if (node == flashNode || isPlayingFolder) {
+                    holder.layoutTreeItem.setBackground(palette.box(palette.accentSoft, palette.accentBorder, 12f));
+                } else if (isSelected) {
+                    holder.layoutTreeItem.setBackground(palette.box(palette.cardBg, palette.accentBorder, 12f));
+                } else {
+                    holder.layoutTreeItem.setBackground(palette.box(palette.cardBg, palette.borderSoft, 12f));
+                }
+                if (palette.light) {
+                    holder.btnTreeAddMix.setBackground(palette.box(palette.surface2, palette.border, 11f));
+                    if (holder.btnTreeAddMix instanceof ImageView) {
+                        ((ImageView) holder.btnTreeAddMix).setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
+                    }
+                    holder.btnFolderPlay.setBackground(isPlayingFolder
+                            ? palette.box(palette.accent, palette.accent, 12f)
+                            : palette.box(palette.surface2, palette.border, 12f));
+                } else {
+                    holder.btnTreeAddMix.setBackground(palette.box(palette.accentSoft, palette.accentBorder, 11f));
+                    if (holder.btnTreeAddMix instanceof ImageView) {
+                        ((ImageView) holder.btnTreeAddMix).setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
+                    }
+                    holder.btnFolderPlay.setBackground(palette.box(palette.accent, palette.accent, 12f));
+                }
             } else {
-                holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node);
+                if (node == flashNode) {
+                    holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_flash);
+                } else if (isSelected && !isPlayingFolder) {
+                    holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node_open);
+                } else {
+                    holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node);
+                }
             }
 
             // Clic en la flecha de despliegue

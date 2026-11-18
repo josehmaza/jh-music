@@ -11,6 +11,7 @@
 
     <!-- Icono de Carpeta -->
     <ImageView
+        android:id="@+id/ivFolderIcon"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:background="@drawable/bg_btn_action"
@@ -99,6 +100,7 @@
 
     <!-- Flecha navegar -->
     <TextView
+        android:id="@+id/tvFolderChevron"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"

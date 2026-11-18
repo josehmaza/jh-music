@@ -40,6 +40,7 @@
                 <action android:name="com.jh.music.action.PREV" />
                 <action android:name="com.jh.music.action.REQUEST_STATE" />
                 <action android:name="com.jh.music.action.SEEK" />
+                <action android:name="com.jh.music.action.TOGGLE_SHUFFLE" />
             </intent-filter>
         </receiver>
     </application>
