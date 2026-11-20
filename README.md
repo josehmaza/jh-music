@@ -7,7 +7,7 @@ Reproductor de música para el radio Android del **Hyundai Tucson ix35** (pantal
 - Al encender el auto abre en la última canción, en pausa.
 - Se controla desde [JH Launcher](https://github.com/josehmaza/jh-launcher), la pantalla de inicio: canción, ⏮ ▶ ⏭ y barra de tiempo.
 
-Versión actual: **2.11.0** · [Releases](https://github.com/josehmaza/jh-music/releases) (APK listo para instalar).
+Versión actual: **2.13.0** · [Releases](https://github.com/josehmaza/jh-music/releases) (APK listo para instalar).
 
 ## Contenido
 
