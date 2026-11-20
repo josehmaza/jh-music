@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Fila de carpeta de Librería, pensada para la pantalla de 1024x600 del radio: poca sangría,
      ícono de carpeta chico y fijo (la raíz USB conserva su cuadro de 44dp), nombre de 21sp en 1 renglón
-     que se desliza si es largo (sin la línea de cantidad: la fila mide 60dp), + de 46x46dp y ▶ cuadrado de 52x48dp -->
+     que se desliza si es largo (sin la línea de cantidad: la fila mide 60dp), número de canciones y ▶ cuadrado de 52x48dp -->
+<!-- Agregar a Mi Mix: pulsación larga en la fila (menú), ya no hay botón + -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/layoutTreeItem"
     android:layout_width="match_parent"
@@ -67,19 +68,17 @@
             android:textColor="#f8fafc"
             android:textSize="21sp"
             android:textStyle="bold" />
-    </LinearLayout>
 
-    <!-- + : agregar la carpeta entera a Mi Mix (solo si tiene canciones directas) -->
-    <ImageButton
-        android:id="@+id/btnTreeAddMix"
-        android:layout_width="46dp"
-        android:layout_height="46dp"
-        android:background="@drawable/bg_folder_addmix"
-        android:src="@drawable/ic_mix_add"
-        android:scaleType="center"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
-        android:contentDescription="Agregar carpeta a Mi Mix" />
+        <!-- Cantidad de canciones directas (sin contar subcarpetas), en una línea chica bajo el nombre:
+             no le quita ancho y la fila no crece (mide 60dp). Agregar a Mi Mix: pulsación larga en la fila -->
+        <TextView
+            android:id="@+id/tvTreeDirectCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 canciones"
+            android:textColor="#94a3b8"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <!-- ▶ : reproducir la carpeta (solo si tiene canciones directas) -->
     <FrameLayout

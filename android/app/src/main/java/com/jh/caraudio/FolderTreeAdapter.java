@@ -24,8 +24,8 @@ public class FolderTreeAdapter extends BaseAdapter {
         void onNodeClick(TreeNode node, int position);
         void onNodePlayClick(TreeNode node, int position);
 
-        /** + : agregar la carpeta entera a Mi Mix. */
-        void onNodeAddMixClick(TreeNode node, int position);
+        /** Pulsación larga sobre la fila: menú contextual (agregar la carpeta a Mi Mix). */
+        void onNodeLongClick(TreeNode node, int position);
     }
 
     private Context context;
@@ -123,7 +123,7 @@ public class FolderTreeAdapter extends BaseAdapter {
         View btnFolderPlay;
         View frameFolderPlayCircle;
         MiniEqualizerView eqFolderPlaying;
-        View btnTreeAddMix;
+        TextView tvTreeDirectCount;
     }
 
     @Override
@@ -141,7 +141,7 @@ public class FolderTreeAdapter extends BaseAdapter {
             holder.btnFolderPlay = convertView.findViewById(R.id.btnFolderPlay);
             holder.frameFolderPlayCircle = convertView.findViewById(R.id.frameFolderPlayCircle);
             holder.eqFolderPlaying = convertView.findViewById(R.id.eqFolderPlaying);
-            holder.btnTreeAddMix = convertView.findViewById(R.id.btnTreeAddMix);
+            holder.tvTreeDirectCount = convertView.findViewById(R.id.tvTreeDirectCount);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -216,25 +216,20 @@ public class FolderTreeAdapter extends BaseAdapter {
 
             int count = node.getDirectTrackCount();
 
-            // Botones + y ▶ (solo si tiene canciones directas)
+            // Cantidad de canciones directas (sin las subcarpetas) y botón ▶ (solo si tiene canciones directas)
             if (count > 0) {
+                holder.tvTreeDirectCount.setVisibility(View.VISIBLE);
+                holder.tvTreeDirectCount.setText(count + (count == 1 ? " canción" : " canciones"));
                 holder.btnFolderPlay.setVisibility(View.VISIBLE);
                 holder.btnFolderPlay.setOnClickListener(v -> {
                     if (listener != null) {
                         listener.onNodePlayClick(node, position);
                     }
                 });
-                holder.btnTreeAddMix.setVisibility(View.VISIBLE);
-                holder.btnTreeAddMix.setOnClickListener(v -> {
-                    if (listener != null) {
-                        listener.onNodeAddMixClick(node, position);
-                    }
-                });
             } else {
+                holder.tvTreeDirectCount.setVisibility(View.GONE);
                 holder.btnFolderPlay.setVisibility(View.GONE);
                 holder.btnFolderPlay.setOnClickListener(null);
-                holder.btnTreeAddMix.setVisibility(View.GONE);
-                holder.btnTreeAddMix.setOnClickListener(null);
             }
 
             boolean isPlayingFolder = isPlayingFolder(node);
@@ -253,19 +248,12 @@ public class FolderTreeAdapter extends BaseAdapter {
                 } else {
                     holder.layoutTreeItem.setBackground(palette.box(palette.cardBg, palette.borderSoft, 12f));
                 }
+                holder.tvTreeDirectCount.setTextColor(palette.text2);
                 if (palette.light) {
-                    holder.btnTreeAddMix.setBackground(palette.box(palette.surface2, palette.border, 11f));
-                    if (holder.btnTreeAddMix instanceof ImageView) {
-                        ((ImageView) holder.btnTreeAddMix).setColorFilter(palette.text2, PorterDuff.Mode.SRC_IN);
-                    }
                     holder.btnFolderPlay.setBackground(isPlayingFolder
                             ? palette.box(palette.accent, palette.accent, 12f)
                             : palette.box(palette.surface2, palette.border, 12f));
                 } else {
-                    holder.btnTreeAddMix.setBackground(palette.box(palette.accentSoft, palette.accentBorder, 11f));
-                    if (holder.btnTreeAddMix instanceof ImageView) {
-                        ((ImageView) holder.btnTreeAddMix).setColorFilter(palette.accent, PorterDuff.Mode.SRC_IN);
-                    }
                     holder.btnFolderPlay.setBackground(palette.box(palette.accent, palette.accent, 12f));
                 }
             } else {
@@ -277,6 +265,16 @@ public class FolderTreeAdapter extends BaseAdapter {
                     holder.layoutTreeItem.setBackgroundResource(R.drawable.bg_tree_node);
                 }
             }
+
+            // Pulsación larga (en la fila, la flecha o el ícono): menú contextual de la carpeta. Solo las que
+            // tienen canciones directas, que son las que se pueden agregar a Mi Mix
+            View.OnLongClickListener longClick = count > 0 ? v -> {
+                if (listener != null) listener.onNodeLongClick(node, position);
+                return true;
+            } : null;
+            holder.ivTreeArrow.setOnLongClickListener(longClick);
+            holder.frameTreeIcon.setOnLongClickListener(longClick);
+            convertView.setOnLongClickListener(longClick);
 
             // Clic en la flecha de despliegue
             holder.ivTreeArrow.setOnClickListener(v -> {

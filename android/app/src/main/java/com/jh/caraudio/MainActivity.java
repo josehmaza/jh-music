@@ -592,8 +592,9 @@ public class MainActivity extends Activity {
             }
 
             @Override
-            public void onNodeAddMixClick(TreeNode node, int position) {
-                addFolderToMix(getTracksForNode(node), node.getName());
+            public void onNodeLongClick(TreeNode node, int position) {
+                hideKeyboard();
+                showFolderMenu(node);
             }
         });
 
@@ -1225,6 +1226,27 @@ public class MainActivity extends Activity {
         ivBlindHudIcon = layoutBlindVolHud.findViewById(R.id.ivBlindHudIcon);
         viewBlindHudFill = layoutBlindVolHud.findViewById(R.id.viewBlindHudFill);
         tvBlindHudPercent = layoutBlindVolHud.findViewById(R.id.tvBlindHudPercent);
+        applyBlindHudTheme();
+    }
+
+    /** Colores del círculo de volumen / gestos según el tema (fondo claro en Light, oscuro en Dark). */
+    private void applyBlindHudTheme() {
+        MusicThemePalette p = themePalette;
+        if (layoutBlindVolHud == null || p == null) return;
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(p.light ? 0xF2FFFFFF : 0xEB080C14);
+        bg.setStroke(dp(2), p.accent);
+        layoutBlindVolHud.setBackground(bg);
+        if (tvBlindHudPercent != null) tvBlindHudPercent.setTextColor(p.text1);
+        if (ivBlindHudIcon != null) ivBlindHudIcon.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
+        if (viewBlindHudFill != null) {
+            viewBlindHudFill.setBackground(p.box(p.accent, 0, 3f));
+            if (viewBlindHudFill.getParent() instanceof View) {
+                ((View) viewBlindHudFill.getParent()).setBackground(
+                        p.box(p.light ? 0x24000000 : 0x24FFFFFF, 0, 3f));
+            }
+        }
     }
 
     /**
@@ -1260,7 +1282,7 @@ public class MainActivity extends Activity {
         if (viewBlindHudFill != null) ((View) viewBlindHudFill.getParent()).setVisibility(View.GONE);
         if (ivBlindHudIcon != null) {
             ivBlindHudIcon.setImageResource(iconRes);
-            ivBlindHudIcon.setColorFilter(Color.parseColor("#38bdf8"));
+            ivBlindHudIcon.setColorFilter(themePalette != null ? themePalette.accent : Color.parseColor("#38bdf8"));
         }
         handler.postDelayed(hideBlindVolHudRunnable, 700);
     }
@@ -1301,7 +1323,7 @@ public class MainActivity extends Activity {
                 ivBlindHudIcon.setColorFilter(Color.parseColor("#ef4444"));
             } else {
                 ivBlindHudIcon.setImageResource(R.drawable.ic_vol_on);
-                ivBlindHudIcon.setColorFilter(Color.parseColor("#38bdf8"));
+                ivBlindHudIcon.setColorFilter(themePalette != null ? themePalette.accent : Color.parseColor("#38bdf8"));
             }
         }
     }
@@ -1743,6 +1765,18 @@ public class MainActivity extends Activity {
         // 3. Columna 2: Explorador
         View expCard = findViewById(R.id.layoutExplorerCard);
         if (expCard != null) expCard.setBackground(p.box(p.panelBg, p.border, 16f));
+        // Burbujas flotantes (letra A-Z del scroll rápido y «Buscando…»): fondo claro en el tema Light
+        GradientDrawable bubbleBg = new GradientDrawable();
+        bubbleBg.setShape(GradientDrawable.RECTANGLE);
+        bubbleBg.setColor(p.light ? 0xF2FFFFFF : 0xF20B1220);
+        bubbleBg.setCornerRadius(dp(24));
+        bubbleBg.setStroke((int) (2.5f * getResources().getDisplayMetrics().density), p.accent);
+        if (layoutFastScrollBubble != null) layoutFastScrollBubble.setBackground(bubbleBg);
+        if (layoutSearchLoading != null) layoutSearchLoading.setBackground(bubbleBg.getConstantState().newDrawable().mutate());
+        if (tvFastScrollBubbleLetter != null) tvFastScrollBubbleLetter.setTextColor(p.accent);
+        if (tvFastScrollBubbleTrackNumber != null) tvFastScrollBubbleTrackNumber.setTextColor(p.text2);
+        if (layoutLibraryLoading != null) layoutLibraryLoading.setBackgroundColor(p.panelBg);
+        applyBlindHudTheme();
         if (btnCollapseAllTree != null) {
             btnCollapseAllTree.setBackground(p.actionBtnBg());
             btnCollapseAllTree.setColorFilter(p.accent, PorterDuff.Mode.SRC_IN);
@@ -2191,7 +2225,7 @@ public class MainActivity extends Activity {
             int color = filterChipTextColor(sel);
             if (currentSelectedFolder != null) {
                 String usbNum = (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("2")) ? "2" : (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("1") ? "1" : "");
-                String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
+                String label = currentSelectedFolder; // el chip se estira y corta con «…» solo si no cabe
                 btnFilterFolder.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                 btnFilterFolder.setCompoundDrawablePadding(0);
                 btnFilterFolder.setText(buildFolderFilterText(label, usbNum, color));
@@ -2199,7 +2233,12 @@ public class MainActivity extends Activity {
         }
 
         if (btnFilterAll != null) {
-            styleFilterChip(btnFilterAll, currentSearchFilter == FILTER_ALL);
+            boolean sel = (currentSearchFilter == FILTER_ALL);
+            styleFilterChip(btnFilterAll, sel);
+            Drawable[] drawables = btnFilterAll.getCompoundDrawables();
+            if (drawables.length > 0 && drawables[0] != null) {
+                drawables[0].mutate().setColorFilter(filterChipTextColor(sel), PorterDuff.Mode.SRC_IN);
+            }
         }
 
         if (btnFilterUsb1 != null) {
@@ -2225,10 +2264,9 @@ public class MainActivity extends Activity {
 
     private CharSequence buildFolderFilterText(String label, String usbNum, int textColor) {
         if (usbNum == null || usbNum.isEmpty()) {
-            return "📁 " + label;
+            return label;
         }
         SpannableStringBuilder ssb = new SpannableStringBuilder();
-        ssb.append("📁  ");
         int start = ssb.length();
         ssb.append(" ");
         try {
@@ -2344,7 +2382,7 @@ public class MainActivity extends Activity {
                 ssb.setSpan(new CenteredImageSpan(icon), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         } catch (Exception ignored) {}
-        ssb.append("  ").append(text);
+        ssb.append(" ").append(text);
         tab.setText(ssb);
         tab.setTextColor(color);
         tab.setTypeface(null, Typeface.BOLD);
@@ -2375,7 +2413,7 @@ public class MainActivity extends Activity {
             badgeBg = selected ? Color.parseColor("#330c0e12") : Color.parseColor("#26ffffff");
             badgeText = selected ? Color.parseColor("#0c0e12") : Color.parseColor("#e2e8f0");
         }
-        ssb.setSpan(new CountBadgeSpan(badgeBg, badgeText, sp(13), dp(7), dp(21)),
+        ssb.setSpan(new CountBadgeSpan(badgeBg, badgeText, sp(13), dp(6), dp(21)),
                 start, ssb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         tab.setText(ssb);
         tab.setSingleLine(true);
@@ -2491,7 +2529,7 @@ public class MainActivity extends Activity {
                 boolean sel = (currentSearchFilter == FILTER_FOLDER);
                 int color = sel ? Color.parseColor("#0d0f14") : Color.parseColor("#f1f5f9");
                 String usbNum = (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("2")) ? "2" : (currentSelectedFolderUsbSource != null && currentSelectedFolderUsbSource.contains("1") ? "1" : "");
-                String label = currentSelectedFolder.length() > 16 ? currentSelectedFolder.substring(0, 14) + "…" : currentSelectedFolder;
+                String label = currentSelectedFolder; // el chip se estira y corta con «…» solo si no cabe
                 btnFilterFolder.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                 btnFilterFolder.setCompoundDrawablePadding(0);
                 btnFilterFolder.setText(buildFolderFilterText(label, usbNum, color));
@@ -2570,6 +2608,9 @@ public class MainActivity extends Activity {
             // En Mi Mix, Reproducir está en su cabecera
             btnPlayAll.setVisibility(tabIndex == 1 ? View.VISIBLE : View.GONE);
         }
+        // El pie de estado («Pendrives listos…») solo en Librería: en Canciones y Mi Mix la lista aprovecha ese alto
+        View footer = findViewById(R.id.layoutStorageFooter);
+        if (footer != null) footer.setVisibility(tabIndex == 0 ? View.VISIBLE : View.GONE);
         if (etSearch != null) {
             // El texto de ayuda indica qué busca cada pestaña
             etSearch.setHint(tabIndex == 0 ? "Buscar carpeta..." :
@@ -2597,13 +2638,13 @@ public class MainActivity extends Activity {
                 scrollTreeToPlayingFolder();
             } else {
                 listViewContent.setAdapter(folderAdapter);
-                if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+                if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
             }
             if (currentSearchFilter == FILTER_FOLDER) {
                 currentSearchFilter = FILTER_ALL;
             }
         } else if (tabIndex == 1) {
-            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
             listViewContent.setAdapter(trackAdapter);
             String usbTag = (currentSelectedFolderUsbSource != null && !currentSelectedFolderUsbSource.isEmpty()) ? "[" + currentSelectedFolderUsbSource + "] " : "";
             tvCurrentPath.setText(currentSelectedFolder != null ? "📁 " + usbTag + currentSelectedFolder : "🎵 Todas las Pistas");
@@ -2616,7 +2657,7 @@ public class MainActivity extends Activity {
                 currentSearchFilter = FILTER_ALL;
             }
         } else {
-            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
             listViewContent.setAdapter(trackAdapter);
             tvCurrentPath.setText("🎧 Mi Mix");
             if (currentSearchFilter == FILTER_FOLDER) {
@@ -3355,7 +3396,7 @@ public class MainActivity extends Activity {
                         listViewContent.setAlpha(1.0f);
                         listViewContent.setEnabled(true);
                     }
-                    if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+                    if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
                     displayedFolders.clear();
                     displayedFolders.addAll(matchedFolders);
                     if (listViewContent.getAdapter() != folderAdapter) {
@@ -3514,7 +3555,7 @@ public class MainActivity extends Activity {
         } else if (currentTab == 1) {
             if (recyclerMixContent != null) recyclerMixContent.setVisibility(View.GONE);
             listViewContent.setVisibility(View.VISIBLE);
-            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
             displayedTracks.clear();
 
             // Sin texto en el buscador, Pistas muestra siempre la carpeta activa (la elegida con [N ▶]
@@ -3542,7 +3583,7 @@ public class MainActivity extends Activity {
             trackAdapter.setCurrentPlayingTrack(getCurrentTrack());
 
         } else if (currentTab == 2) {
-            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.GONE);
+            if (btnCollapseAllTree != null) btnCollapseAllTree.setVisibility(View.INVISIBLE);
             showMixTab();
         }
         updateFastScrollerVisibility();
@@ -4520,6 +4561,88 @@ public class MainActivity extends Activity {
         // Una sola en Mi Mix: se repite esa
         return currentTrackIndex >= 0 && currentTrackIndex < size && isInMix(queue.get(currentTrackIndex))
                 ? currentTrackIndex : -1;
+    }
+
+    /**
+     * Menú contextual de una carpeta de Librería (pulsación larga en su fila): agregarla a Mi Mix.
+     * Botones grandes para tocar manejando; tocar fuera lo cierra.
+     */
+    private void showFolderMenu(final TreeNode node) {
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        MusicThemePalette p = themePalette;
+        int cardBg = p != null ? p.cardBg : Color.parseColor("#0e131b");
+        int border = p != null ? p.accentBorder : Color.parseColor("#3338bdf8");
+        int accent = p != null ? p.accent : Color.parseColor("#38bdf8");
+        int accentSoft = p != null ? p.accentSoft : Color.parseColor("#1a38bdf8");
+        int text1 = p != null ? p.text1 : Color.WHITE;
+        int text2 = p != null ? p.text2 : Color.parseColor("#94a3b8");
+        int surface = p != null ? p.surface2 : Color.parseColor("#121722");
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(18), dp(20), dp(16));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(cardBg);
+        bg.setStroke(dp(1), border);
+        bg.setCornerRadius(dp(16));
+        box.setBackground(bg);
+
+        int count = node.getDirectTrackCount();
+        TextView title = new TextView(this);
+        title.setText(node.getName());
+        title.setTextColor(text1);
+        title.setTextSize(21);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setMaxLines(2);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        box.addView(title);
+
+        TextView sub = new TextView(this);
+        sub.setText(count + (count == 1 ? " canción" : " canciones"));
+        sub.setTextColor(text2);
+        sub.setTextSize(16);
+        sub.setPadding(0, dp(2), 0, dp(14));
+        box.addView(sub);
+
+        TextView add = new TextView(this);
+        add.setText("＋  Agregar a Mi Mix");
+        add.setTextColor(accent);
+        add.setTextSize(20);
+        add.setTypeface(Typeface.DEFAULT_BOLD);
+        add.setGravity(Gravity.CENTER);
+        GradientDrawable addBg = new GradientDrawable();
+        addBg.setColor(accentSoft);
+        addBg.setStroke(dp(1), border);
+        addBg.setCornerRadius(dp(12));
+        add.setBackground(addBg);
+        add.setOnClickListener(v -> {
+            dialog.dismiss();
+            addFolderToMix(getTracksForNode(node), node.getName());
+        });
+        box.addView(add, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
+
+        TextView cancel = new TextView(this);
+        cancel.setText("Cancelar");
+        cancel.setTextColor(text2);
+        cancel.setTextSize(18);
+        cancel.setGravity(Gravity.CENTER);
+        GradientDrawable cancelBg = new GradientDrawable();
+        cancelBg.setColor(surface);
+        cancelBg.setCornerRadius(dp(12));
+        cancel.setBackground(cancelBg);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52));
+        clp.topMargin = dp(10);
+        box.addView(cancel, clp);
+
+        dialog.setContentView(box);
+        Window w = dialog.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            w.setLayout(dp(440), ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        dialog.show();
     }
 
     /** Agrega una carpeta entera a Mi Mix y avisa cuántas entraron. */

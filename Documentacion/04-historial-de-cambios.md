@@ -2,6 +2,18 @@
 
 Versiones de la más nueva a la más antigua. Entre paréntesis, el commit de git.
 
+## 2.13.0 — 2026-11-20, pendiente de probar en el auto
+
+- **Se quitó el botón `+` de cada carpeta** de Librería: ocupaba mucho ancho y el nombre se cortaba. En su lugar sale el **número de canciones de la carpeta** (solo las directas, sin contar las subcarpetas) en una línea chica debajo del nombre («3 canciones», 14 sp): no le quita ancho al nombre y la fila sigue midiendo 60 dp. Un número suelto junto al ▶ también quitaba espacio.
+- **Agregar a Mi Mix con pulsación larga** sobre la fila (también sobre la flecha o el ícono): abre un menú con el nombre de la carpeta, su cantidad de canciones y los botones «Agregar a Mi Mix» y «Cancelar» (60 y 52 dp de alto). Solo en las carpetas con canciones directas. `FolderTreeAdapter.onNodeLongClick` y `MainActivity.showFolderMenu`.
+- **Las pestañas ya no se mueven:** el botón de colapsar el árbol (⤡) solo se ve en Librería, pero ahora conserva su lugar en las otras pestañas (`INVISIBLE` en vez de `GONE`), así Librería, Canciones y Mi Mix miden siempre lo mismo.
+- **Contadores de 3 cifras en las pestañas:** con 120 canciones el número de «Canciones» se cortaba («12»). Ahora las pestañas reparten el ancho según lo que llevan (Librería 0,8 · Canciones 1,25 · Mi Mix 1,1), con un espacio menos entre ícono y texto y la etiqueta del número 2 dp más angosta. Comprobado con 120 y 125 en el emulador.
+- **Tema Light en las burbujas flotantes:** la letra A-Z del scroll rápido, «Buscando canciones…», la pantalla de «Librería cargando» y el círculo de volumen / gestos salían oscuros en el tema claro. Ahora toman su fondo, borde, texto y barra de la paleta (`applyTheme` y `applyBlindHudTheme`).
+- **Filtros de Canciones: lo importante es leer la carpeta.** La palabra «Filtros:» se cambió por un ícono de embudo (`ic_filter`), se quitó el emoji 📁 del chip y los chips de TODO / USB 1 / USB 2 quedan alineados a la derecha. El chip de la carpeta se estira (`layout_weight` 1) y usa todo el espacio sobrante, cortando con «…» solo si no cabe. La fila ya no se desliza (`scrollSearchFilters` pasó de `HorizontalScrollView` a `FrameLayout`): con scroll el nombre largo empujaba los otros chips fuera de la pantalla.
+- **Sin pie en Canciones y Mi Mix:** el renglón de abajo («Pendrives listos (46 carpetas, 122 canciones)» y `▶ Reproducir Todo`) se oculta fuera de Librería y la lista gana ese alto. `Reproducir Todo` pasó a un botón `▶` de 44 × 34 dp al final de la barra de búsqueda de Canciones (`btnPlayAll`); el pie (`layoutStorageFooter`) solo se ve en Librería.
+- **El filtro «TODO» ahora es solo el ícono del mundo** (`ic_globe`, pintado con el color del tema como los de USB), sin texto.
+- Probado en el emulador `radio-tucson` (Mi Mix pasó de 3 a 4 al agregar una carpeta); falta probarlo en el auto.
+
 ## 2.11.0 — 2026-11-11, pendiente de probar en el auto
 
 - **Gestos estándar con un dedo** (iguales en JH Launcher y JH VIDEO): deslizar a los lados = anterior / siguiente, **medio círculo = abrir o cerrar la biblioteca** (reemplaza al doble toque en la carátula) y **doble toque en una zona libre = play / pausa**. Cada gesto muestra su aviso en el círculo del centro. Nuevo `BlindGestureTracker`.
