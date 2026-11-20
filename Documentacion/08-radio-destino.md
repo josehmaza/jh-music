@@ -52,3 +52,18 @@ Imagen `system-images;android-27;default;x86`.
 **Cómo abrirlo, instalar el APK, simular los pendrives y medir:** ver [10 · Emulador y ADB](10-emulador-y-adb.md), la única guía de prueba.
 
 **Lo que el emulador no imita:** la velocidad real del radio (corre en la CPU de la PC, mucho más rápida), la GPU Mali-400, la memoria lenta, los decodificadores de audio del radio ni el tema de Android de la fábrica. Por eso lo lento o lo que depende del formato de los archivos se confirma en el auto.
+
+# Especificaciones ideales al generar o exportar videos
+No tiene sentido meter archivos en 1080p o 4K en un panel de 1024 × 600; solo gastarás espacio y forzarás el decodificador de video del hardware.
+
+Resolución exacta: 1024 × 576 (16:9 estándar) o 1024 × 600 (si quieres llenar el panel de borde a borde sin barras negras).
+
+Códec de video: H.264 (AVC) Baseline o Main Profile. Los chips de las radios de auto suelen tener decodificación por hardware dedicada para H.264, pero sufren o tiran de CPU (calentándose) con H.265 (HEVC) o AV1.
+
+Bitrate (tasa de bits): 1.5 a 2.5 Mbps (VBR). Es el punto dulce donde no notarás compresión en 10 pulgadas y los archivos pesarán muy poco (~12–18 MB por minuto).
+
+Fotogramas por segundo (FPS): 30 fps (o 24/25 fps si son visualizadores o clips cinemáticos). Subir a 60 fps en video duplica el trabajo de lectura sin aportar mejora real en ese panel.
+
+Audio: AAC-LC a 192 kbps / 44.1 kHz (estéreo). Evita pistas en FLAC o AC3 dentro del contenedor MP4 para no depender de decodificadores por software.
+
+Contenedor: .mp4 con la bandera -movflags +faststart para que arranquen al instante al cambiar de canción.
